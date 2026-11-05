@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "prblm-builder"
+version = "0.1.0"
+description = "A visual drag-and-drop page builder for Wagtail — compose pages from a site's existing StreamField blocks."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["wagtail>=7.0"]
+
+[tool.setuptools.packages.find]
+include = ["prblm_builder*"]
+
+[tool.setuptools.package-data]
+prblm_builder = ["templates/**/*", "static/**/*"]
+
+[project.urls]
+Homepage = "https://github.com/prblmcodes/prblm-builder"
+Repository = "https://github.com/prblmcodes/prblm-builder"

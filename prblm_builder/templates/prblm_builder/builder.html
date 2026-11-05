@@ -1,0 +1,90 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Edit layout — {{ page.title }}</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="stylesheet" href="{% static 'prblm_builder/builder.css' %}">
+  <script src="{% static 'prblm_builder/vendor/sortable.min.js' %}"></script>
+  <script src="{% static 'prblm_builder/builder.js' %}" defer></script>
+</head>
+<body class="pb{% if embed %} pb-embed{% endif %}">
+  {% if not embed %}
+  <header class="pb-bar">
+    {% if not embed %}<a class="pb-back" href="{{ back_url }}" title="Back to explorer">&larr;</a>{% endif %}
+    <div class="pb-title"><span class="pb-kicker">Page builder</span><h1>{{ page.title }}</h1></div>
+    <div class="pb-devices" role="group" aria-label="Preview width">
+      <button type="button" data-device="desktop" class="active" title="Desktop" aria-label="Desktop">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="1.5"/><path d="M8 20h8M12 17v3"/></svg></button>
+      <button type="button" data-device="tablet" title="Tablet" aria-label="Tablet">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2.5" width="14" height="19" rx="2"/><path d="M10.5 18.5h3"/></svg></button>
+      <button type="button" data-device="mobile" title="Mobile" aria-label="Mobile">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M10.5 18.5h3"/></svg></button>
+    </div>
+    <div class="pb-actions">
+      <button class="pb-btn" id="pb-preview" title="Hide the panels to preview the page">Preview</button>
+      <a class="pb-btn pb-btn-ghost" href="{{ preview_page_url }}" target="_blank" rel="noopener"
+         title="Open the last-saved draft in a new tab">New&nbsp;tab&nbsp;&#8599;</a>
+      <a class="pb-btn pb-btn-ghost" href="{{ edit_url }}">Edit content</a>
+      <button class="pb-btn" id="pb-save">Save draft</button>
+      <button class="pb-btn pb-btn-primary" id="pb-publish">Save &amp; publish</button>
+    </div>
+    <button class="pb-btn pb-exit-preview" id="pb-exit-preview">Exit preview</button>
+  </header>
+  {% endif %}
+
+  <div class="pb-wrap"
+       data-preview-url="{{ preview_url }}"
+       data-save-url="{{ save_url }}"
+       data-context="{{ context_param }}"
+       data-edit-url="{{ edit_url }}"
+       data-csrf="{{ csrf_token }}">
+    {{ sections|json_script:"pb-sections" }}
+
+    <aside class="pb-palette">
+      <p class="pb-palette-title">Add a section</p>
+      <input type="search" id="pb-search" class="pb-search" placeholder="Search sections…" autocomplete="off">
+      <div id="pb-palette-list">
+        {% for group, blocks in palette %}
+          <div class="pb-pgroup" data-group>
+            <p class="pb-pgroup-title">{{ group }}</p>
+            {% for b in blocks %}
+              <div class="pb-pitem" data-type="{{ b.type }}" data-label="{{ b.label }}"
+                   data-search="{{ b.label|lower }} {{ b.type }}" title="Drag onto the page, or click to add">
+                <div class="pb-thumb">
+                  <iframe class="pb-thumb-frame" tabindex="-1" scrolling="no"
+                          data-src="{{ preview_url }}?{{ context_param }}&block={{ b.type }}&demo=1"></iframe>
+                </div>
+                <span class="pb-pitem-name"><span class="pb-grip" aria-hidden="true">&#8942;&#8942;</span>{{ b.label }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% endfor %}
+      </div>
+    </aside>
+
+    <div class="pb-divider" title="Drag to resize"><span></span></div>
+
+    <main class="pb-stage">
+      <div class="pb-page">
+        {% if header_src %}
+          <div class="pb-chrome"><iframe class="pb-chrome-frame" data-src="{{ header_src }}" scrolling="no" title="Site header"></iframe></div>
+        {% endif %}
+        <div class="pb-sections" id="pb-canvas">
+          <div class="pb-empty" id="pb-empty">
+            <strong>Start building the page</strong>
+            Drag a section here, or click one in the list on the left.<br>
+            Edit a section's content with the <em>pencil</em> button, or in the normal <em>Edit content</em> screen.
+          </div>
+        </div>
+        {% if footer_src %}
+          <div class="pb-chrome"><iframe class="pb-chrome-frame" data-src="{{ footer_src }}" scrolling="no" title="Site footer"></iframe></div>
+        {% endif %}
+      </div>
+    </main>
+  </div>
+
+  <div class="pb-toast" id="pb-toast" role="status" aria-live="polite"></div>
+</body>
+</html>

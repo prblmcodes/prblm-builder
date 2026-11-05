@@ -1,0 +1,112 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Block library</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="stylesheet" href="{% static 'prblm_builder/builder.css' %}">
+  <style>
+    .bl-main{padding:22px 26px 100px}  /* full width of the available area */
+    .bl-head{margin:4px 2px 18px}
+    .bl-head h2{margin:0;font-family:var(--pb-font);font-size:22px}
+    .bl-head p{margin:4px 0 0;color:var(--pb-mute);font-size:13.5px}
+    .bl-group-title{margin:28px 2px 2px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--pb-mute)}
+    .bl-card{background:#fff;border:1px solid var(--pb-line);border-radius:12px;margin:14px 0;overflow:hidden;scroll-margin-top:80px}
+    .bl-card-head{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--pb-line)}
+    .bl-card-head h3{margin:0;font-size:15px;font-weight:600}
+    .bl-card-head code{font-size:11px;color:var(--pb-mute);background:#f3f3f6;padding:2px 7px;border-radius:5px}
+    .bl-frame-wrap{background:#fff;padding:0}
+    .bl-frame{display:block;width:100%;border:0;background:#fff}
+    .nav-link{display:block;padding:6px 10px;border-radius:7px;font-size:13.5px;color:#55555c;text-decoration:none}
+    .nav-link:hover{background:#f6f1ee;color:var(--pb-ink)}
+    .nav-link.active{background:rgba(43,108,176,.12);color:var(--pb-accent);font-weight:600}
+    .nav-group-title{margin:12px 8px 4px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--pb-mute)}
+  </style>
+</head>
+<body class="pb">
+  <header class="pb-bar">
+    <a class="pb-back" href="/admin/" title="Back">&larr;</a>
+    <div class="pb-title"><span class="pb-kicker">Page builder</span><h1>Block library</h1></div>
+    <div class="pb-devices" id="bl-devices" role="group" aria-label="Preview width">
+      <button type="button" data-device="desktop" class="active" title="Desktop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="1.5"/><path d="M8 20h8M12 17v3"/></svg></button>
+      <button type="button" data-device="tablet" title="Tablet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2.5" width="14" height="19" rx="2"/><path d="M10.5 18.5h3"/></svg></button>
+      <button type="button" data-device="mobile" title="Mobile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M10.5 18.5h3"/></svg></button>
+    </div>
+  </header>
+
+  <div class="pb-wrap" data-preview-url="{{ preview_url }}">
+    <aside class="pb-palette">
+      <p class="pb-palette-title">Sections</p>
+      <input type="search" id="bl-search" class="pb-search" placeholder="Search sections…" autocomplete="off">
+      <nav id="bl-nav">
+        {% for group in groups %}
+          <div class="nav-group" data-group>
+            <p class="nav-group-title">{{ group.group }}</p>
+            {% for b in group.blocks %}
+              <a class="nav-link" href="#bl-{{ b.name }}" data-target="bl-{{ b.name }}"
+                 data-search="{{ b.label|lower }} {{ b.name }}">{{ b.label }}</a>
+            {% endfor %}
+          </div>
+        {% endfor %}
+      </nav>
+    </aside>
+
+    <main class="bl-main" id="bl-main" data-device="desktop">
+      <div class="bl-head">
+        <h2>Block library</h2>
+        <p>{{ total }} section{{ total|pluralize }} you can drop onto a page — shown with demo content. Use these in the <strong>Layout</strong> builder.</p>
+      </div>
+      {% for group in groups %}
+        <h2 class="bl-group-title">{{ group.group }}</h2>
+        {% for b in group.blocks %}
+          <article class="bl-card" id="bl-{{ b.name }}" data-search="{{ b.label|lower }} {{ b.name }}">
+            <div class="bl-card-head"><h3>{{ b.label }}</h3><code>{{ b.name }}</code></div>
+            <div class="bl-frame-wrap"><iframe class="bl-frame" scrolling="no" loading="lazy" title="{{ b.label }}"
+                 data-src="{{ preview_url }}?block={{ b.name }}&demo=1"></iframe></div>
+          </article>
+        {% endfor %}
+      {% endfor %}
+      <p class="no-results" id="bl-none" style="display:none;padding:50px;text-align:center;color:var(--pb-mute)">No sections match your search.</p>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      var main = document.getElementById("bl-main");
+      function fit(f){ try{ var d=f.contentDocument; if(d&&d.documentElement){ f.style.height="0px"; f.style.height=d.documentElement.scrollHeight+"px"; } }catch(e){} }
+      var io = ("IntersectionObserver" in window) ? new IntersectionObserver(function(es){ es.forEach(function(e){ if(e.isIntersecting){ var f=e.target; if(!f.src&&f.dataset.src) f.src=f.dataset.src; io.unobserve(f); } }); }, {rootMargin:"500px 0px"}) : null;
+      document.querySelectorAll(".bl-frame").forEach(function(f){
+        f.addEventListener("load", function(){ fit(f); setTimeout(function(){fit(f);},400);
+          try{ var b=f.contentDocument&&f.contentDocument.body; if(b&&window.ResizeObserver) new ResizeObserver(function(){fit(f);}).observe(b); }catch(e){} });
+        if(io) io.observe(f); else f.src=f.dataset.src;
+      });
+      /* device toggle */
+      var db=document.querySelectorAll("#bl-devices button");
+      db.forEach(function(b){ b.addEventListener("click", function(){ db.forEach(function(x){x.classList.remove("active");}); b.classList.add("active"); main.setAttribute("data-device", b.dataset.device); setTimeout(function(){ main.querySelectorAll(".bl-frame").forEach(fit); },240); }); });
+      /* search */
+      var s=document.getElementById("bl-search"), none=document.getElementById("bl-none");
+      if(s) s.addEventListener("input", function(){ var q=s.value.trim().toLowerCase(), any=false;
+        document.querySelectorAll(".bl-card").forEach(function(c){ var hit=!q||c.dataset.search.indexOf(q)!==-1; c.style.display=hit?"":"none"; if(hit)any=true; });
+        document.querySelectorAll(".nav-link").forEach(function(l){ l.style.display=(!q||l.dataset.search.indexOf(q)!==-1)?"":"none"; });
+        document.querySelectorAll(".nav-group").forEach(function(g){ g.style.display=g.querySelectorAll('.nav-link:not([style*="display: none"])').length?"":"none"; });
+        document.querySelectorAll(".bl-group-title").forEach(function(h){ });
+        none.style.display=any?"none":"block"; setTimeout(function(){ main.querySelectorAll(".bl-frame").forEach(fit); },50); });
+      /* device widths via a class on main */
+      var st=document.createElement("style");
+      // Resize the whole card (white container + title) and keep it centred, so the
+      // section preview shrinks like a real device, not just the content inside it.
+      // Group titles + the page heading follow the same width so they stay above the
+      // card's left edge rather than at the far left.
+      st.textContent=
+        '#bl-main[data-device="tablet"] .bl-card,#bl-main[data-device="tablet"] .bl-group-title,#bl-main[data-device="tablet"] .bl-head{max-width:834px;margin-left:auto;margin-right:auto}'+
+        '#bl-main[data-device="mobile"] .bl-card,#bl-main[data-device="mobile"] .bl-group-title,#bl-main[data-device="mobile"] .bl-head{max-width:390px;margin-left:auto;margin-right:auto}';
+      document.head.appendChild(st);
+      /* scrollspy */
+      var links=document.querySelectorAll(".nav-link");
+      links.forEach(function(l){ l.addEventListener("click", function(){ links.forEach(function(x){x.classList.remove("active");}); l.classList.add("active"); }); });
+      if("IntersectionObserver" in window){ var spy=new IntersectionObserver(function(es){ es.forEach(function(e){ if(e.isIntersecting){ var id=e.target.id; links.forEach(function(x){ x.classList.toggle("active", x.dataset.target===id); }); } }); }, {rootMargin:"-40% 0px -55% 0px"}); document.querySelectorAll(".bl-card").forEach(function(c){ spy.observe(c); }); }
+    })();
+  </script>
+</body>
+</html>

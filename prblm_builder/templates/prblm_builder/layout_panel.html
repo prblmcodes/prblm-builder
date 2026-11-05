@@ -1,0 +1,47 @@
+{% load i18n %}
+{% comment %}Wagtail caps editor content at .w-form-width (840px); let the Layout tab
+use the full width — but ONLY when no side panel (preview / comments / checks) is open,
+so an open preview panel shrinks the canvas to sit beside it instead of being overlaid.{% endcomment %}
+<style>.editor-view:not(.side-panel-open) .w-form-width:has(.prblm-layout-panel){max-width:none}</style>
+
+{% if demo_url %}
+{% comment %}Add a 'Block library' link (opens in a new tab) to the editor header's
+top-right strip, next to the preview / checks / comments toggles.{% endcomment %}
+<script>
+(function () {
+  function inject() {
+    var toggle = document.querySelector("[data-side-panel-toggle]");
+    var strip = toggle && toggle.parentElement;
+    if (!strip) return false;
+    if (strip.querySelector(".pb-lib-link")) return true;
+    var a = document.createElement("a");
+    a.className = "pb-lib-link button button-secondary button-small";
+    a.href = "{{ demo_url }}"; a.target = "_blank"; a.rel = "noopener";
+    a.title = "Open the block library in a new tab";
+    a.setAttribute("aria-label", "Block library (opens in a new tab)");
+    a.style.cssText = "display:inline-flex;align-items:center;gap:6px;margin-right:8px;white-space:nowrap";
+    a.innerHTML = '<svg class="icon" aria-hidden="true" width="16" height="16"><use href="#icon-grip"></use></svg><span>Block library</span>';
+    strip.insertBefore(a, strip.firstChild);
+    return true;
+  }
+  var n = 0;
+  (function go() { if (inject() || n++ > 25) return; setTimeout(go, 150); })();
+})();
+</script>
+{% endif %}
+<div class="prblm-layout-panel" style="width:100%">
+  {% if builder_url %}
+    <p class="help" style="margin:0 0 10px;color:#5a5a66;font-size:13px">
+      Drag sections to arrange this page — reorder, add from the left, or remove.
+      Edit each section's words and images in the <strong>Content</strong> tab.
+      Your changes are saved when you <strong>Save draft</strong> or <strong>Publish</strong>
+      the page (the buttons at the bottom) — there's nothing extra to save here.
+    </p>
+    <iframe src="{{ builder_url }}" title="Layout builder" loading="lazy"
+            style="width:100%;height:80vh;min-height:680px;border:1px solid #e3e3e8;border-radius:8px;background:#fff"></iframe>
+  {% else %}
+    <p style="padding:28px;background:#fafafb;border:1px dashed #e3e3e8;border-radius:8px;color:#5a5a66">
+      Save the page first, then come back to this tab to arrange its layout.
+    </p>
+  {% endif %}
+</div>
