@@ -18,3 +18,8 @@ venv/
 .DS_Store
 .idea/
 .vscode/
+
+# Raw build-session transcript from the host project — local only, contains
+# host-site infra details; never commit/share.
+.history/
+*.jsonl
