@@ -14,8 +14,13 @@ from prblm_builder import registry
 
 
 def _enabled_model():
-    models = registry.enabled_page_models()
-    return models[0] if models else None
+    """The first builder-enabled page model whose StreamField has a ``rich_text`` block
+    (the tests build content with it)."""
+    for model in registry.enabled_page_models():
+        _field, stream_block = registry.stream_block_for(model)
+        if stream_block is not None and "rich_text" in stream_block.child_blocks:
+            return model
+    return None
 
 
 # Tests render templates with {% static %}; use plain static storage so they don't

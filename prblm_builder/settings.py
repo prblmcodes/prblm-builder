@@ -107,3 +107,9 @@ def admin_tweaks():
     and the 'Block library' link in the editor header. Turn off if a Wagtail upgrade
     breaks them. (The Layout tab and saving work either way.)"""
     return bool(_get("PRBLM_BUILDER_ADMIN_TWEAKS", True))
+
+
+def page_type_enabled():
+    """Whether editors can create the built-in "Builder page" type (needs the optional
+    ``prblm_builder.blocks`` app). Existing Builder pages keep working either way."""
+    return bool(_get("PRBLM_BUILDER_PAGE_TYPE", True))

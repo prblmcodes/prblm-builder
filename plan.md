@@ -170,7 +170,7 @@ shared link type: label + one of page / URL / anchor.
       Gallery, Video, Team, Divider
 - [x] **Phase 5 — Site-wide header & footer**: admin page, canvas integration,
       `{% prblm_header %}` / `{% prblm_footer %}`
-- [ ] **Phase 6 — Page models**: Builder page (+ hide setting), `builder_blocks()` helper
+- [x] **Phase 6 — Page models**: Builder page (+ hide setting), `builder_blocks()` helper
 - [ ] **Phase 7 — Release**: tests for every block (render, defaults, no "None", a11y basics),
       README + history doc + CHANGELOG, version 0.3.0, merge to `main`, tag
 
@@ -204,3 +204,8 @@ shared link type: label + one of page / URL / anchor.
   optional blocks app can supply the canvas header/footer without the core depending on
   it. Precedence: `PRBLM_BUILDER_HEADER/FOOTER_TEMPLATE` setting → site-wide Header &
   footer → none. Migrations squashed into one `0001_initial` (nothing released yet).
+- 2026-11-09 — Phase 6 done (94 tests). Builder page renders as a standalone HTML page
+  (site header + sections + site footer) so it works with zero site templates; sites can
+  override `prblm_builder/blocks/builder_page.html`. `PRBLM_BUILDER_PAGE_TYPE` is read once
+  at startup (sets `BuilderPage.is_creatable`). The shipped generic tests now pick a page
+  model that has a `rich_text` block, so they still run when the blocks app is installed.

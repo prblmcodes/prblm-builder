@@ -1,0 +1,21 @@
+{% load wagtailcore_tags prblm_blocks %}<!doctype html>
+<html lang="{{ page.locale.language_code|default:'en' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% firstof page.seo_title page.title %}</title>
+  {% if page.search_description %}<meta name="description" content="{{ page.search_description }}">{% endif %}
+  {% prblm_assets %}
+  <style>body{margin:0}</style>
+</head>
+<body class="pbk-page">
+  {% comment %}A standalone page: the site-wide header, the page's sections, the site-wide
+  footer. Override this template (same path, in your own templates folder) to render
+  Builder pages inside your site's base layout instead.{% endcomment %}
+  {% prblm_header %}
+  <main id="main">
+    {% for block in page.body %}{% include_block block %}{% endfor %}
+  </main>
+  {% prblm_footer %}
+</body>
+</html>

@@ -4,8 +4,9 @@ from django.db import models
 from wagtail.admin.panels import FieldPanel, MultiFieldPanel
 from wagtail.contrib.settings.models import BaseSiteSetting
 from wagtail.fields import StreamField
+from wagtail.models import Page
 
-from . import theme
+from . import builder_blocks, theme
 from .sections.site import FooterBlock, HeaderBlock
 
 D = theme.DEFAULTS
@@ -81,3 +82,21 @@ class SiteChrome(BaseSiteSetting):
     class Meta:
         verbose_name = "Header & footer"
         verbose_name_plural = "Header & footer"
+
+
+class BuilderPage(Page):
+    """A ready-made page type built from the 21 built-in blocks — no code needed.
+
+    Renders as a complete page (site-wide header, sections, site-wide footer) from
+    ``prblm_builder/blocks/builder_page.html``; put a template with that name in your own
+    templates folder to render it inside your site's layout instead. Hide the type from
+    "Add page" with ``PRBLM_BUILDER_PAGE_TYPE = False``.
+    """
+
+    body = StreamField(builder_blocks(), blank=True)
+
+    content_panels = Page.content_panels + [FieldPanel("body")]
+    template = "prblm_builder/blocks/builder_page.html"
+
+    class Meta:
+        verbose_name = "Builder page"
