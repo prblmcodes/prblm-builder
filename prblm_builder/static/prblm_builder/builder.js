@@ -117,7 +117,7 @@
   function previewSrc(s) {
     var q = CFG.context + "&block=" + encodeURIComponent(s.type);
     if (s.copyFrom) return CFG.preview + "?" + q + "&section=" + encodeURIComponent(s.copyFrom);
-    if (s.isNew) return CFG.preview + "?" + q + "&demo=1&fresh=1";
+    if (s.isNew) return CFG.preview + "?" + q + "&demo=1";
     return CFG.preview + "?" + q + "&section=" + encodeURIComponent(s.id);
   }
 
@@ -125,8 +125,13 @@
     var el = document.createElement("section");
     el.className = "pb-sec pb-sec-loading"; el.dataset.id = s.id; el.dataset.type = s.type;
     if (s.copyFrom) el.dataset.copyFrom = s.copyFrom;
+    // New sections, and saved ones still holding their demo content, get a badge so
+    // placeholder text isn't published by accident.
+    var unedited = !!(s.isNew || s.unedited);
+    if (unedited) el.dataset.unedited = "1";
     el.innerHTML =
       '<iframe class="pb-frame" title="preview" scrolling="no"></iframe>' +
+      (unedited ? '<span class="pb-unedited" title="This section still has demo content \u2014 edit it in the Content tab">Not edited yet</span>' : '') +
       '<div class="pb-sec-hit"></div>' +
       '<div class="pb-sec-bar">' +
         '<span class="pb-sec-name"></span>' +
@@ -180,6 +185,7 @@
     return Array.prototype.map.call(sections(), function (c) {
       return { type: c.dataset.type, id: c.dataset.id,
                copyFrom: c.dataset.copyFrom || null, unsaved: c.dataset.unsaved || null,
+               unedited: c.dataset.unedited || null,
                label: (c.querySelector(".pb-sec-name").firstChild.textContent || "").trim() };
     });
   }
@@ -196,7 +202,8 @@
     Array.prototype.slice.call(sections()).forEach(function (s) { s.remove(); });
     snap.forEach(function (d) {
       var el = makeSection({ type: d.type, id: d.id, label: d.label,
-                             copyFrom: d.copyFrom || undefined, isNew: !!d.unsaved && !d.copyFrom });
+                             copyFrom: d.copyFrom || undefined, isNew: !!d.unsaved && !d.copyFrom,
+                             unedited: !!d.unedited });
       canvas.appendChild(el);
       wirePreview(el.querySelector(".pb-frame"));
     });
@@ -232,7 +239,7 @@
       else if (act === "del") { sec.remove(); }
       else if (act === "dup") {
         var copy = makeSection({ type: sec.dataset.type, label: sec.querySelector(".pb-sec-name").firstChild.textContent,
-          id: uuid(), copyFrom: sec.dataset.copyFrom || sec.dataset.id });
+          id: uuid(), copyFrom: sec.dataset.copyFrom || sec.dataset.id, unedited: !!sec.dataset.unedited });
         sec.parentNode.insertBefore(copy, sec.nextElementSibling);
         wirePreview(copy.querySelector(".pb-frame")); select(copy);
       }

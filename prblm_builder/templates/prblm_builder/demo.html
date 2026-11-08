@@ -26,6 +26,9 @@
     .bl-skip ul{margin:0;padding:0 14px 12px 32px;font-size:13px;color:#55555c}
     .bl-skip li{margin:5px 0}
     .bl-skip code{font-size:11px;background:#f3f3f6;padding:2px 6px;border-radius:5px}
+    .bl-kind-title{margin:34px 2px 0;font-family:var(--pb-font);font-size:18px;font-weight:700;padding-bottom:8px;border-bottom:1px solid var(--pb-line)}
+    .bl-head + .bl-kind-title{margin-top:10px}
+    .nav-kind-title{margin:16px 8px 2px;font-size:12px;font-weight:700;color:var(--pb-ink)}
     .nav-group-title{margin:12px 8px 4px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--pb-mute)}
   </style>
 </head>
@@ -46,6 +49,7 @@
       <input type="search" id="bl-search" class="pb-search" placeholder="Search sections…" autocomplete="off">
       <nav id="bl-nav">
         {% for group in groups %}
+          {% if show_kinds %}{% ifchanged group.kind %}<p class="nav-kind-title">{{ group.kind }}</p>{% endifchanged %}{% endif %}
           <div class="nav-group" data-group>
             <p class="nav-group-title">{{ group.group }}</p>
             {% for b in group.blocks %}
@@ -63,6 +67,7 @@
         <p>{{ total }} section{{ total|pluralize }} you can drop onto a page — shown with demo content. Use these in the <strong>Layout</strong> builder.</p>
       </div>
       {% for group in groups %}
+        {% if show_kinds %}{% ifchanged group.kind %}<h2 class="bl-kind-title">{{ group.kind }}</h2>{% endifchanged %}{% endif %}
         <h2 class="bl-group-title">{{ group.group }}</h2>
         {% for b in group.blocks %}
           <article class="bl-card" id="bl-{{ b.name }}" data-search="{{ b.label|lower }} {{ b.name }}">

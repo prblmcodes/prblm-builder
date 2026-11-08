@@ -1,6 +1,6 @@
 from django.urls import include, path, reverse
 from wagtail import hooks
-from wagtail.admin.menu import MenuItem
+from wagtail.admin.menu import Menu, MenuItem, SubmenuMenuItem
 
 from . import views
 
@@ -23,16 +23,39 @@ def register_builder_urls():
     return [path("page-builder/", include((urlpatterns, app_name), namespace=app_name))]
 
 
-@hooks.register("register_settings_menu_item")
-def register_demo_menu_item():
-    """A discoverable 'Block library' entry in the admin Settings menu (admin-only)."""
-    from . import settings as cfg
-    if not cfg.demo_enabled():
-        return None
-    return MenuItem(
+# The plugin's own "Page builder" section in the admin sidebar. Its sub-items come from
+# the ``register_prblm_builder_menu_item`` hook, so the optional blocks app can add its
+# Theme / Header & footer pages. The section hides itself when it has no items.
+MENU_HOOK = "register_prblm_builder_menu_item"
+
+
+@hooks.register("register_admin_menu_item")
+def register_page_builder_menu():
+    return SubmenuMenuItem(
+        "Page builder",
+        Menu(register_hook_name=MENU_HOOK),
+        name="prblm-builder",
+        icon_name="grip",
+        order=850,
+    )
+
+
+class BlockLibraryMenuItem(MenuItem):
+    """Shown only while the Block library is enabled. Checked per request: Wagtail
+    builds its menus once, so a ``return None`` in the hook would be cached forever."""
+
+    def is_shown(self, request):
+        from . import settings as cfg
+        return cfg.demo_enabled() and super().is_shown(request)
+
+
+@hooks.register(MENU_HOOK)
+def register_block_library_menu_item():
+    """The Block library — every block with a live demo preview (admin-only)."""
+    return BlockLibraryMenuItem(
         "Block library",
         reverse("prblm_builder:demo"),
-        name="prblm-builder-demo",
+        name="prblm-builder-library",
         icon_name="grip",
-        order=950,
+        order=100,
     )

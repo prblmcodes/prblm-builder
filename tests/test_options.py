@@ -85,36 +85,59 @@ class OptionsTests(TestCase):
         r = self.client.get(reverse("prblm_builder:demo"))
         self.assertContains(r, "preview 2 blocks on their own")
 
-    # --- new blocks: seeded or empty ---------------------------------------------
-    def _add_heading(self):
+    # --- removed seed setting ---------------------------------------------------
+    def test_new_block_always_seeded(self):
         _f, sb = registry.stream_block_for(StandardPage)
         out = reconcile(sb, [], [{"type": "heading", "id": "n1", "new": True}], [])
-        return out[0]["value"]
-
-    def test_new_block_seeded_by_default(self):
-        self.assertTrue(self._add_heading())
+        self.assertTrue(out[0]["value"])
 
     @override_settings(PRBLM_BUILDER_SEED_NEW_BLOCKS=False)
-    def test_new_block_empty_when_seeding_off(self):
-        self.assertEqual(self._add_heading(), "")
+    def test_removed_seed_setting_warns(self):
+        from prblm_builder.checks import removed_settings
+        ids = [w.id for w in removed_settings(None)]
+        self.assertEqual(ids, ["prblm_builder.W001"])
 
-    @override_settings(PRBLM_BUILDER_SEED_NEW_BLOCKS=False)
-    def test_new_struct_block_has_no_none_text(self):
+    def test_no_warning_without_removed_setting(self):
+        from prblm_builder.checks import removed_settings
+        self.assertEqual(removed_settings(None), [])
+
+    # --- "Not edited yet" -----------------------------------------------------------
+    def _sections(self, page):
+        r = self.client.get(reverse("prblm_builder:builder", args=[page.id]) + "?embed=1")
+        return {s["id"]: s for s in r.context["sections"]}
+
+    def test_seeded_section_is_unedited_until_changed(self):
         _f, sb = registry.stream_block_for(StandardPage)
-        value = reconcile(sb, [], [{"type": "hero", "id": "n2", "new": True}], [])[0]["value"]
-        self.assertEqual(value["title"], "")
-        self.assertEqual(value["cta"]["text"], "")
-        html = sb.child_blocks["hero"].render(sb.child_blocks["hero"].to_python(value))
-        self.assertNotIn("None", html)
+        seeded = reconcile(sb, [], [{"type": "heading", "id": "s1", "new": True}], [])
+        page = StandardPage(title="Seeded", slug="seeded-" + uuid.uuid4().hex[:6])
+        page.body = json.dumps(seeded + [{"type": "heading", "value": "Written by a person", "id": "s2"}])
+        Page.objects.get(depth=1).add_child(instance=page)
+        secs = self._sections(page)
+        self.assertTrue(secs["s1"]["unedited"])     # still the demo text
+        self.assertFalse(secs["s2"]["unedited"])    # real content
 
-    @override_settings(PRBLM_BUILDER_SEED_NEW_BLOCKS=False)
-    def test_fresh_preview_shows_placeholder_when_seeding_off(self):
-        url = reverse("prblm_builder:preview") + f"?page={self.page.id}&block=heading&demo=1&fresh=1"
-        self.assertContains(self.client.get(url), "Add its content in the Content tab")
+    def test_real_source_section_is_not_flagged(self):
+        """The section the demo content is *taken from* must not count as unedited."""
+        previews._INDEX["data"] = None              # rebuild the real-content index
+        secs = self._sections(self.page)            # 'h1' is the only heading on the site
+        self.assertFalse(secs["h1"]["unedited"])
 
-    def test_fresh_preview_shows_demo_when_seeding_on(self):
-        url = reverse("prblm_builder:preview") + f"?page={self.page.id}&block=heading&demo=1&fresh=1"
-        self.assertNotContains(self.client.get(url), "Add its content in the Content tab")
+    def test_badge_markup_in_builder_js(self):
+        from django.contrib.staticfiles import finders
+        js = open(finders.find("prblm_builder/builder.js")).read()
+        self.assertIn("Not edited yet", js)
+
+    # --- admin menu ------------------------------------------------------------------
+    def test_page_builder_menu_has_block_library(self):
+        r = self.client.get(reverse("wagtailadmin_home"))
+        html = r.content.decode()
+        self.assertIn("Page builder", html)
+        self.assertIn("Block library", html)
+
+    @override_settings(PRBLM_BUILDER_DEMO=False)
+    def test_page_builder_menu_hidden_when_empty(self):
+        r = self.client.get(reverse("wagtailadmin_home"))
+        self.assertNotIn("Page builder", r.content.decode())
 
     # --- canvas width ------------------------------------------------------------
     @override_settings(PRBLM_BUILDER_CANVAS_WIDTH=1440)

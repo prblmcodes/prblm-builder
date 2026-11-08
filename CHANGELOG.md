@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased (0.3.0)
+
+**Breaking**
+- Removed `PRBLM_BUILDER_SEED_NEW_BLOCKS`: new blocks always start with content. A
+  project that still sets it gets a startup warning (`prblm_builder.W001`).
+
+**Added**
+- "Not edited yet" badge on canvas sections that still hold their demo content.
+- "Page builder" section in the admin sidebar; the Block library moved there from
+  Settings. The Block library groups *Built-in blocks* and *Your site's blocks*.
+
+**Fixed**
+- `PRBLM_BUILDER_DEMO = False` now also hides the Block library menu item (Wagtail caches
+  menus, so the old check only ran once at startup).
+
 ## 0.2.0 — 2026-11-08
 
 **Block selection**

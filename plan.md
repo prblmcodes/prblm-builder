@@ -153,10 +153,10 @@ shared link type: label + one of page / URL / anchor.
 ## 7. Phases (checklist)
 
 - [x] **Phase 0 — Plan** — this file reviewed and agreed.
-- [ ] **Phase 1 — Core changes**
-  - [ ] Remove `PRBLM_BUILDER_SEED_NEW_BLOCKS` (+ system-check warning, docs, tests)
-  - [ ] "Not edited yet" badge on the canvas
-  - [ ] "Page builder" admin sidebar section; Block library moved there, grouped Built-in / Site
+- [x] **Phase 1 — Core changes**
+  - [x] Remove `PRBLM_BUILDER_SEED_NEW_BLOCKS` (+ system-check warning W001, docs, tests)
+  - [x] "Not edited yet" badge on the canvas
+  - [x] "Page builder" admin sidebar section; Block library moved there, grouped Built-in / Site
 - [ ] **Phase 2 — Blocks foundation**
   - [ ] `prblm_builder.blocks` app skeleton, settings models, migration
   - [ ] `blocks.css` design system (tokens, layout, four backgrounds, buttons, typography)
@@ -185,3 +185,5 @@ shared link type: label + one of page / URL / anchor.
 
 - 2026-11-08 — Interview done; decisions recorded above. Plan drafted.
 - 2026-11-09 — Plan agreed; open questions settled with the suggested defaults. Phase 1 started.
+- 2026-11-09 — Phase 1 done (38 tests). Found + fixed: menu hooks are cached by Wagtail,
+  so `PRBLM_BUILDER_DEMO = False` never hid the menu item → `is_shown()` subclass.

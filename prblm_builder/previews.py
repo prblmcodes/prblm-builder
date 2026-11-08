@@ -280,7 +280,7 @@ def _build_instance_index():
     from wagtail.fields import StreamField
     from wagtail.models import Page
 
-    best = {}  # name -> (score, value, page)
+    best = {}  # name -> (score, value, page, block id)
     for model in apps.get_models():
         if not (issubclass(model, Page) and model is not Page):
             continue
@@ -305,8 +305,8 @@ def _build_instance_index():
                         score = 0
                     cur = best.get(child.block_type)
                     if cur is None or score > cur[0]:
-                        best[child.block_type] = (score, child.value, page)
-    return {name: (v, p) for name, (s, v, p) in best.items()}
+                        best[child.block_type] = (score, child.value, page, str(child.id))
+    return {name: (v, p, bid) for name, (s, v, p, bid) in best.items()}
 
 
 def instance_index(max_age=60):
@@ -325,7 +325,8 @@ def real_instance_for(name):
     ``(None, None)``. The page is the context for blocks that read page fields."""
     if not name:
         return None, None
-    return instance_index().get(name, (None, None))
+    value, page, _bid = instance_index().get(name, (None, None, None))
+    return value, page
 
 
 def real_value_for(name):
@@ -382,6 +383,34 @@ def trim_for_demo(block, value):
         return block.normalize(_trim_walk(block, value))
     except Exception:
         return value
+
+
+def _prep(block, value):
+    try:
+        return block.get_prep_value(value)
+    except Exception:
+        return None
+
+
+def is_unedited(block, name, stored_prep, page_id=None, section_id=None):
+    """True if a stored section still holds the demo content it was seeded with — i.e. an
+    editor hasn't changed it yet. Compares against the block's own default, the
+    synthesised demo value, and the real instance used as demo (unless this section *is*
+    that real instance). Can miss a section seeded from content that has since changed
+    (a false "edited"), never the other way round."""
+    if stored_prep is None:
+        return False
+    candidates = [_prep(block, block.get_default())]
+    try:
+        candidates.append(_prep(block, block.normalize(synth_value(block, name, seed=name))))
+    except Exception:
+        pass
+    value, src_page, src_id = instance_index().get(name, (None, None, None))
+    is_source = (src_page is not None and str(getattr(src_page, "pk", "")) == str(page_id)
+                 and src_id == str(section_id))
+    if value is not None and not is_source:
+        candidates.append(_prep(block, value))
+    return any(c is not None and c == stored_prep for c in candidates)
 
 
 def demo_value(block, name="", prefer_real=True):

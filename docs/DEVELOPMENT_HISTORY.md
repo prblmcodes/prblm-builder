@@ -71,9 +71,10 @@ Pure introspection, no site-specific code.
 - `LayoutBuilderForm.clean()` reads those, and `layout.reconcile()` rebuilds the target
   StreamField from the submitted content in the Layout tab's order:
   - existing blocks keep their stored content (matched by id);
-  - new blocks get `layout.new_block_value()`: demo content, or — with
-    `PRBLM_BUILDER_SEED_NEW_BLOCKS = False` — `empty_value()`, the block's defaults with
-    unset text fields as `""` (recursing into nested StructBlocks);
+  - new blocks get `layout.new_block_value()` — demo content. (0.2 had a setting to
+    start them empty; removed in 0.3 — see the journey.) The canvas flags sections whose
+    stored value still equals their demo content as **"Not edited yet"**
+    (`previews.is_unedited`);
   - a duplicate copies its source's content;
   - `_pb_initial` disambiguates a *Layout-tab delete* (a known id now dropped → drop) from
     a *block added in the Content tab* the Layout tab never saw (unknown id → keep), so it
@@ -176,6 +177,11 @@ of the code only calls these (never `django.conf.settings` directly). See §6.
    settings: SEED_NEW_BLOCKS, CANVAS_WIDTH, PLACEHOLDER_IMAGES, LIBRARY_SCOPE,
    ADMIN_TWEAKS; header/footer get the page. Lesson: an "empty" new block must use `""`
    for text fields — Wagtail's `get_default()` is `None`, which renders as "None".
+10. **0.3 (in progress, see `plan.md`)** — removed SEED_NEW_BLOCKS again (saving empty
+    blocks made no sense; demo content + a "Not edited yet" badge is safer); added the
+    "Page builder" admin section; built-in blocks app. Lesson: Wagtail builds admin
+    menus once — a menu hook that returns `None` based on a setting is cached forever;
+    use a `MenuItem` subclass with `is_shown()`.
 
 ---
 
@@ -263,7 +269,7 @@ previews unstyled.
 | `PRBLM_BUILDER_INDEX_SCAN_LIMIT` | `500` | Pages/model scanned for real demo content |
 | `PRBLM_BUILDER_EXCLUDE_BLOCKS` | `()` | Hide blocks by name or dotted class path (0.2) |
 | `PRBLM_BUILDER_LIBRARY_SCOPE` | `"builder"` | Block library = palette blocks, or `"all"` StreamFields (0.2) |
-| `PRBLM_BUILDER_SEED_NEW_BLOCKS` | `True` | `False` = new blocks start empty (0.2) |
+| ~~`PRBLM_BUILDER_SEED_NEW_BLOCKS`~~ | — | Removed in 0.3 (startup warning W001 if still set) |
 | `PRBLM_BUILDER_CANVAS_WIDTH` | `1280` | Desktop width sections render at on the canvas (0.2) |
 | `PRBLM_BUILDER_PLACEHOLDER_IMAGES` | `True` | Allow creating placeholder images (0.2) |
 | `PRBLM_BUILDER_ADMIN_TWEAKS` | `True` | Full-width tab + header link (Wagtail internals) (0.2) |
@@ -288,9 +294,8 @@ A block can also opt out itself: `class Meta: builder = False`.
   test project or inside a host project via `manage.py test prblm_builder`) and
   `tests/test_options.py` (settings + Block-library rules; needs the edge-case blocks in
   `tests/testapp`, so it only runs in this repo). `python runtests.py` runs both.
-- With `PRBLM_BUILDER_SEED_NEW_BLOCKS = False`, the empty block is written straight into
-  the stored data after form validation, so required fields aren't enforced on it — a
-  page can be published with an empty section until it's filled in.
+- "Not edited yet" can miss a section seeded from real site content that has since
+  changed (shows as edited); it never flags a section an editor actually changed.
 - The Layout tab reads sections from the page's stored (live) row, not the latest draft
   revision — unverified whether a page with unpublished draft changes shows stale
   sections on the canvas. Check when testing in a second project.

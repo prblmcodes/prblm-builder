@@ -87,10 +87,11 @@ To upgrade later, change the tag (e.g. `@v0.2.0` → `@v0.3.0`) and reinstall. S
   reorder/duplicate/delete, and **Save draft / Publish** as usual. Undo/redo with
   Ctrl/⌘+Z and Ctrl/⌘+Shift+Z.
 - **Edit content:** each section's words and images are edited in the normal **Content**
-  tab. New sections start with demo content (or empty — see `PRBLM_BUILDER_SEED_NEW_BLOCKS`).
+  tab. New sections start with demo content; until you change it, the canvas marks the
+  section **"Not edited yet"** so placeholder text doesn't get published by accident.
 - **New page:** the Layout tab works before the first save — arrange, then the sections
   save with the page.
-- **Block library:** **Settings → Block library** in the admin sidebar (or the link in the
+- **Block library:** **Page builder → Block library** in the admin sidebar (or the link in the
   editor header) shows every block with realistic demo content. Its address is
   `/admin/page-builder/demo/` (use your own admin prefix if it isn't `admin/`).
 
@@ -134,7 +135,6 @@ A block can also hide itself — see [Hiding a block](#hiding-a-block).
 
 | Setting | Default | What it does |
 |---|---|---|
-| `PRBLM_BUILDER_SEED_NEW_BLOCKS` | `True` | `True` = a block added in the Layout tab starts with realistic demo content. `False` = it starts empty (the block's own defaults) and shows a "New …" placeholder on the canvas until filled in. Use `False` if demo text risks getting published. |
 | `PRBLM_BUILDER_PLACEHOLDER_IMAGES` | `True` | Only matters when your Wagtail **image library is empty**. Demo previews normally use real images from your library; if there are none, the plugin creates a few grey gradient images titled "Builder placeholder …". `False` = never create them (demos then have no image). On a site that already has images, changing this does nothing visible. |
 | `PRBLM_BUILDER_INDEX_SCAN_LIMIT` | `500` | Pages per model scanned to find real content to use in demos (newest first). Lower it on very large sites. |
 
@@ -149,7 +149,7 @@ What `PRBLM_BUILDER_ADMIN_TWEAKS` changes (in the page editor only — not the B
 | | `True` (default) | `False` |
 |---|---|---|
 | Layout tab width | Stretches to the full editor width (while the preview / comments side panel is closed) | Wagtail's normal form width (~840px) |
-| "Block library" button | Shown in the editor's top-right header, next to the preview / comments icons | Not shown (still reachable from **Settings → Block library**) |
+| "Block library" button | Shown in the editor's top-right header, next to the preview / comments icons | Not shown (still reachable from **Page builder → Block library**) |
 
 ### Example
 
@@ -163,7 +163,6 @@ PRBLM_BUILDER_HEADER_TEMPLATE = "components/header.html"
 PRBLM_BUILDER_FOOTER_TEMPLATE = "components/footer.html"
 PRBLM_BUILDER_CANVAS_WIDTH = 1440
 PRBLM_BUILDER_EXCLUDE_BLOCKS = ["core.blocks.LinkBlock"]
-PRBLM_BUILDER_SEED_NEW_BLOCKS = False
 ```
 
 ## Which blocks show up
@@ -244,7 +243,7 @@ aren't sections.
   and wraps its form, so your models need no code changes.
 - **Ride-along save.** The Layout tab writes the arrangement into hidden fields on the
   edit form; on Save/Publish the form rebuilds the StreamField in that order. Existing
-  blocks keep their content; new ones get demo content (or start empty); duplicates copy
+  blocks keep their content; new ones get demo content (flagged "Not edited yet" until changed); duplicates copy
   their source. Blocks added or deleted in the Content tab are respected.
 - **Real demo content.** Previews prefer a real instance of each block used elsewhere on
   the site (real images + copy, with its page as context), falling back to generated

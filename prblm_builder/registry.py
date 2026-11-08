@@ -90,6 +90,17 @@ def previewable(name, block):
     return not template.startswith(cfg.exclude_template_prefixes())
 
 
+BUILTIN_MODULE = "prblm_builder.blocks"
+KIND_BUILTIN = "Built-in blocks"
+KIND_SITE = "Your site's blocks"
+
+
+def is_builtin(block):
+    """True for blocks shipped by the plugin's optional ``prblm_builder.blocks`` app."""
+    module = type(block).__module__ or ""
+    return module == BUILTIN_MODULE or module.startswith(BUILTIN_MODULE + ".")
+
+
 def _group(blocks_iter):
     """``[(group, [(name, block, label), …]), …]`` from an iterable of (name, block)."""
     groups = {}
@@ -141,6 +152,20 @@ def all_blocks():
 def grouped_all_blocks():
     """Grouped previewable blocks across the whole project (for the demo page)."""
     return _group(all_blocks().items())
+
+
+def library_sections():
+    """``[(kind, [(group, [(name, block, label), …]), …]), …]`` for the Block library:
+    built-in blocks first, then the site's own — each with its usual groups."""
+    found = all_blocks()
+    builtin = {n: b for n, b in found.items() if is_builtin(b)}
+    site = {n: b for n, b in found.items() if n not in builtin}
+    out = []
+    if builtin:
+        out.append((KIND_BUILTIN, _group(builtin.items())))
+    if site:
+        out.append((KIND_SITE, _group(site.items())))
+    return out
 
 
 def find_block(name):

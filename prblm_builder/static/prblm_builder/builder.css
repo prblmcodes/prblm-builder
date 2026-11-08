@@ -118,6 +118,11 @@ body.pb-embed .pb-expand{display:inline-flex}
 .pb-sec-tag{font-size:9px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;padding:1px 6px;border-radius:999px;margin-left:6px}
 .pb-sec-tag-live{background:#204d2c;color:#9fe3b2}
 .pb-sec-tag-demo{background:#5a3410;color:#ffcf9c}
+/* Always-visible marker on sections that still hold demo content. */
+.pb-unedited{position:absolute;top:8px;left:8px;z-index:3;pointer-events:none;font:600 11px/1 system-ui,sans-serif;
+  letter-spacing:.02em;padding:5px 9px;border-radius:999px;background:#fff4e5;color:#8a4b00;border:1px solid #f3c58a;
+  box-shadow:0 1px 3px rgba(0,0,0,.12)}
+body.pb-preview-mode .pb-unedited{display:none}
 .pb-sec-ctrls{display:flex;gap:2px}
 .pb-sec-ctrls button{width:26px;height:26px;border:0;background:rgba(255,255,255,.12);color:#fff;border-radius:6px;cursor:pointer;font-size:13px;line-height:1}
 .pb-sec-ctrls button:hover{background:rgba(255,255,255,.26)}

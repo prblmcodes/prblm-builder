@@ -11,7 +11,6 @@ previews at its own front-end CSS/JS so sections look like production.
     PRBLM_BUILDER_FIELD_NAMES = ["body"]                 # which StreamField to build
     PRBLM_BUILDER_PAGE_MODELS = ["home.StandardPage"]    # None = auto-detect
     PRBLM_BUILDER_EXCLUDE_BLOCKS = ["link"]              # hide by name or class path
-    PRBLM_BUILDER_SEED_NEW_BLOCKS = False                # new blocks start empty
 
 See the README for the full list.
 """
@@ -87,12 +86,6 @@ def library_scope():
     top-level blocks of every StreamField in the project (snippets, settings, …)."""
     scope = _get("PRBLM_BUILDER_LIBRARY_SCOPE", "builder")
     return scope if scope in ("builder", "all") else "builder"
-
-
-def seed_new_blocks():
-    """Whether a block added in the Layout tab starts with demo content (True) or
-    empty, with the block's own defaults (False)."""
-    return bool(_get("PRBLM_BUILDER_SEED_NEW_BLOCKS", True))
 
 
 def canvas_width():

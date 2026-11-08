@@ -12,7 +12,7 @@ from django.core.exceptions import PermissionDenied
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
-from django.utils.html import escape, strip_tags
+from django.utils.html import strip_tags
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.decorators.http import require_POST
 from wagtail.models import Page
@@ -38,11 +38,16 @@ def _can_edit(page, user):
 def _sections(page, field_name):
     """Current blocks on the page as ``[{id, type, label}]`` in order."""
     out = []
-    for child in getattr(page, field_name):
+    stream = getattr(page, field_name)
+    raw_by_id = {str(d.get("id")): d.get("value") for d in stream.raw_data}
+    for child in stream:
         out.append({
             "id": child.id,
             "type": child.block_type,
             "label": registry.block_label(child.block_type, child.block),
+            # Still holds the demo content it was seeded with → "Not edited yet" badge.
+            "unedited": previews.is_unedited(child.block, child.block_type,
+                                             raw_by_id.get(str(child.id)), page.pk, child.id),
         })
     return out
 
@@ -178,18 +183,22 @@ def demo(request):
     if not cfg.demo_enabled():
         raise Http404("The block library is disabled (PRBLM_BUILDER_DEMO).")
     groups, unpreviewable = [], []
-    for g, items in registry.grouped_all_blocks():
-        ok = []
-        for name, block, label in items:
-            problem = _preview_problem(name, block, request)
-            if problem:
-                unpreviewable.append({"name": name, "label": label, "reason": problem})
-            else:
-                ok.append({"name": name, "label": label})
-        if ok:
-            groups.append({"group": g, "blocks": ok})
+    sections = registry.library_sections()
+    for kind, kind_groups in sections:
+        for g, items in kind_groups:
+            ok = []
+            for name, block, label in items:
+                problem = _preview_problem(name, block, request)
+                if problem:
+                    unpreviewable.append({"name": name, "label": label, "reason": problem})
+                else:
+                    ok.append({"name": name, "label": label})
+            if ok:
+                groups.append({"kind": kind, "group": g, "blocks": ok})
     return render(request, "prblm_builder/demo.html", {
         "groups": groups,
+        # Kind headings ("Built-in blocks" / "Your site's blocks") only when both exist.
+        "show_kinds": len(sections) > 1,
         "total": sum(len(g["blocks"]) for g in groups),
         "unpreviewable": unpreviewable,
         "preview_url": reverse("prblm_builder:preview"),
@@ -265,18 +274,6 @@ def preview(request):       # builder frames this from the same origin, so allow
         else registry.find_block(block_name)
     if block is None:
         raise Http404(f"Unknown block {block_name!r}")
-    # A section just added on the canvas, when new blocks start empty: show what will
-    # actually be saved (the block's defaults), not demo content.
-    if request.GET.get("fresh") and not cfg.seed_new_blocks():
-        html = _render_block_safe(block, layout_mod.empty_value(block), request, page)
-        if _is_blank(html):
-            html = (
-                '<div style="padding:40px 24px;font-family:sans-serif;text-align:center;'
-                'color:#5a5a66;background:#fafafb;border:2px dashed #d6d6de">'
-                f'<strong>New {escape(registry.block_label(block_name, block))}</strong><br>'
-                'Add its content in the Content tab.</div>')
-        return HttpResponse(previews.frame(html, request))
-
     # Demo content: prefer a real instance of this block used on the site — real images
     # and copy, and its page as context so hero-style blocks (which read the page's
     # title / header_image / excerpt) render fully instead of an empty band. Long text

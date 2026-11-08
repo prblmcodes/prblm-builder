@@ -19,7 +19,7 @@ site content where a block is used, else synthesis).
 ## Where things live
 - `prblm_builder/integration.py` + `panels.py` — auto-attaches the Layout tab + save form.
 - `prblm_builder/forms.py` + `layout.py` — the ride-along save + reconciliation; new-block
-  values (demo or empty).
+  values (always demo content; "Not edited yet" detection lives in `previews.is_unedited`).
 - `prblm_builder/registry.py` — finds models/blocks; palette + Block library lists; hiding
   rules (`Meta: builder = False`, `PRBLM_BUILDER_EXCLUDE_BLOCKS`).
 - `prblm_builder/previews.py` — demo content engine (real-instance → synth → trim) + iframe frame.

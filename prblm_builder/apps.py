@@ -10,5 +10,5 @@ class PrblmBuilderConfig(AppConfig):
     def ready(self):
         # Auto-attach the Layout tab + save wiring to every builder-enabled page
         # model, so host sites don't wire each model by hand.
-        from . import integration
+        from . import checks, integration  # noqa: F401  (checks registers on import)
         integration.autoenable()
