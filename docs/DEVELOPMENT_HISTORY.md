@@ -128,6 +128,47 @@ that raise or render no text/media (`_is_blank`) are listed in a collapsed
 "Couldn't preview" section with the reason instead of as an empty/red card. They stay in
 the palette.
 
+### Admin section — `wagtail_hooks.py`
+A **Page builder** sidebar section (`SubmenuMenuItem`) whose items come from the
+`register_prblm_builder_menu_item` hook: the core adds *Block library*; the blocks app
+adds *Theme* and *Header & footer*. Items that depend on a setting use a `MenuItem`
+subclass with `is_shown()` — Wagtail builds menus once, so returning `None` from the hook
+would be cached forever.
+
+### Built-in blocks — `prblm_builder/blocks/` (optional app, 0.3)
+- **Opt-in app** `prblm_builder.blocks` (label `prblm_builder_blocks`); system checks
+  require `wagtail.contrib.settings` and `prblm_builder`. The core never imports it.
+- **21 blocks** in `sections/` (site, heroes, content, conversion, media, utility), sharing
+  `sections/base.py`: `LinkBlock` (label + page *or* typed address, `.href`),
+  `BackgroundBlock` (light/muted/dark/brand), `AnchorBlock`, `IconChoiceBlock`.
+  `builder_blocks(exclude, only)` returns `[(name, block)]` for a StreamField.
+- **Explanatory defaults** live in the blocks' own field defaults, so they appear when a
+  block is added from the Layout tab *or* the Content tab. `previews.demo_value` returns
+  `block.get_default()` for built-ins (never real-site content or synthesis).
+- **Self-contained assets.** Every block template calls `{% prblm_assets %}`, which emits
+  the stylesheet, the Theme's CSS variables and the small script **once per request**
+  (flag on the request). `blocks.css` is scoped to `.pbk*` classes; colours/shape are
+  `--pbk-*` variables. Font: `font-family: var(--pbk-font, inherit)` plus a
+  zero-specificity `:where(html)` system-font fallback, so any site font wins.
+- **Theme** (`ThemeSettings`, a Wagtail site setting) → `theme.css()` → `:root{--pbk-…}`;
+  values are validated (hex colours, font lists stripped of `;{}<>\`).
+- **Site-wide Header & footer** (`SiteChrome`, one Header + one Footer StreamField per
+  site). The core asks the `prblm_builder_chrome` hook for canvas header/footer HTML when
+  no `PRBLM_BUILDER_HEADER/FOOTER_TEMPLATE` is set; the blocks app answers from
+  `SiteChrome`. `{% prblm_header %}` / `{% prblm_footer %}` render them anywhere.
+- **Builder page** (`BuilderPage`): all 21 blocks; renders a standalone HTML document
+  (`builder_page.html`: site header, sections, site footer) so it works without any site
+  templates; overridable by path. `PRBLM_BUILDER_PAGE_TYPE` sets `is_creatable` at startup.
+- **Settings pages live under Page builder, not Settings:** registered with Wagtail's
+  settings registry (edit view, per-site values, permissions) with names prefixed
+  `prblm-builder-`; a `construct_settings_menu` hook removes them from Settings.
+- **Images / icons:** `{% pbk_image %}` renders a rendition, or an inline SVG placeholder
+  labelled with purpose and size; icons are inline SVG from `icons.py` (drawn for the
+  plugin, no third-party licence).
+- **Name clashes:** a site block and a built-in block can share a name (`hero`). The
+  Block library and the real-content index key blocks by *(name, is_builtin)*; library
+  previews of built-ins pass `&builtin=1`.
+
 ### Settings — `settings.py`
 One small reader function per `PRBLM_BUILDER_*` setting, each with its default; the rest
 of the code only calls these (never `django.conf.settings` directly). See §6.
@@ -177,7 +218,7 @@ of the code only calls these (never `django.conf.settings` directly). See §6.
    settings: SEED_NEW_BLOCKS, CANVAS_WIDTH, PLACEHOLDER_IMAGES, LIBRARY_SCOPE,
    ADMIN_TWEAKS; header/footer get the page. Lesson: an "empty" new block must use `""`
    for text fields — Wagtail's `get_default()` is `None`, which renders as "None".
-10. **0.3 (in progress, see `plan.md`)** — removed SEED_NEW_BLOCKS again (saving empty
+10. **0.3 (see `plan.md` for the full plan + log)** — removed SEED_NEW_BLOCKS again (saving empty
     blocks made no sense; demo content + a "Not edited yet" badge is safer); added the
     "Page builder" admin section; built-in blocks app. Lesson: Wagtail builds admin
     menus once — a menu hook that returns `None` based on a setting is cached forever;
@@ -206,6 +247,15 @@ of the code only calls these (never `django.conf.settings` directly). See §6.
   sections; fragments (links, buttons) live inside them. So "a section" = a top-level
   block of a builder-enabled page field. Path-based rules (template prefixes) are too
   project-specific; the opt-out lives on the block (`Meta: builder = False`) or by class.
+- **Built-in blocks as an opt-in app, not part of the core (0.3).** The plugin's main
+  value is working with a site's *own* blocks; the starter blocks are a convenience for
+  new sites and demos. Keeping them in a separate app means sites that don't want them
+  get no extra tables, menus or page types.
+- **Self-contained styling over Tailwind/Bootstrap (0.3).** Built-ins must look right on
+  any site without a build step and without fighting the site's CSS: prefixed classes,
+  CSS variables, assets emitted by the blocks themselves.
+- **Site-wide header/footer via a hook (0.3).** The core shows a canvas header/footer but
+  can't know about the blocks app; a hook keeps the dependency one-way.
 - **No settings for where models/templates/static live.** Django's app registry,
   template loaders and staticfiles finders already find them uniformly; settings for
   paths would only add ways to misconfigure. Settings cover *which* and *how*, not *where*.
@@ -270,6 +320,7 @@ previews unstyled.
 | `PRBLM_BUILDER_EXCLUDE_BLOCKS` | `()` | Hide blocks by name or dotted class path (0.2) |
 | `PRBLM_BUILDER_LIBRARY_SCOPE` | `"builder"` | Block library = palette blocks, or `"all"` StreamFields (0.2) |
 | ~~`PRBLM_BUILDER_SEED_NEW_BLOCKS`~~ | — | Removed in 0.3 (startup warning W001 if still set) |
+| `PRBLM_BUILDER_PAGE_TYPE` | `True` | Built-in "Builder page" creatable (0.3, blocks app only) |
 | `PRBLM_BUILDER_CANVAS_WIDTH` | `1280` | Desktop width sections render at on the canvas (0.2) |
 | `PRBLM_BUILDER_PLACEHOLDER_IMAGES` | `True` | Allow creating placeholder images (0.2) |
 | `PRBLM_BUILDER_ADMIN_TWEAKS` | `True` | Full-width tab + header link (Wagtail internals) (0.2) |
@@ -329,7 +380,25 @@ runtests.py                   test runner (also `runtests.py makemigrations`)
 README.md                     user docs: install, settings reference, troubleshooting
 CHANGELOG.md                  per-release changes
 LICENSE                       MIT
+plan.md                       the v0.3.0 plan + progress log
+
+prblm_builder/blocks/         optional built-in blocks app (0.3)
+  __init__.py        builder_blocks()
+  apps.py, checks.py app config; requires wagtail.contrib.settings
+  sections/          base.py (shared blocks) + site, heroes, content, conversion, media, utility
+  models.py          ThemeSettings, SiteChrome, BuilderPage (+ migrations/0001_initial.py)
+  theme.py, chrome.py, icons.py
+  templatetags/prblm_blocks.py   prblm_assets, prblm_header/footer, pbk_icon/image/placeholder
+  templates/prblm_builder/blocks/  section.html base, _link/_heading partials, one per block,
+                                   builder_page.html
+  static/prblm_builder/blocks/     blocks.css, blocks.js
+  wagtail_hooks.py   menu items, hide from Settings, prblm_builder_chrome provider
+tests/test_blocks_foundation.py, test_blocks.py, test_site_chrome.py, test_builder_page.py
 ```
+
+**Checking the look.** Tests can't see layout, so CSS was checked by rendering every
+block's default content into one HTML file and screenshotting it with headless Chrome at
+1280px and 390px (`google-chrome --headless=new --screenshot … --window-size=1280,7600`).
 
 ---
 
@@ -348,8 +417,6 @@ LICENSE                       MIT
 7. ~~**Install into another Wagtail project**~~ — done after 0.1.0; led to the 0.2 changes.
    Still to verify there: whether the Layout tab shows a page's unpublished draft
    sections (it reads the live row — see §7).
-8. **Optional built-in blocks (planned 0.3)** — an opt-in app (e.g.
-   `prblm_builder.blocks`) with ~8–10 starter sections (hero, text + image, features,
-   CTA, testimonials, FAQ, gallery, cards, stats). Hard part is styling that works on any
-   site: prefixed CSS + CSS variables for theming. Block names/fields must stay stable
-   once released (stored content depends on them). The core stays block-agnostic.
+8. ~~**Optional built-in blocks**~~ — done in 0.3 (21 blocks, Theme, Header & footer,
+   Builder page). Possible next: more blocks (contact form needs storage + spam
+   protection), a theme preview on the Theme page, dark-mode aware defaults.

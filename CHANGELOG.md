@@ -1,6 +1,18 @@
 # Changelog
 
-## Unreleased (0.3.0)
+## 0.3.0 — unreleased
+
+**Built-in blocks (new, optional app `prblm_builder.blocks`)**
+- 21 ready-made sections: Header, Footer, Hero, Page banner, Text, Text + image, Features,
+  Cards, Steps, Quote, Testimonials, Logo strip, Stats, Call to action, FAQ, Pricing,
+  Gallery, Video, Team, Contact info, Divider. Fully self-contained CSS/JS (loaded once
+  per page by `{% prblm_assets %}`), pre-filled explanatory content, four section
+  backgrounds, anchor IDs, 50 line icons, labelled image placeholders.
+- **Theme** page (Page builder → Theme): colours, fonts, roundness, content width.
+- **Header & footer** page: one site-wide header/footer, shown around the builder canvas
+  and available on any template via `{% prblm_header %}` / `{% prblm_footer %}`.
+- Ready-made **Builder page** type (hide with `PRBLM_BUILDER_PAGE_TYPE = False`) and the
+  `builder_blocks(exclude=…, only=…)` helper for your own page models.
 
 **Breaking**
 - Removed `PRBLM_BUILDER_SEED_NEW_BLOCKS`: new blocks always start with content. A
@@ -14,6 +26,14 @@
 **Fixed**
 - `PRBLM_BUILDER_DEMO = False` now also hides the Block library menu item (Wagtail caches
   menus, so the old check only ran once at startup).
+- A site block and a built-in block with the same name no longer collide in the Block
+  library or in demo content.
+
+**Developers**
+- New hook `prblm_builder_chrome(kind, request, page)` lets an app supply the canvas
+  header/footer; new hook `register_prblm_builder_menu_item` adds items to the
+  Page builder menu.
+- The shipped generic tests pick a page model with a `rich_text` block.
 
 ## 0.2.0 — 2026-11-08
 

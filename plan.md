@@ -171,8 +171,13 @@ shared link type: label + one of page / URL / anchor.
 - [x] **Phase 5 — Site-wide header & footer**: admin page, canvas integration,
       `{% prblm_header %}` / `{% prblm_footer %}`
 - [x] **Phase 6 — Page models**: Builder page (+ hide setting), `builder_blocks()` helper
-- [ ] **Phase 7 — Release**: tests for every block (render, defaults, no "None", a11y basics),
-      README + history doc + CHANGELOG, version 0.3.0, merge to `main`, tag
+- [ ] **Phase 7 — Release**
+  - [x] Tests for every block (render, defaults, no "None", save/load round trip, a11y basics)
+  - [x] README (built-in blocks guide, settings, upgrading, troubleshooting), history doc,
+        CLAUDE.md, CHANGELOG; version 0.3.0; CI checks the blocks files are in the wheel
+  - [x] Wheel installed + smoke-tested in a separate Wagtail 8.1 project
+  - [ ] Owner tests the branch in a real project
+  - [ ] Merge to `main`, tag `v0.3.0`, GitHub release
 
 ## 8. Settled defaults (were open questions — change before release if needed)
 
@@ -209,3 +214,5 @@ shared link type: label + one of page / URL / anchor.
   override `prblm_builder/blocks/builder_page.html`. `PRBLM_BUILDER_PAGE_TYPE` is read once
   at startup (sets `BuilderPage.is_creatable`). The shipped generic tests now pick a page
   model that has a `rich_text` block, so they still run when the blocks app is installed.
+- 2026-11-09 — Phase 7 (docs + version 0.3.0 + wheel smoke test) done; 94 tests. Waiting
+  for the owner's test in a real project before merging and tagging.
