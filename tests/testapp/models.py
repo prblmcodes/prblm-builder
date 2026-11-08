@@ -54,3 +54,9 @@ class BlocksPage(Page):
         blank=True)
 
     content_panels = Page.content_panels + [FieldPanel("body")]
+
+
+class RestrictedHome(Page):
+    """A home page type that only allows certain children (like many real sites)."""
+
+    subpage_types = ["testapp.StandardPage"]

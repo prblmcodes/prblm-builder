@@ -37,7 +37,8 @@ class BuilderPageTests(TestCase):
 
     def test_has_all_builtin_blocks_and_layout_tab(self):
         _f, sb = registry.stream_block_for(BuilderPage)
-        self.assertEqual(list(sb.child_blocks), [n for n, _ in builder_blocks()])
+        builtins = [n for n, _ in builder_blocks()]
+        self.assertEqual(list(sb.child_blocks)[:len(builtins)], builtins)   # + site extras
         self.assertIn(BuilderPage, registry.enabled_page_models())
         headings = [getattr(c, "heading", "") for c in BuilderPage.get_edit_handler().children]
         self.assertIn("Layout", headings)

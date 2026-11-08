@@ -63,3 +63,7 @@ PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]  # fast tes
 
 WAGTAIL_SITE_NAME = "prblm-builder tests"
 WAGTAILADMIN_BASE_URL = "http://testserver"
+
+# v0.4: Builder page placement + the site's own blocks on the Builder page.
+PRBLM_BUILDER_PAGE_PARENTS = ["testapp.RestrictedHome"]
+PRBLM_BUILDER_PAGE_EXTRA_BLOCKS = [("note", "tests.testapp.blocks.NoteBlock")]

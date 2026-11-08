@@ -109,6 +109,11 @@ def admin_tweaks():
     return bool(_get("PRBLM_BUILDER_ADMIN_TWEAKS", True))
 
 
+def page_parents():
+    """Page types (``"app_label.Model"``) under which editors may add a Builder page."""
+    return list(_get("PRBLM_BUILDER_PAGE_PARENTS", []))
+
+
 def page_type_enabled():
     """Whether editors can create the built-in "Builder page" type (needs the optional
     ``prblm_builder.blocks`` app). Existing Builder pages keep working either way."""

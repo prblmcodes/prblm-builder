@@ -68,7 +68,8 @@ Ships as **v0.4.0** (Header & footer storage changes).
   dotted path to a function returning `[(name, block)]`). The Builder page's body uses a
   small `StreamField` subclass whose *runtime* block list = built-ins + extras, but whose
   migration description stays the built-ins only — so the extras never trigger a
-  migration inside the installed package. Clashing names → system-check error.
+  migration inside the installed package. Clashing names / bad paths → `ImproperlyConfigured`
+  at startup with a clear message (a broken block list can't be left for later).
 
 ## 3. Phases (checklist)
 
@@ -78,7 +79,7 @@ Ships as **v0.4.0** (Header & footer storage changes).
       sync) and Layout sidebar; remembered per browser. Tests + visual check.
 - [x] **Phase 3 — Headers & Footers**: models, admin lists under Page builder, default
       checkbox, data migration from 0.3, Builder page choices, template tags, canvas. Tests.
-- [ ] **Phase 4 — Builder page placement + extra blocks**: the two settings, system checks.
+- [x] **Phase 4 — Builder page placement + extra blocks**: the two settings, system checks.
       Tests.
 - [ ] **Phase 5 — Release**: README (incl. "Builder page only at root?" explanation),
       CHANGELOG, history doc, CLAUDE.md, version 0.4.0, wheel smoke test, merge + tag.
@@ -103,3 +104,7 @@ Ships as **v0.4.0** (Header & footer storage changes).
   forms without an instance, so a callable StreamField default reaches the widget raw — the
   Header/Footer form seeds `initial` from a fresh instance. Registering them as snippets
   also makes Wagtail's general "Snippets" menu appear (harmless; documented).
+- 2026-11-09 — Phase 4 done (113 tests). With an extra block configured,
+  `makemigrations prblm_builder_blocks --check` still reports no changes. Lesson: Wagtail
+  caches allowed child types in `cls._clean_subpage_models`, set to `None` on every page
+  class — reset it to `None`, don't delete it (deleting falls back to the base class's cache).

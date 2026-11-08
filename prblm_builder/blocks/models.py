@@ -1,4 +1,5 @@
 """Built-in blocks app models: the Theme, reusable Headers / Footers, the Builder page."""
+from django.conf import settings
 from django.core.validators import RegexValidator
 from django.db import models
 from wagtail.admin.forms import WagtailAdminModelForm
@@ -8,6 +9,7 @@ from wagtail.fields import StreamField
 from wagtail.models import Page
 
 from . import builder_blocks, theme
+from .fields import BuilderBodyField, body_blocks
 from .sections.site import FooterBlock, HeaderBlock
 
 D = theme.DEFAULTS
@@ -162,7 +164,10 @@ class BuilderPage(Page):
     "Add page" with ``PRBLM_BUILDER_PAGE_TYPE = False``.
     """
 
-    body = StreamField(builder_blocks(), blank=True)
+    # Built-ins + PRBLM_BUILDER_PAGE_EXTRA_BLOCKS; migrations only ever see the built-ins.
+    body = BuilderBodyField(
+        body_blocks(builder_blocks(), getattr(settings, "PRBLM_BUILDER_PAGE_EXTRA_BLOCKS", None)),
+        blank=True, migration_blocks=builder_blocks())
     header_choice = models.CharField(
         "Header", max_length=10, choices=CHROME_CHOICES, default="default",
         help_text="\"My site's own\" uses PRBLM_BUILDER_HEADER_TEMPLATE.")
