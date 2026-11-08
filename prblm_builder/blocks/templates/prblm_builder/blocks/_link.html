@@ -1,0 +1,1 @@
+{% comment %}A button-styled link. Context: link (LinkValue), style ("primary" | "secondary").{% endcomment %}{% if link.label %}<a class="pbk-btn pbk-btn--{{ style|default:'primary' }}" href="{{ link.href|default:'#' }}"{% if link.is_external %} rel="noopener"{% endif %}>{{ link.label }}</a>{% endif %}

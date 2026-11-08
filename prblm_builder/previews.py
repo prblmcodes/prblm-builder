@@ -418,7 +418,13 @@ def demo_value(block, name="", prefer_real=True):
 
     Prefers a real instance of the block used somewhere on the site (real images +
     copy); otherwise synthesises one. Pass ``prefer_real=False`` to force synthesis.
+
+    Built-in blocks (``prblm_builder.blocks``) always use their own defaults — the
+    explanatory example content they ship with.
     """
+    from .registry import is_builtin
+    if is_builtin(block):
+        return block.get_default()
     if prefer_real:
         real = real_value_for(name)
         if real is not None:

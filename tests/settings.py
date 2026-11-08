@@ -10,7 +10,9 @@ USE_TZ = True
 
 INSTALLED_APPS = [
     "prblm_builder",
+    "prblm_builder.blocks",
     "tests.testapp",
+    "wagtail.contrib.settings",
     "wagtail.users",
     "wagtail.snippets",
     "wagtail.documents",

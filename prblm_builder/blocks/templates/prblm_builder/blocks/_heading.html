@@ -1,0 +1,5 @@
+{% comment %}The shared section heading. Context: eyebrow, heading, intro, align ("center" | "left").{% endcomment %}{% if eyebrow or heading or intro %}<header class="pbk-head pbk-head--{{ align|default:'center' }}">
+  {% if eyebrow %}<p class="pbk-eyebrow">{{ eyebrow }}</p>{% endif %}
+  {% if heading %}<h2 class="pbk-h2">{{ heading }}</h2>{% endif %}
+  {% if intro %}<p class="pbk-lead">{{ intro }}</p>{% endif %}
+</header>{% endif %}

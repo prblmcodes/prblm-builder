@@ -4,6 +4,7 @@
     python runtests.py                 # all tests
     python runtests.py prblm_builder.tests.test_builder.ReconcileTests
     python runtests.py makemigrations  # regenerate the test app's migrations
+    python runtests.py makemigrations prblm_builder_blocks  # the blocks app's
 """
 import os
 import sys
@@ -19,7 +20,8 @@ def main():
     django.setup()
     args = sys.argv[1:]
     if args[:1] == ["makemigrations"]:
-        call_command("makemigrations", "testapp")
+        # runtests.py makemigrations [app_label ...]  (default: the test app)
+        call_command("makemigrations", *(args[1:] or ["testapp"]))
         return 0
     runner = get_runner(settings)(verbosity=2)
     failures = runner.run_tests(args or ["prblm_builder", "tests"])

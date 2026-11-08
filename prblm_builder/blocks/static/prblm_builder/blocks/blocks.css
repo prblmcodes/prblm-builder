@@ -1,0 +1,108 @@
+/* prblm-builder — built-in blocks.
+   Self-contained: every rule is scoped to .pbk* classes, so it neither needs nor fights
+   the site's own CSS. Colours/shape come from --pbk-* variables; the Theme admin page
+   overrides them in a <style> emitted after this file. */
+
+/* ---------- defaults (overridden by the Theme) ---------- */
+:root{
+  --pbk-c-brand:#2563eb; --pbk-c-on-brand:#ffffff;
+  --pbk-c-text:#111827; --pbk-c-muted-text:#4b5563;
+  --pbk-c-bg:#ffffff; --pbk-c-muted-bg:#f3f4f6;
+  --pbk-c-dark-bg:#0f172a; --pbk-c-on-dark:#f8fafc;
+  --pbk-radius:10px; --pbk-width:1200px;
+  --pbk-space:clamp(56px,8vw,104px);
+  --pbk-gap:clamp(20px,3vw,32px);
+}
+/* Use the site's font; only when the site sets none at all (e.g. a bare page), fall back
+   to a clean system font. :where() has zero specificity, so any site rule wins. */
+:where(html){font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+
+/* ---------- section + backgrounds ---------- */
+.pbk{
+  --pbk-bg:var(--pbk-c-bg); --pbk-fg:var(--pbk-c-text); --pbk-fg-muted:var(--pbk-c-muted-text);
+  --pbk-accent:var(--pbk-c-brand); --pbk-line:rgba(15,23,42,.12); --pbk-surface:#ffffff;
+  box-sizing:border-box; display:block; margin:0; padding:var(--pbk-space) 0;
+  background:var(--pbk-bg); color:var(--pbk-fg);
+  font-family:var(--pbk-font,inherit); font-size:17px; line-height:1.6; text-align:left;
+  -webkit-font-smoothing:antialiased;
+}
+.pbk *,.pbk *::before,.pbk *::after{box-sizing:border-box}
+.pbk--muted{--pbk-bg:var(--pbk-c-muted-bg)}
+.pbk--dark{
+  --pbk-bg:var(--pbk-c-dark-bg); --pbk-fg:var(--pbk-c-on-dark);
+  --pbk-fg-muted:color-mix(in srgb,var(--pbk-c-on-dark) 72%,transparent);
+  --pbk-line:rgba(255,255,255,.16); --pbk-surface:rgba(255,255,255,.06);
+}
+.pbk--brand{
+  --pbk-bg:var(--pbk-c-brand); --pbk-fg:var(--pbk-c-on-brand);
+  --pbk-fg-muted:color-mix(in srgb,var(--pbk-c-on-brand) 82%,transparent);
+  --pbk-accent:var(--pbk-c-on-brand); --pbk-line:rgba(255,255,255,.24); --pbk-surface:rgba(255,255,255,.1);
+}
+.pbk__inner{max-width:var(--pbk-width); margin:0 auto; padding:0 clamp(16px,4vw,32px)}
+
+/* ---------- type ---------- */
+.pbk h1,.pbk h2,.pbk h3,.pbk h4{
+  font-family:var(--pbk-heading-font,var(--pbk-font,inherit)); color:inherit;
+  margin:0 0 .5em; line-height:1.15; letter-spacing:-.01em; font-weight:700; text-transform:none;
+}
+.pbk .pbk-h1{font-size:clamp(2.2rem,5vw,3.6rem)}
+.pbk .pbk-h2{font-size:clamp(1.75rem,3.4vw,2.5rem)}
+.pbk .pbk-h3{font-size:1.25rem}
+.pbk p{margin:0 0 1em}
+.pbk p:last-child{margin-bottom:0}
+.pbk a{color:var(--pbk-accent)}
+.pbk .pbk-eyebrow{margin:0 0 .75rem; font-size:.8rem; font-weight:700; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--pbk-accent)}
+.pbk .pbk-lead{font-size:1.15rem; color:var(--pbk-fg-muted); max-width:44rem}
+.pbk .pbk-muted{color:var(--pbk-fg-muted)}
+.pbk .pbk-rich h2{font-size:1.75rem; margin-top:1.4em}
+.pbk .pbk-rich h3{font-size:1.3rem; margin-top:1.3em}
+.pbk .pbk-rich ul,.pbk .pbk-rich ol{margin:0 0 1em; padding-left:1.4em}
+.pbk .pbk-rich li{margin:.3em 0}
+.pbk .pbk-rich blockquote{margin:1.2em 0; padding-left:1em; border-left:3px solid var(--pbk-accent)}
+.pbk .pbk-rich img{max-width:100%; height:auto; border-radius:var(--pbk-radius)}
+
+/* section heading (eyebrow / title / intro) */
+.pbk-head{margin:0 0 clamp(28px,4vw,48px)}
+.pbk-head--center{text-align:center}
+.pbk-head--center .pbk-lead{margin-left:auto; margin-right:auto}
+
+/* ---------- buttons ---------- */
+.pbk-btns{display:flex; flex-wrap:wrap; gap:12px; margin-top:28px}
+.pbk-head--center + .pbk-btns,.pbk-center .pbk-btns{justify-content:center}
+.pbk .pbk-btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  padding:.8em 1.4em; border-radius:var(--pbk-radius); border:2px solid transparent;
+  font:inherit; font-weight:600; font-size:1rem; line-height:1.2; text-decoration:none;
+  cursor:pointer; transition:transform .15s ease, opacity .15s ease, background .15s ease;
+}
+.pbk .pbk-btn:hover{transform:translateY(-1px); opacity:.92}
+.pbk .pbk-btn:focus-visible{outline:3px solid var(--pbk-accent); outline-offset:3px}
+.pbk .pbk-btn--primary{background:var(--pbk-c-brand); color:var(--pbk-c-on-brand)}
+.pbk .pbk-btn--secondary{background:transparent; color:var(--pbk-fg); border-color:var(--pbk-line)}
+.pbk--brand .pbk-btn--primary{background:var(--pbk-c-on-brand); color:var(--pbk-c-brand)}
+.pbk--brand .pbk-btn--secondary,.pbk--dark .pbk-btn--secondary{border-color:currentColor}
+
+/* ---------- grids / cards ---------- */
+.pbk-grid{display:grid; gap:var(--pbk-gap); grid-template-columns:repeat(var(--pbk-cols,3),minmax(0,1fr))}
+@media (max-width:900px){.pbk-grid{grid-template-columns:repeat(min(var(--pbk-cols,3),2),minmax(0,1fr))}}
+@media (max-width:600px){.pbk-grid{grid-template-columns:minmax(0,1fr)}}
+.pbk-card{background:var(--pbk-surface); border:1px solid var(--pbk-line); border-radius:var(--pbk-radius);
+  overflow:hidden; display:flex; flex-direction:column}
+.pbk--light .pbk-card{box-shadow:0 1px 2px rgba(15,23,42,.06)}
+.pbk-card__body{padding:22px 24px 26px; display:flex; flex-direction:column; gap:8px; flex:1}
+
+/* ---------- icons + images ---------- */
+.pbk .pbk-icon{width:24px; height:24px; flex:none; display:inline-block; vertical-align:middle}
+.pbk .pbk-icon-badge{display:inline-flex; align-items:center; justify-content:center; width:48px; height:48px;
+  border-radius:var(--pbk-radius); background:color-mix(in srgb,var(--pbk-accent) 12%,transparent); color:var(--pbk-accent)}
+.pbk .pbk-img{display:block; width:100%; height:auto; border-radius:var(--pbk-radius)}
+.pbk-ph .pbk-ph__bg{fill:color-mix(in srgb,var(--pbk-fg) 7%,var(--pbk-bg))}
+.pbk-ph .pbk-ph__fg{stroke:color-mix(in srgb,var(--pbk-fg) 35%,transparent)}
+.pbk-ph .pbk-ph__text{fill:color-mix(in srgb,var(--pbk-fg) 55%,transparent); font-family:inherit; font-weight:600}
+
+/* ---------- accessibility ---------- */
+.pbk .pbk-sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap}
+@media (prefers-reduced-motion:reduce){.pbk *{transition:none !important; animation:none !important}}
+
+/* ---------- block-specific styles below (one section per block) ---------- */

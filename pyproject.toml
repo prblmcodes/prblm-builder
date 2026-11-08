@@ -35,6 +35,7 @@ include = ["prblm_builder*"]
 
 [tool.setuptools.package-data]
 prblm_builder = ["templates/**/*", "static/**/*"]
+"prblm_builder.blocks" = ["templates/**/*", "static/**/*"]
 
 [project.urls]
 Homepage = "https://github.com/prblmcodes/prblm-builder"

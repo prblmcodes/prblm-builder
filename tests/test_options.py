@@ -135,9 +135,9 @@ class OptionsTests(TestCase):
         self.assertIn("Block library", html)
 
     @override_settings(PRBLM_BUILDER_DEMO=False)
-    def test_page_builder_menu_hidden_when_empty(self):
+    def test_block_library_menu_item_hidden_when_disabled(self):
         r = self.client.get(reverse("wagtailadmin_home"))
-        self.assertNotIn("Page builder", r.content.decode())
+        self.assertNotIn('"prblm-builder-library"', r.content.decode())
 
     # --- canvas width ------------------------------------------------------------
     @override_settings(PRBLM_BUILDER_CANVAS_WIDTH=1440)

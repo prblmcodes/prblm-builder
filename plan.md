@@ -157,13 +157,13 @@ shared link type: label + one of page / URL / anchor.
   - [x] Remove `PRBLM_BUILDER_SEED_NEW_BLOCKS` (+ system-check warning W001, docs, tests)
   - [x] "Not edited yet" badge on the canvas
   - [x] "Page builder" admin sidebar section; Block library moved there, grouped Built-in / Site
-- [ ] **Phase 2 — Blocks foundation**
-  - [ ] `prblm_builder.blocks` app skeleton, settings models, migration
-  - [ ] `blocks.css` design system (tokens, layout, four backgrounds, buttons, typography)
-  - [ ] `{% prblm_assets %}` once-per-page asset tag
-  - [ ] Icon set (~40 SVG) + IconChoiceBlock; SVG image placeholders
-  - [ ] Shared LinkBlock, section base (background + anchor)
-  - [ ] Theme admin page
+- [x] **Phase 2 — Blocks foundation**
+  - [x] `prblm_builder.blocks` app skeleton, ThemeSettings model, migration, system checks
+  - [x] `blocks.css` design system (tokens, layout, four backgrounds, buttons, typography)
+  - [x] `{% prblm_assets %}` once-per-page asset tag (CSS + theme variables + JS)
+  - [x] Icon set (50 line icons + 9 social marks) + IconChoiceBlock; SVG image placeholders
+  - [x] Shared LinkBlock, BackgroundBlock, AnchorBlock; section base template
+  - [x] Theme admin page (under Page builder, hidden from Settings)
 - [ ] **Phase 3 — Blocks, batch 1**: Header, Footer, Hero, Page banner, Text, Text + image,
       Features, Cards, Call to action, FAQ, Contact info
 - [ ] **Phase 4 — Blocks, batch 2**: Steps, Quote, Testimonials, Logo strip, Stats, Pricing,
@@ -187,3 +187,7 @@ shared link type: label + one of page / URL / anchor.
 - 2026-11-09 — Plan agreed; open questions settled with the suggested defaults. Phase 1 started.
 - 2026-11-09 — Phase 1 done (38 tests). Found + fixed: menu hooks are cached by Wagtail,
   so `PRBLM_BUILDER_DEMO = False` never hid the menu item → `is_shown()` subclass.
+- 2026-11-09 — Phase 2 done (53 tests). Notes: Wagtail's ChoiceBlock ignores `Meta.default`
+  (set it in `__init__`); block class *module paths* are recorded in sites' migrations, so
+  `prblm_builder.blocks.sections.*` paths are now a promise like block names. Font
+  fallback uses a zero-specificity `:where(html)` rule so any site font wins.
