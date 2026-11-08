@@ -10,24 +10,48 @@ Works on any Wagtail site: it discovers your blocks by introspection — no bloc
 maintain — and attaches itself automatically to every page type that has a buildable
 StreamField.
 
+## Requirements
+
+- Python 3.12+
+- Django 6.1+
+- Wagtail 8.1+ (below 9)
+
 ## Install
 
+Install from a GitHub release tag:
+
+```bash
+# public repo
+pip install "prblm-builder @ git+https://github.com/prblmcodes/prblm-builder.git@v0.1.0"
+
+# private repo (uses your GitHub SSH key)
+pip install "prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@v0.1.0"
+```
+
+Or put the same `prblm-builder @ git+…@v0.1.0` line in `requirements.txt`. You can also
+download the wheel attached to a GitHub release and `pip install prblm_builder-0.1.0-py3-none-any.whl`.
+
+Then add it to your settings:
+
 ```python
-# requirements.txt   (local editable during development)
--e ./packages/prblm-builder
-
-# settings.py
 INSTALLED_APPS = [
-    # …
     "prblm_builder",
+    # … your apps, wagtail apps, …
 ]
+```
 
-# optional — point previews at your front-end assets so sections look like production
+No migrations, no URL changes — it registers its admin URLs through Wagtail hooks. Any
+page model with a StreamField named `body` now has a **Layout** tab.
+
+## Configure (all optional)
+
+```python
+# point previews at your front-end assets so sections look like production
 PRBLM_BUILDER_PREVIEW_CSS = ["css/your-site.css"]     # static paths or URLs
 PRBLM_BUILDER_PREVIEW_JS = ["js/your-site.js"]
 PRBLM_BUILDER_PREVIEW_BODY_CLASS = ""                 # class on the preview <body>
-PRBLM_BUILDER_HEADER_TEMPLATE = ""                    # optional: site header shown on the canvas
-PRBLM_BUILDER_FOOTER_TEMPLATE = ""                    # optional: site footer shown on the canvas
+PRBLM_BUILDER_HEADER_TEMPLATE = ""                    # site header shown on the canvas
+PRBLM_BUILDER_FOOTER_TEMPLATE = ""                    # site footer shown on the canvas
 PRBLM_BUILDER_FIELD_NAMES = ["body"]                  # which StreamField to build (priority order)
 PRBLM_BUILDER_PAGE_MODELS = None                      # None = auto-detect; or ["app.Model"]
 PRBLM_BUILDER_DEMO = True                             # the admin-only Block library
@@ -36,8 +60,7 @@ PRBLM_BUILDER_INDEX_SCAN_LIMIT = 500                  # pages/model scanned for 
 ```
 
 With nothing configured, it enables any page model that has a StreamField named `body`
-and renders previews unstyled. No per-model code is needed — the plugin inserts the
-**Layout** tab and the save wiring from its app `ready()`.
+and renders previews unstyled. Blocks need their own `template` to be previewable.
 
 ## Use
 
@@ -57,7 +80,21 @@ and renders previews unstyled. No per-model code is needed — the plugin insert
   edit form; a composed `base_form_class` reconciles order + membership on the page's own
   save. Existing blocks keep their content; new ones are seeded with demo content.
 - **Real demo content.** Previews prefer a real instance of each block used elsewhere on
-  the site (real images + copy), falling back to deterministic synthesis.
+  the site (real images + copy), falling back to deterministic synthesis. If the site has
+  no images, it creates a few soft-gradient placeholder images (titled "Builder placeholder …") in the image library.
 
-Requires Wagtail ≥ 7.0. Some editor-chrome niceties (full-width canvas, the header link)
-rely on Wagtail admin classes and degrade gracefully on other versions.
+Some editor-chrome niceties (full-width canvas, the header link) rely on Wagtail admin
+CSS classes and degrade gracefully if a future Wagtail version changes them.
+
+## Development
+
+```bash
+pip install -e .
+python runtests.py          # runs the suite against the bundled test project (tests/)
+```
+
+CI runs the tests on Python 3.12–3.14 against the latest Wagtail 8.x / Django 6.x.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

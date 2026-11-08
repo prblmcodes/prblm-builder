@@ -22,6 +22,10 @@ from . import settings as cfg
 
 # ----------------------------------------------------------------- helpers
 def _specific_page(page_id):
+    try:
+        page_id = int(page_id)
+    except (TypeError, ValueError):
+        raise Http404("Bad page id.")
     return get_object_or_404(Page, id=page_id).specific
 
 
@@ -179,10 +183,15 @@ def preview(request):       # builder frames this from the same origin, so allow
     stream_block = field_name = None
     if request.GET.get("page"):
         page = _specific_page(request.GET["page"])
+        if not _can_edit(page, request.user):
+            raise PermissionDenied
         field_name, stream_block = registry.stream_block_for(type(page))
     elif request.GET.get("model"):
-        app_label, model_name = request.GET["model"].split(".")
-        model = django_apps.get_model(app_label, model_name)
+        try:
+            app_label, model_name = request.GET["model"].split(".")
+            model = django_apps.get_model(app_label, model_name)
+        except (ValueError, LookupError):
+            raise Http404("Unknown page model.")
         field_name, stream_block = registry.stream_block_for(model)
 
     section_id = request.GET.get("section")

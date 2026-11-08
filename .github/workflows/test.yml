@@ -1,0 +1,40 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install -e .
+      - run: python -W error::DeprecationWarning runtests.py
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install build
+      - run: python -m build
+      - name: Wheel ships templates + static files
+        run: |
+          python -m zipfile -l dist/*.whl | grep -q "templates/prblm_builder/builder.html"
+          python -m zipfile -l dist/*.whl | grep -q "static/prblm_builder/builder.js"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/

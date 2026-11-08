@@ -142,6 +142,8 @@ into the editor header's top-right strip. Gated by `PRBLM_BUILDER_DEMO`.
 6. **Cleanup + portability:** removed dead code (`new_page`, `is_enabled`), capped the demo
    scan, rewrote the README.
 7. **Extraction** to this standalone repo.
+8. **v0.1.0 release** — moved to Wagtail 8.1 / Django 6.1, bundled test project + CI, MIT
+   license, preview view hardened (bad params → 404, stored sections need edit permission).
 
 ---
 
@@ -226,9 +228,13 @@ previews unstyled.
   - full-width canvas: `.w-form-width`, `.editor-view.side-panel-open`;
   - header "Block library" link: `[data-side-panel-toggle]`;
   - ride-along save's hidden-field injection: `form[data-edit-form]`.
-- Developed/tested against **Wagtail ≥ 7** / Django 5.2 / Python 3.12.
-- The test suite (`prblm_builder/tests/test_builder.py`) runs against the host project's
-  models — it needs a host Wagtail project (or a demo project, see roadmap) to run.
+- Built against Wagtail 7 / Django 5.2; from v0.1.0 it targets **Wagtail 8.1+ / Django 6.1+ /
+  Python 3.12+** (CI covers Python 3.12–3.14).
+- The test suite (`prblm_builder/tests/test_builder.py`) runs against the bundled test
+  project (`python runtests.py`) or inside a host project (`manage.py test prblm_builder`).
+- The Layout tab reads sections from the page's stored (live) row, not the latest draft
+  revision — unverified whether a page with unpublished draft changes shows stale
+  sections on the canvas. Check when testing in a second project.
 
 ---
 
@@ -255,10 +261,8 @@ prblm_builder/
 
 ## 9. Roadmap / next steps
 
-1. **Demo project + CI** — a tiny Django/Wagtail test project in this repo (settings + one
-   block-based page model) so `pytest` / GitHub Actions can run the suite against a
-   Wagtail/Django version matrix. This is the real portability guard.
-2. **LICENSE** — pick one (MIT is the usual default) before wider sharing.
+1. ~~**Demo project + CI**~~ — done in v0.1.0 (`tests/`, `runtests.py`, GitHub Actions).
+2. ~~**LICENSE**~~ — MIT, v0.1.0.
 3. **Version-proof the admin-chrome features** — feature-detect the Wagtail internals above
    and add a setting to disable the DOM-injection bits; document supported versions.
 4. **HTTP-level test** for the ride-along save (hidden field → form `clean`), not just the

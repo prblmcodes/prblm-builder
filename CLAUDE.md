@@ -38,14 +38,15 @@ site content where a block is used, else synthesis).
   version.
 
 ## Running / testing
-`prblm_builder/tests/test_builder.py` runs against a **host** Wagtail project's models — it
-can't run standalone yet. Setting up a tiny demo/test project + CI is roadmap item #1 (see
-the history doc). Target stack: Wagtail ≥ 7, Django 5.2, Python 3.12.
+`python runtests.py` runs `prblm_builder/tests/` against the bundled test project in
+`tests/` (settings + `tests.testapp.StandardPage` with a `body` StreamField). CI
+(`.github/workflows/test.yml`) runs it on Python 3.12–3.14 and checks the wheel builds.
+Target stack: **Wagtail 8.1+ (<9), Django 6.1+, Python 3.12+** (latest stable as of v0.1.0).
 
 ## Current state
-First version is done and running in the host site + on its staging server. This repo holds
-the extracted package (`016dc51` initial commit). Immediate next steps: demo project + CI,
-a LICENSE, then install into a second Wagtail project. Full roadmap in the history doc.
+v0.1.0 is the first GitHub release (MIT). Install in another project with
+`pip install "prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@v0.1.0"`.
+Next: install into a second real Wagtail project; remaining roadmap in the history doc.
 
 ## Note on the raw transcript
 `.history/` (gitignored) may hold the raw build-session transcript from the host project.

@@ -4,12 +4,12 @@ All optional — with nothing set, the builder enables any Page model that has a
 StreamField named ``body`` and renders previews unstyled. A host site points the
 previews at its own front-end CSS/JS so sections look like production.
 
-    # bemore/settings/base.py
-    PRBLM_BUILDER_PREVIEW_CSS = ["css/bemore.css"]       # static paths or URLs
-    PRBLM_BUILDER_PREVIEW_JS = ["js/bemore.js"]
-    PRBLM_BUILDER_PREVIEW_BODY_CLASS = "font-body text-ink antialiased"
+    # yoursite/settings.py
+    PRBLM_BUILDER_PREVIEW_CSS = ["css/site.css"]         # static paths or URLs
+    PRBLM_BUILDER_PREVIEW_JS = ["js/site.js"]
+    PRBLM_BUILDER_PREVIEW_BODY_CLASS = "font-body antialiased"
     PRBLM_BUILDER_FIELD_NAMES = ["body"]                 # which StreamField to build
-    PRBLM_BUILDER_PAGE_MODELS = ["core.StandardPage"]    # None = auto-detect
+    PRBLM_BUILDER_PAGE_MODELS = ["home.StandardPage"]    # None = auto-detect
 """
 from django.conf import settings
 

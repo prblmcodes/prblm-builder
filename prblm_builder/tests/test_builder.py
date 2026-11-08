@@ -1,5 +1,7 @@
 """Integration tests for the page builder, run against whatever builder-enabled
-page model the host project provides (bemore: core.StandardPage)."""
+page model the project provides. In this repo that's ``tests.testapp.StandardPage``
+(run ``python runtests.py``); inside a host site, ``manage.py test prblm_builder``.
+The page model's StreamField needs a ``rich_text`` block."""
 import json
 import uuid
 
@@ -74,6 +76,31 @@ class BuilderTests(TestCase):
         self.assertEqual(self.client.get(f"{base}?page={self.page.id}&block=rich_text&demo=1").status_code, 200)
         sid = getattr(self.page, self.field)[0].id
         self.assertEqual(self.client.get(f"{base}?page={self.page.id}&section={sid}&block=rich_text").status_code, 200)
+
+    def test_block_library_and_every_block_preview(self):
+        """The Block library renders, and every block gets a demo preview (synthesised
+        content, incl. placeholder images) without erroring."""
+        self.assertEqual(self.client.get(reverse("prblm_builder:demo")).status_code, 200)
+        base = reverse("prblm_builder:preview")
+        for _group, items in registry.grouped_all_blocks():
+            for name, _block, _label in items:
+                r = self.client.get(f"{base}?block={name}")
+                self.assertEqual(r.status_code, 200, name)
+                self.assertNotContains(r, "Preview unavailable", msg_prefix=name)
+
+    def test_preview_bad_params_are_404(self):
+        base = reverse("prblm_builder:preview")
+        for qs in ("model=nodot&block=rich_text", "model=no.Such&block=rich_text",
+                   "page=abc&block=rich_text", "block=no_such_block"):
+            self.assertEqual(self.client.get(f"{base}?{qs}").status_code, 404, qs)
+
+    def test_preview_of_page_needs_edit_permission(self):
+        User = get_user_model()
+        nobody = User.objects.create_user("pb-nobody", "n@example.com", "pw")
+        self.client.force_login(nobody)
+        sid = getattr(self.page, self.field)[0].id
+        r = self.client.get(reverse("prblm_builder:preview") + f"?page={self.page.id}&section={sid}")
+        self.assertNotEqual(r.status_code, 200)
 
     def test_reorder_preserves_content(self):
         url = reverse("prblm_builder:save", args=[self.page.id])
