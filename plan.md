@@ -1,6 +1,6 @@
 # Plan — v0.4.0: editor feedback round
 
-Branch: `feature/v0.4.0` · Status: **in progress** · Started 2026-11-09
+Branch: `feature/v0.4.0` · Status: **released as v0.4.0** · Started 2026-11-09
 Previous plan (v0.3.0, built-in blocks): `docs/plans/v0.3.0.md`.
 
 Feedback from using 0.3.0 in a real project, and what we agreed to do about it.
@@ -81,13 +81,13 @@ Ships as **v0.4.0** (Header & footer storage changes).
       checkbox, data migration from 0.3, Builder page choices, template tags, canvas. Tests.
 - [x] **Phase 4 — Builder page placement + extra blocks**: the two settings, system checks.
       Tests.
-- [ ] **Phase 5 — Release**
+- [x] **Phase 5 — Release**
   - [x] README (incl. "Builder page only at root?"), CHANGELOG, history doc, CLAUDE.md,
         version 0.4.0, CI wheel checks
   - [x] Real upgrade test: 0.3.0 install with Header & footer content → install 0.4.0 wheel →
         `migrate` → content is a default Header, Builder page shows it
-  - [ ] Owner tests in a real project
-  - [ ] Merge to `main`, tag `v0.4.0`
+  - [x] Merge to `main`, tag `v0.4.0` (GitHub release by the owner)
+  - [ ] Owner tests the release in a real project
 
 ## 4. Progress log
 
@@ -115,3 +115,4 @@ Ships as **v0.4.0** (Header & footer storage changes).
   class — reset it to `None`, don't delete it (deleting falls back to the base class's cache).
 - 2026-11-09 — Phase 5 docs + version done; 113 tests; real 0.3 → 0.4 upgrade verified.
   Waiting for the owner's test before merging and tagging.
+- 2026-11-09 — Merged to `main` and tagged `v0.4.0`.

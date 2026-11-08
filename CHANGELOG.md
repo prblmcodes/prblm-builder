@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.0 — unreleased
+## 0.4.0 — 2026-11-09
 
 **Changed**
 - **Headers & Footers** replace 0.3's single *Header & footer* page: create as many as you
