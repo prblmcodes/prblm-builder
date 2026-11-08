@@ -1,219 +1,88 @@
-# Plan — v0.3.0: built-in blocks + "Page builder" admin section
+# Plan — v0.4.0: editor feedback round
 
-Branch: `feature/builtin-blocks` · Status: **released as v0.3.0** · Started 2026-11-08
+Branch: `feature/v0.4.0` · Status: **in progress** · Started 2026-11-09
+Previous plan (v0.3.0, built-in blocks): `docs/plans/v0.3.0.md`.
 
-This file tracks what we agreed to build and how far we are. Tick items as they land.
+Feedback from using 0.3.0 in a real project, and what we agreed to do about it.
 
 ---
 
-## 1. Goals
+## 1. Decisions (agreed)
 
-1. Ship **21 optional, ready-made section blocks** (incl. a generic Header and Footer) that
-   work on any Wagtail site with **no extra CSS/JS to install** — everything they need
-   lives inside the plugin.
-2. Give the plugin its own **"Page builder" section in the admin sidebar**: Block library
-   (built-in and site blocks grouped separately), Theme, and Header & footer.
-3. Keep the core plugin **block-agnostic**: sites that don't enable the built-in blocks see
-   no change apart from the new admin section.
+| # | Problem seen | Decision |
+|---|---|---|
+| 1 | On a **new page**, sections added in the Layout tab don't appear in the Content tab until the page is saved — and a save that fails (e.g. empty title) **loses the arrangement**. | After any layout change, a clear **banner** in the Layout tab: "Save to edit these sections in the Content tab — **[Save draft now]**". If the title is empty the button fills a placeholder (**"Untitled page 23"**) first, then saves. A failed save **keeps the arrangement** on the canvas. |
+| 2 | The **Builder page** can only be added at the root, not under the home page. | Cause: the site's own page types restrict their child types (`subpage_types`). New setting **`PRBLM_BUILDER_PAGE_PARENTS = ["home.HomePage", …]`** — the plugin allows Builder pages under those types. Documented in the README. |
+| 3 | Site pages can't use built-in blocks; the Builder page can't use the site's blocks. | Admin switches can't work (block lists are fixed at startup). **`PRBLM_BUILDER_PAGE_EXTRA_BLOCKS`** adds the site's blocks to the Builder page (no migration inside the plugin). Site pages keep using the one-line `builder_blocks()` helper. |
+| 4 | Header & footer are one page that can hold several of each — confusing. | **Headers** and **Footers** become separate lists under Page builder (like snippets): create many, click one to edit, each holds exactly one. A **"Use as site default"** checkbox (one default each). Each **Builder page chooses** its header and its footer: *site default* / *a specific one* / *the site's own template* / *none*. Existing 0.3 content is **migrated automatically**. |
+| 5 | Long block lists are hard to scan. | **Collapsible groups** in the Block library and the Layout sidebar: the two big groups (Built-in / Your site's blocks) and the smaller groups inside. Folding in the sidebar also hides the group in the preview area. Folded state **remembered per browser**. |
+| 6 | Canvas header/footer on the site's *own* page types. | The site's `PRBLM_BUILDER_HEADER/FOOTER_TEMPLATE` if set, else the plugin's **site-default** header/footer, else nothing. |
 
-## 2. Decisions (agreed)
+Ships as **v0.4.0** (Header & footer storage changes).
 
-| Topic | Decision |
-|---|---|
-| Scope | All 20 proposed blocks **+ Contact info** = 21 blocks, in v0.3.0. |
-| Opt-in | Separate app `prblm_builder.blocks`; only active when added to `INSTALLED_APPS`. |
-| Header / footer | Normal blocks **and** a site-wide Header & footer set once in the admin; always shown on the builder canvas; on the live site via optional `{% prblm_header %}` / `{% prblm_footer %}` template tags. |
-| Admin | New sidebar section **"Page builder"** → *Block library*, *Theme*, *Header & footer*. Replaces Settings → Block library. Editor-header link stays. |
-| Block library | One page, two groups: **Built-in blocks** and **Your site's blocks**. |
-| Styling | Fully self-contained CSS shipped in the plugin, class prefix `pbk-`, driven by CSS variables. |
-| Theme | Admin *Theme* page: brand colour, text colour, background colours, font, corner roundness, content width. Restyles every built-in block at once. |
-| Backgrounds | Every section has a **background** choice: Light, Muted, Dark, Brand (all follow the Theme). |
-| Font | Inherit the site's font, fall back to a system font stack; Theme page can set a font name. No font files shipped. |
-| Content | New built-in blocks are **pre-filled with explanatory content** (e.g. "Your main headline — keep it under 8 words") set as the block's own defaults, so it also appears when added from the Content tab. |
-| Icons | Built-in set of ~40 SVG icons shipped in the plugin, chosen from a dropdown. |
-| Images | Empty image fields render **bundled SVG placeholders** labelled with purpose + size (e.g. "Hero image · 1600×900"). Nothing is added to the image library. |
-| Header menu | Typed in the block: label + page / URL / anchor, with optional one-level dropdowns. |
-| Header behaviour | Checkbox for sticky; mobile menu on small screens (a few lines of JS shipped in the plugin). |
-| Page models | (a) Ready **"Builder page"** page type with all 21 blocks (hideable by a setting); (b) helper `builder_blocks()` for a site's own page models, next to its custom blocks. |
-| Seeding setting | **Remove `PRBLM_BUILDER_SEED_NEW_BLOCKS`.** New blocks always start with content. Add a **"Not edited yet"** badge on canvas sections that still hold demo/default content. |
-| Contact forms | Out of scope (needs storage, email, spam protection). Contact *info* block only. |
+## 2. Technical approach
 
-## 3. Things to know (constraints)
+### 2.1 Save flow (core, `layout_panel.html` + `builder.js`)
+- The builder already knows when the layout changed (`dirtied`). It tells the parent
+  page (same origin) to show the banner, which sits **in the Layout tab, above the
+  canvas** (part of `layout_panel.html`, so it's visible without scrolling the iframe).
+- **[Save draft now]**: if the edit form's title is empty, fill `Untitled page N` (N
+  supplied by the server: number of pages + 1) and let Wagtail auto-fill the slug; then
+  click Wagtail's own *Save draft* button (so all normal validation/hooks run).
+- **Failed save keeps the layout**: when the edit form is re-shown after an error, the
+  panel passes the submitted `_pb_layout` back to the builder iframe, which restores the
+  arrangement (new sections included) instead of starting empty.
 
-- **Built-in blocks don't appear in a page automatically.** Wagtail stores a page's
-  allowed blocks in its StreamField definition, so a site either uses the ready
-  "Builder page" type, or adds `builder_blocks()` to its own model **and runs a migration**.
-- **Custom blocks can't be added to our "Builder page" via a setting** — the block list is
-  recorded in our app's migrations; changing it from settings would make Django try to
-  write migrations inside the installed package. Custom blocks go on the site's own page
-  model with the helper.
-- **Block names and fields are a promise.** Once released, renaming a block or a field
-  breaks saved pages. Get them right before v0.3.0; afterwards only add, never rename.
-- Theme / Header & footer need a database table → the blocks app ships **one migration**
-  and needs `wagtail.contrib.settings` in `INSTALLED_APPS`.
+### 2.2 Collapsible groups (core, `demo.html`, `builder.html`, `builder.js`)
+- Each kind (Built-in / Your site's) and each group gets a toggle button (chevron) right of
+  its title, with `aria-expanded`.
+- Block library: folding a kind or group in the left sidebar also hides its cards in the
+  preview column, and vice versa — one shared state per key.
+- Layout sidebar: same toggles for its groups (and kinds, when both exist).
+- State in `localStorage` (`prblm-builder:folded`), wrapped in try/except — the page works
+  without it.
 
-## 4. How it will be used (target developer experience)
+### 2.3 Headers & Footers (blocks app)
+- Models **`SiteHeader`** and **`SiteFooter`** (snippet-style): `name`, `is_default`,
+  `content` = StreamField with exactly one Header / Footer block (`min_num=1, max_num=1`).
+  Saving one as default clears the flag on the others (per kind).
+- Admin: registered as snippets with their own listing/edit views, shown under
+  **Page builder → Headers / Footers** (not in the Snippets menu).
+- **Data migration**: each site's 0.3 `SiteChrome` header/footer becomes a `SiteHeader` /
+  `SiteFooter` named after the site, marked default; then `SiteChrome` is removed. Uses
+  historical models (`apps.get_model`) — see the lessons in the history doc.
+- **Builder page** gets `header_choice` / `footer_choice` (`default` / `custom` / `site` /
+  `none`) + `header` / `footer` foreign keys (used with `custom`); `site` renders the
+  site's `PRBLM_BUILDER_HEADER/FOOTER_TEMPLATE`.
+- Template tags: `{% prblm_header %}` / `{% prblm_footer %}` render the site default (as in
+  0.3); on a Builder page they follow the page's choice. Optional argument to name one:
+  `{% prblm_header "Main header" %}`.
+- Canvas: the `prblm_builder_chrome` hook returns, for a Builder page, its own choice; for
+  other pages the site default (after the template settings, which win — §1 #6).
 
-```python
-# settings.py
-INSTALLED_APPS = [
-    "prblm_builder",
-    "prblm_builder.blocks",        # optional: built-in blocks + Builder page + Theme
-    "wagtail.contrib.settings",
-    ...
-]
-```
+### 2.4 Builder page placement + extra blocks (blocks app)
+- **`PRBLM_BUILDER_PAGE_PARENTS`**: at startup, for each listed page type that restricts
+  its children, add `prblm_builder_blocks.BuilderPage` to its allowed child types (and
+  clear Wagtail's cached list). Unknown names → a system-check warning, never a crash.
+- **`PRBLM_BUILDER_PAGE_EXTRA_BLOCKS`**: list of `("name", "dotted.path.BlockClass")` (or a
+  dotted path to a function returning `[(name, block)]`). The Builder page's body uses a
+  small `StreamField` subclass whose *runtime* block list = built-ins + extras, but whose
+  migration description stays the built-ins only — so the extras never trigger a
+  migration inside the installed package. Clashing names → system-check error.
 
-```bash
-python manage.py migrate           # creates the Theme / Header & footer table + Builder page
-```
+## 3. Phases (checklist)
 
-Then either create a **Builder page** in the admin, or use the blocks in your own model:
+- [ ] **Phase 1 — Save flow**: banner + Save draft now + placeholder title; keep arrangement
+      after a failed save. Tests.
+- [ ] **Phase 2 — Collapsible groups**: Block library (kinds + groups, sidebar ↔ preview
+      sync) and Layout sidebar; remembered per browser. Tests + visual check.
+- [ ] **Phase 3 — Headers & Footers**: models, admin lists under Page builder, default
+      checkbox, data migration from 0.3, Builder page choices, template tags, canvas. Tests.
+- [ ] **Phase 4 — Builder page placement + extra blocks**: the two settings, system checks.
+      Tests.
+- [ ] **Phase 5 — Release**: README (incl. "Builder page only at root?" explanation),
+      CHANGELOG, history doc, CLAUDE.md, version 0.4.0, wheel smoke test, merge + tag.
 
-```python
-from prblm_builder.blocks import builder_blocks
+## 4. Progress log
 
-class LandingPage(Page):
-    body = StreamField(builder_blocks() + [("my_block", MyBlock())], blank=True)
-```
-
-Optional, to use the site-wide header/footer on the live site (`base.html`):
-
-```django
-{% load prblm_blocks %}
-{% prblm_header %}
-...
-{% prblm_footer %}
-```
-
-## 5. The blocks
-
-Every section block also has: **background** (Light / Muted / Dark / Brand) and an
-optional **anchor ID** (so menus can link to `#pricing` etc.). Links everywhere use one
-shared link type: label + one of page / URL / anchor.
-
-| # | Block | Purpose | Main fields |
-|---|---|---|---|
-| 1 | **Header** | Site top bar | logo, site name (if no logo), menu items (+ one-level dropdowns), button, sticky |
-| 2 | **Footer** | Site bottom area | logo, short description, link columns, social links, copyright |
-| 3 | **Hero** | Big page opener | eyebrow, headline, text, primary + secondary button, image, image position (side / background), alignment |
-| 4 | **Page banner** | Title strip for inner pages | headline, intro, show breadcrumbs |
-| 5 | **Text** | Formatted long text | rich text, width (narrow / wide), alignment |
-| 6 | **Text + image** | Text beside an image | headline, rich text, button, image, image side (left / right) |
-| 7 | **Features** | Grid of benefits | headline, intro, columns (2/3/4), items: icon, title, text |
-| 8 | **Cards** | Services / projects / articles | headline, intro, columns, items: image, title, text, link |
-| 9 | **Steps** | Numbered process | headline, intro, items: title, text (auto-numbered) |
-| 10 | **Quote** | One highlighted quote | quote, author, role |
-| 11 | **Testimonials** | Customer quotes | headline, items: quote, name, role, photo |
-| 12 | **Logo strip** | Clients / partners | headline, items: logo, name, link; greyscale on/off |
-| 13 | **Stats** | Big numbers | headline, items: number, label, note |
-| 14 | **Call to action** | Conversion band | headline, text, primary + secondary button (default background: Brand) |
-| 15 | **FAQ** | Expandable Q&A (no JS) | headline, intro, items: question, answer (rich text) |
-| 16 | **Pricing** | Plan comparison | headline, intro, plans: name, price, period, description, features, button, highlighted |
-| 17 | **Gallery** | Image grid | headline, columns, images: image, caption |
-| 18 | **Video** | YouTube / Vimeo embed | headline, video URL, caption (embed built from the URL — no network call; privacy-friendly YouTube domain) |
-| 19 | **Team** | People | headline, intro, members: photo, name, role, bio, link |
-| 20 | **Divider** | Line or space | style (line / space), size (S / M / L) |
-| 21 | **Contact info** | How to reach you | headline, intro, address, email, phone, opening hours, map link button; icons per row |
-
-## 6. Technical approach
-
-- **Package layout**
-  ```
-  prblm_builder/blocks/
-    __init__.py         builder_blocks(), BUILTIN_BLOCKS
-    apps.py             app config (label "prblm_builder_blocks")
-    blocks/             one module per block family + shared LinkBlock, IconChoiceBlock, SectionBase
-    models.py           ThemeSettings + SiteChrome (site settings), BuilderPage
-    migrations/0001_initial.py
-    templatetags/prblm_blocks.py   prblm_header, prblm_footer, prblm_assets
-    templates/prblm_builder/blocks/*.html
-    static/prblm_builder/blocks/   blocks.css, header.js, icons.svg (sprite), placeholders/*.svg
-  ```
-- **Self-contained assets.** Each block template calls `{% prblm_assets %}`, which emits the
-  stylesheet link, the theme's CSS variables (`<style>:root{--pbk-brand:…}</style>`) and the
-  header JS **once per page render** (tracked on the request). Works on the live site and in
-  preview iframes with no setup.
-- **Theme → CSS variables.** Theme values become `--pbk-*` variables; blocks.css uses only
-  those. Sites can also override variables in their own CSS.
-- **Pre-filled content** lives in each block's `Meta.default` / child defaults. The demo
-  engine uses it for built-ins instead of synthesised text.
-- **"Not edited yet" badge.** A section is "unedited" if its stored value still equals the
-  block's default (built-ins) or the demo value it was seeded with (site blocks). The
-  canvas shows a small badge on those sections. *(Known limit: for site blocks seeded from
-  real content, a changed demo source may hide the badge — false negatives only.)*
-- **Admin section.** A "Page builder" sidebar menu (Wagtail `register_admin_menu_item` +
-  submenu). Theme and Header & footer edit views use Wagtail's site-settings machinery but
-  are linked from this menu instead of the Settings menu.
-- **Removing the seed setting.** Drop the reader + empty-start code paths; add a Django
-  system-check **warning** if a project still sets `PRBLM_BUILDER_SEED_NEW_BLOCKS`.
-- **Accessibility basics**: semantic HTML, alt text from images, keyboard-usable mobile
-  menu and FAQ (`<details>`), sufficient contrast for the four backgrounds.
-
-## 7. Phases (checklist)
-
-- [x] **Phase 0 — Plan** — this file reviewed and agreed.
-- [x] **Phase 1 — Core changes**
-  - [x] Remove `PRBLM_BUILDER_SEED_NEW_BLOCKS` (+ system-check warning W001, docs, tests)
-  - [x] "Not edited yet" badge on the canvas
-  - [x] "Page builder" admin sidebar section; Block library moved there, grouped Built-in / Site
-- [x] **Phase 2 — Blocks foundation**
-  - [x] `prblm_builder.blocks` app skeleton, ThemeSettings model, migration, system checks
-  - [x] `blocks.css` design system (tokens, layout, four backgrounds, buttons, typography)
-  - [x] `{% prblm_assets %}` once-per-page asset tag (CSS + theme variables + JS)
-  - [x] Icon set (50 line icons + 9 social marks) + IconChoiceBlock; SVG image placeholders
-  - [x] Shared LinkBlock, BackgroundBlock, AnchorBlock; section base template
-  - [x] Theme admin page (under Page builder, hidden from Settings)
-- [x] **Phase 3 — Blocks, batch 1**: Header, Footer, Hero, Page banner, Text, Text + image,
-      Features, Cards, Call to action, FAQ, Contact info
-- [x] **Phase 4 — Blocks, batch 2**: Steps, Quote, Testimonials, Logo strip, Stats, Pricing,
-      Gallery, Video, Team, Divider
-- [x] **Phase 5 — Site-wide header & footer**: admin page, canvas integration,
-      `{% prblm_header %}` / `{% prblm_footer %}`
-- [x] **Phase 6 — Page models**: Builder page (+ hide setting), `builder_blocks()` helper
-- [x] **Phase 7 — Release**
-  - [x] Tests for every block (render, defaults, no "None", save/load round trip, a11y basics)
-  - [x] README (built-in blocks guide, settings, upgrading, troubleshooting), history doc,
-        CLAUDE.md, CHANGELOG; version 0.3.0; CI checks the blocks files are in the wheel
-  - [x] Wheel installed + smoke-tested in a separate Wagtail 8.1 project
-  - [x] Merge to `main`, tag `v0.3.0` (GitHub release created by the owner)
-  - [ ] Owner tests the release in a real project
-
-## 8. Settled defaults (were open questions — change before release if needed)
-
-1. **Block names** — plain (`hero`, `cards`, …). `builder_blocks(exclude=[…])` lets a site
-   drop any that clash with its own; a duplicate name raises a clear error.
-2. **Builder page hide setting** — `PRBLM_BUILDER_PAGE_TYPE = True` (False hides the type).
-3. **Default theme** — neutral: near-black text, soft grey muted background, blue brand.
-
-## 9. Progress log
-
-- 2026-11-08 — Interview done; decisions recorded above. Plan drafted.
-- 2026-11-09 — Plan agreed; open questions settled with the suggested defaults. Phase 1 started.
-- 2026-11-09 — Phase 1 done (38 tests). Found + fixed: menu hooks are cached by Wagtail,
-  so `PRBLM_BUILDER_DEMO = False` never hid the menu item → `is_shown()` subclass.
-- 2026-11-09 — Phase 2 done (53 tests). Notes: Wagtail's ChoiceBlock ignores `Meta.default`
-  (set it in `__init__`); block class *module paths* are recorded in sites' migrations, so
-  `prblm_builder.blocks.sections.*` paths are now a promise like block names. Font
-  fallback uses a zero-specificity `:where(html)` rule so any site font wins.
-- 2026-11-09 — Phase 3 done (71 tests; checked visually at 1280px and 390px in headless
-  Chrome). Found + fixed: (1) a site block and a built-in block with the same name (e.g.
-  `hero`) collided in the Block library and in the real-content index — both are now
-  keyed by name *and* kind (`?builtin=1` on library previews); (2) Wagtail gives list
-  items a fresh random `id` on every save, so "Not edited yet" compared unequal — item ids
-  are now ignored when comparing.
-- 2026-11-09 — Phase 4 done: all 21 blocks exist (81 tests, checked visually). Video embeds
-  are built from the URL (youtube-nocookie / Vimeo `dnt=1`), no network call; non-video
-  links are rejected when saving.
-- 2026-11-09 — Phase 5 done (88 tests). Core got a `prblm_builder_chrome` hook so the
-  optional blocks app can supply the canvas header/footer without the core depending on
-  it. Precedence: `PRBLM_BUILDER_HEADER/FOOTER_TEMPLATE` setting → site-wide Header &
-  footer → none. Migrations squashed into one `0001_initial` (nothing released yet).
-- 2026-11-09 — Phase 6 done (94 tests). Builder page renders as a standalone HTML page
-  (site header + sections + site footer) so it works with zero site templates; sites can
-  override `prblm_builder/blocks/builder_page.html`. `PRBLM_BUILDER_PAGE_TYPE` is read once
-  at startup (sets `BuilderPage.is_creatable`). The shipped generic tests now pick a page
-  model that has a `rich_text` block, so they still run when the blocks app is installed.
-- 2026-11-09 — Phase 7 (docs + version 0.3.0 + wheel smoke test) done; 94 tests. Waiting
-  for the owner's test in a real project before merging and tagging.
-- 2026-11-09 — Merged to `main` and tagged `v0.3.0`.
+- 2026-11-09 — Feedback interview done; plan written. v0.3 plan archived in `docs/plans/`.
