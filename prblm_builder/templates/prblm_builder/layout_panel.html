@@ -29,7 +29,23 @@ top-right strip, next to the preview / checks / comments toggles.{% endcomment %
 })();
 </script>
 {% endif %}
+{% if restore %}{{ restore|json_script:"pb-restore" }}
+{% comment %}Re-submit the arrangement with the next save even if the Layout tab isn't
+opened again (the builder updates these same inputs when it is).{% endcomment %}
+<input type="hidden" name="_pb_layout" value="{{ restore.layout }}">
+<input type="hidden" name="_pb_initial" value="{{ restore.initial }}">{% endif %}
 <div class="prblm-layout-panel" style="width:100%">
+  {% comment %}Shown after any layout change: new sections can only be edited in the
+  Content tab once the page is saved (the Content tab is Wagtail's own editor).{% endcomment %}
+  <div class="prblm-save-banner" role="status" {% if not restore %}hidden{% endif %}
+       data-placeholder-title="{{ placeholder_title }}"
+       style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:0 0 12px;padding:12px 16px;border-radius:8px;background:#fff7e6;border:1px solid #f3c58a;color:#5b3a00;font-size:14px">
+    <span style="flex:1;min-width:240px" data-pb-banner-text>
+      {% if restore %}<strong>The page wasn't saved.</strong> Your layout is kept — fix the errors shown, then save again.
+      {% else %}<strong>Layout changed.</strong> Save the page to edit the new sections' words and images in the <strong>Content</strong> tab.{% endif %}
+    </span>
+    <button type="button" class="button button-small" data-pb-save-now>Save draft now</button>
+  </div>
   {% if builder_url %}
     <p class="help" style="margin:0 0 10px;color:#5a5a66;font-size:13px">
       Drag sections to arrange this page — reorder, add from the left, or remove.
@@ -45,3 +61,32 @@ top-right strip, next to the preview / checks / comments toggles.{% endcomment %
     </p>
   {% endif %}
 </div>
+<script>
+(function () {
+  var banner = document.querySelector(".prblm-save-banner");
+  if (!banner || banner.dataset.pbBound) return;
+  banner.dataset.pbBound = "1";
+  // The builder iframe fires this on the editor document after any layout change.
+  document.addEventListener("prblm-builder:dirty", function () { banner.hidden = false; });
+  function slugify(s) {
+    return s.toLowerCase().normalize("NFKD").replace(/[^\w\s-]/g, "").trim().replace(/[\s_-]+/g, "-");
+  }
+  banner.querySelector("[data-pb-save-now]").addEventListener("click", function () {
+    var form = banner.closest("form") || document.querySelector("form[data-edit-form]");
+    if (!form) return;
+    // A new page can't be saved without a title: fill a placeholder the editor can rename.
+    var title = form.querySelector('[name="title"]');
+    if (title && !title.value.trim()) {
+      title.value = banner.dataset.placeholderTitle;
+      ["input", "change"].forEach(function (t) { title.dispatchEvent(new Event(t, { bubbles: true })); });
+      var slug = form.querySelector('[name="slug"]');
+      if (slug && !slug.value.trim()) slug.value = slugify(banner.dataset.placeholderTitle);
+    }
+    // Use Wagtail's own Save draft button, so its normal checks and hooks run.
+    var save = form.querySelector("button.action-save:not([disabled])");
+    if (save) save.click();
+    else if (form.requestSubmit) form.requestSubmit();
+    else form.submit();
+  });
+})();
+</script>

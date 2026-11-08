@@ -72,7 +72,7 @@ Ships as **v0.4.0** (Header & footer storage changes).
 
 ## 3. Phases (checklist)
 
-- [ ] **Phase 1 — Save flow**: banner + Save draft now + placeholder title; keep arrangement
+- [x] **Phase 1 — Save flow**: banner + Save draft now + placeholder title; keep arrangement
       after a failed save. Tests.
 - [ ] **Phase 2 — Collapsible groups**: Block library (kinds + groups, sidebar ↔ preview
       sync) and Layout sidebar; remembered per browser. Tests + visual check.
@@ -86,3 +86,8 @@ Ships as **v0.4.0** (Header & footer storage changes).
 ## 4. Progress log
 
 - 2026-11-09 — Feedback interview done; plan written. v0.3 plan archived in `docs/plans/`.
+- 2026-11-09 — Phase 1 done (98 tests) and checked end-to-end in a real browser (Playwright
+  + system Chrome against a dev server): new page → add 2 blocks in Layout → banner shows →
+  "Save draft now" → saved as "Untitled page 3" with both blocks in the Content tab. The
+  Layout iframe stays lazy-loaded (so an unopened Layout tab never overrides Content-tab
+  reordering); after a failed save the arrangement is also re-submitted via hidden inputs.

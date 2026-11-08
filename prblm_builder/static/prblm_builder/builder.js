@@ -39,6 +39,10 @@
       setHidden(form, "_pb_layout", JSON.stringify(collect()));
       setHidden(form, "_pb_initial", JSON.stringify(INITIAL_IDS));
     } catch (e) {}
+    // Tell the editor page (it shows a "Save to edit these sections" banner).
+    if (dirtied) {
+      try { window.parent.document.dispatchEvent(new CustomEvent("prblm-builder:dirty")); } catch (e) {}
+    }
   }
 
   function uuid() {
@@ -440,6 +444,27 @@
     var node = document.getElementById("pb-sections"); var data = [];
     try { data = JSON.parse(node.textContent); } catch (e) {}
     INITIAL_IDS = data.map(function (s) { return s.id; });
+    // After a failed save the editor page hands back the submitted arrangement — restore
+    // it (new sections included) instead of starting from the stored page.
+    var restore = null;
+    if (EMBED) {
+      try { var rn = window.parent.document.getElementById("pb-restore"); if (rn) restore = JSON.parse(rn.textContent); } catch (e) {}
+    }
+    if (restore && restore.layout) {
+      try {
+        var stored = {}; data.forEach(function (s) { stored[s.id] = s; });
+        var layout = JSON.parse(restore.layout);
+        INITIAL_IDS = JSON.parse(restore.initial || "[]");
+        data = layout.map(function (it) {
+          var pal = document.querySelector('.pb-pitem[data-type="' + it.type + '"]');
+          var known = stored[it.id] || {};
+          return { type: it.type, id: it.id, label: known.label || (pal && pal.dataset.label) || it.type,
+                   isNew: !!it["new"] && !it.copy_from, copyFrom: it.copy_from || undefined,
+                   unedited: !!(it["new"] || it.copy_from || known.unedited) };
+        });
+        dirtied = true;
+      } catch (e) {}
+    }
     data.forEach(function (s) { addSection(s); });
     refresh();   // seeds the parent form's hidden fields with the current order (no-op save)
     pushHistory();   // baseline state for undo

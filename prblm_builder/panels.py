@@ -28,6 +28,16 @@ class LayoutBuilderPanel(Panel):
             ctx = super().get_context_data(parent_context)
             ctx["demo_url"] = reverse("prblm_builder:demo") if cfg.demo_enabled() else ""
             ctx["admin_tweaks"] = cfg.admin_tweaks()
+            # Title used by "Save draft now" when the editor hasn't typed one yet.
+            from wagtail.models import Page
+            ctx["placeholder_title"] = f"Untitled page {Page.objects.count() + 1}"
+            # The form came back with errors (e.g. empty title): hand the submitted
+            # arrangement back to the canvas so it isn't lost.
+            form = getattr(self, "form", None)
+            data = getattr(form, "data", None) if form is not None and form.is_bound else None
+            if data and data.get("_pb_layout"):
+                ctx["restore"] = {"layout": data.get("_pb_layout"),
+                                  "initial": data.get("_pb_initial") or "[]"}
             pk = getattr(self.instance, "pk", None)
             if pk:
                 ctx["builder_url"] = reverse("prblm_builder:builder", args=[pk]) + "?embed=1"
