@@ -47,7 +47,11 @@ class OptionsTests(TestCase):
     # --- Block library scope -------------------------------------------------
     def test_library_matches_palette_by_default(self):
         shown, skipped = self.library()
-        self.assertEqual(shown | set(skipped), palette_names())
+        palettes = set()
+        for model in registry.enabled_page_models():
+            _f, sb = registry.stream_block_for(model)
+            palettes |= {n for _g, items in registry.grouped_blocks(sb) for (n, _b, _l) in items}
+        self.assertEqual(shown | set(skipped), palettes)
         self.assertNotIn("footer_link", shown | set(skipped))  # non-page StreamField
 
     @override_settings(PRBLM_BUILDER_LIBRARY_SCOPE="all")

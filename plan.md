@@ -164,7 +164,7 @@ shared link type: label + one of page / URL / anchor.
   - [x] Icon set (50 line icons + 9 social marks) + IconChoiceBlock; SVG image placeholders
   - [x] Shared LinkBlock, BackgroundBlock, AnchorBlock; section base template
   - [x] Theme admin page (under Page builder, hidden from Settings)
-- [ ] **Phase 3 — Blocks, batch 1**: Header, Footer, Hero, Page banner, Text, Text + image,
+- [x] **Phase 3 — Blocks, batch 1**: Header, Footer, Hero, Page banner, Text, Text + image,
       Features, Cards, Call to action, FAQ, Contact info
 - [ ] **Phase 4 — Blocks, batch 2**: Steps, Quote, Testimonials, Logo strip, Stats, Pricing,
       Gallery, Video, Team, Divider
@@ -191,3 +191,9 @@ shared link type: label + one of page / URL / anchor.
   (set it in `__init__`); block class *module paths* are recorded in sites' migrations, so
   `prblm_builder.blocks.sections.*` paths are now a promise like block names. Font
   fallback uses a zero-specificity `:where(html)` rule so any site font wins.
+- 2026-11-09 — Phase 3 done (71 tests; checked visually at 1280px and 390px in headless
+  Chrome). Found + fixed: (1) a site block and a built-in block with the same name (e.g.
+  `hero`) collided in the Block library and in the real-content index — both are now
+  keyed by name *and* kind (`?builtin=1` on library previews); (2) Wagtail gives list
+  items a fresh random `id` on every save, so "Not edited yet" compared unequal — item ids
+  are now ignored when comparing.

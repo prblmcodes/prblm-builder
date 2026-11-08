@@ -1,0 +1,13 @@
+{% extends "prblm_builder/blocks/section.html" %}{% load prblm_blocks %}
+{% block kind %}split pbk-split--{{ value.image_side }}{% endblock %}
+{% block content %}
+  <div class="pbk-split__grid">
+    <div class="pbk-split__text">
+      {% if value.eyebrow %}<p class="pbk-eyebrow">{{ value.eyebrow }}</p>{% endif %}
+      {% if value.heading %}<h2 class="pbk-h2">{{ value.heading }}</h2>{% endif %}
+      <div class="pbk-rich">{{ value.text }}</div>
+      {% if value.button.label %}<div class="pbk-btns">{% include "prblm_builder/blocks/_link.html" with link=value.button style="primary" %}</div>{% endif %}
+    </div>
+    <div class="pbk-split__media">{% pbk_image value.image "fill-1200x900" "Section image" %}</div>
+  </div>
+{% endblock %}

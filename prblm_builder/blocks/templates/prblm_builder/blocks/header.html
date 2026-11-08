@@ -1,0 +1,31 @@
+{% load prblm_blocks %}{% prblm_assets %}{% pbk_uid "pbk-nav" as nav_id %}
+<header class="pbk pbk-header pbk--{{ value.background|default:'light' }}{% if value.sticky %} pbk-header--sticky{% endif %}">
+  <div class="pbk__inner pbk-header__bar">
+    <a class="pbk-header__brand" href="/">
+      {% if value.logo %}{% pbk_image value.logo "height-80" value.site_name "pbk-header__logo" "eager" %}<span class="pbk-sr">{{ value.site_name }}</span>{% else %}{{ value.site_name }}{% endif %}
+    </a>
+    {% if value.menu %}
+      <button class="pbk-header__toggle" type="button" data-pbk-menu-toggle aria-controls="{{ nav_id }}" aria-expanded="false">
+        <span class="pbk-sr">Menu</span>
+        <svg class="pbk-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+      <nav class="pbk-nav" id="{{ nav_id }}" aria-label="Main">
+        <ul>
+          {% for item in value.menu %}{% if item.label %}
+            <li{% if item.children %} class="pbk-nav__has-sub"{% endif %}>
+              <a href="{{ item.href|default:'#' }}"{% if item.children %} aria-haspopup="true"{% endif %}>{{ item.label }}{% if item.children %} <span aria-hidden="true" class="pbk-nav__caret">▾</span>{% endif %}</a>
+              {% if item.children %}
+                <ul class="pbk-nav__sub">
+                  {% for child in item.children %}{% if child.label %}<li><a href="{{ child.href|default:'#' }}">{{ child.label }}</a></li>{% endif %}{% endfor %}
+                </ul>
+              {% endif %}
+            </li>
+          {% endif %}{% endfor %}
+        </ul>
+        {% if value.button.label %}<div class="pbk-nav__cta">{% include "prblm_builder/blocks/_link.html" with link=value.button style="primary" %}</div>{% endif %}
+      </nav>
+    {% elif value.button.label %}
+      {% include "prblm_builder/blocks/_link.html" with link=value.button style="primary" %}
+    {% endif %}
+  </div>
+</header>

@@ -1,0 +1,23 @@
+{% load prblm_blocks %}{% prblm_assets %}
+<footer class="pbk pbk-footer pbk--{{ value.background|default:'dark' }}">
+  <div class="pbk__inner">
+    <div class="pbk-footer__top">
+      <div class="pbk-footer__about">
+        <a class="pbk-footer__brand" href="/">{% if value.logo %}{% pbk_image value.logo "height-80" value.site_name "pbk-footer__logo" %}<span class="pbk-sr">{{ value.site_name }}</span>{% else %}{{ value.site_name }}{% endif %}</a>
+        {% if value.description %}<p class="pbk-muted">{{ value.description|linebreaksbr }}</p>{% endif %}
+        {% if value.social %}
+          <ul class="pbk-footer__social">
+            {% for s in value.social %}{% if s.url %}<li><a href="{{ s.url }}" rel="noopener" aria-label="{{ s.network|title }}">{% pbk_icon s.network %}</a></li>{% endif %}{% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+      {% for col in value.columns %}
+        <div class="pbk-footer__col">
+          {% if col.title %}<h3 class="pbk-footer__title">{{ col.title }}</h3>{% endif %}
+          <ul>{% for link in col.links %}{% if link.label %}<li><a href="{{ link.href|default:'#' }}">{{ link.label }}</a></li>{% endif %}{% endfor %}</ul>
+        </div>
+      {% endfor %}
+    </div>
+    {% if value.copyright %}<p class="pbk-footer__legal pbk-muted">© {% now "Y" %} {{ value.copyright }}</p>{% endif %}
+  </div>
+</footer>

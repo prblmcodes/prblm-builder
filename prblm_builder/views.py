@@ -89,6 +89,9 @@ def _demo_value(block_name, block):
     """``(value, page)`` to preview a block with: a real instance used on the site
     (with its page, so hero-style blocks render fully), else synthesised content —
     trimmed for display."""
+    if registry.is_builtin(block):
+        # Built-ins always show their own explanatory example content.
+        return block.get_default(), None
     value, src_page = previews.real_instance_for(block_name)
     if value is None:
         value = previews.demo_value(block, block_name, prefer_real=False)
@@ -187,12 +190,13 @@ def demo(request):
     for kind, kind_groups in sections:
         for g, items in kind_groups:
             ok = []
+            builtin = kind == registry.KIND_BUILTIN
             for name, block, label in items:
                 problem = _preview_problem(name, block, request)
                 if problem:
                     unpreviewable.append({"name": name, "label": label, "reason": problem})
                 else:
-                    ok.append({"name": name, "label": label})
+                    ok.append({"name": name, "label": label, "builtin": builtin})
             if ok:
                 groups.append({"kind": kind, "group": g, "blocks": ok})
     return render(request, "prblm_builder/demo.html", {
@@ -271,7 +275,7 @@ def preview(request):       # builder frames this from the same origin, so allow
     block_name = request.GET.get("block")
     # Scoped to a page/model → that field's block; otherwise (demo) resolve anywhere.
     block = stream_block.child_blocks.get(block_name) if stream_block is not None \
-        else registry.find_block(block_name)
+        else registry.find_block(block_name, builtin=True if request.GET.get("builtin") == "1" else None)
     if block is None:
         raise Http404(f"Unknown block {block_name!r}")
     # Demo content: prefer a real instance of this block used on the site — real images

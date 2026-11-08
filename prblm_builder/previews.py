@@ -280,7 +280,11 @@ def _build_instance_index():
     from wagtail.fields import StreamField
     from wagtail.models import Page
 
-    best = {}  # name -> (score, value, page, block id)
+    from .registry import is_builtin
+
+    # (name, is_builtin) -> (score, value, page, block id). Keyed by kind too, so a site
+    # block and a built-in block that share a name never lend each other content.
+    best = {}
     for model in apps.get_models():
         if not (issubclass(model, Page) and model is not Page):
             continue
@@ -303,10 +307,11 @@ def _build_instance_index():
                         score = len(str(child.block.get_prep_value(child.value)))
                     except Exception:
                         score = 0
-                    cur = best.get(child.block_type)
+                    key = (child.block_type, is_builtin(child.block))
+                    cur = best.get(key)
                     if cur is None or score > cur[0]:
-                        best[child.block_type] = (score, child.value, page, str(child.id))
-    return {name: (v, p, bid) for name, (s, v, p, bid) in best.items()}
+                        best[key] = (score, child.value, page, str(child.id))
+    return {key: (v, p, bid) for key, (s, v, p, bid) in best.items()}
 
 
 def instance_index(max_age=60):
@@ -325,7 +330,7 @@ def real_instance_for(name):
     ``(None, None)``. The page is the context for blocks that read page fields."""
     if not name:
         return None, None
-    value, page, _bid = instance_index().get(name, (None, None, None))
+    value, page, _bid = instance_index().get((name, False), (None, None, None))
     return value, page
 
 
@@ -385,9 +390,21 @@ def trim_for_demo(block, value):
         return value
 
 
+def _strip_ids(data):
+    """Drop the ``id`` Wagtail gives each list/stream item: it's freshly generated every
+    time content is prepared for saving, so it must not count when comparing content."""
+    if isinstance(data, list):
+        return [_strip_ids(d) for d in data]
+    if isinstance(data, dict):
+        if "type" in data and "value" in data:
+            return {k: _strip_ids(v) for k, v in data.items() if k != "id"}
+        return {k: _strip_ids(v) for k, v in data.items()}
+    return data
+
+
 def _prep(block, value):
     try:
-        return block.get_prep_value(value)
+        return _strip_ids(block.get_prep_value(value))
     except Exception:
         return None
 
@@ -400,12 +417,14 @@ def is_unedited(block, name, stored_prep, page_id=None, section_id=None):
     (a false "edited"), never the other way round."""
     if stored_prep is None:
         return False
+    stored_prep = _strip_ids(stored_prep)
     candidates = [_prep(block, block.get_default())]
     try:
         candidates.append(_prep(block, block.normalize(synth_value(block, name, seed=name))))
     except Exception:
         pass
-    value, src_page, src_id = instance_index().get(name, (None, None, None))
+    from .registry import is_builtin
+    value, src_page, src_id = instance_index().get((name, is_builtin(block)), (None, None, None))
     is_source = (src_page is not None and str(getattr(src_page, "pk", "")) == str(page_id)
                  and src_id == str(section_id))
     if value is not None and not is_source:

@@ -1,0 +1,12 @@
+{% extends "prblm_builder/blocks/section.html" %}
+{% block kind %}banner{% endblock %}
+{% block content %}
+  {% if value.show_breadcrumbs and page %}
+    <nav class="pbk-crumbs" aria-label="Breadcrumb"><ol>
+      {% for a in page.get_ancestors %}{% if not a.is_root %}<li><a href="{{ a.url|default:'/' }}">{{ a.title }}</a></li>{% endif %}{% endfor %}
+      <li aria-current="page">{{ page.title }}</li>
+    </ol></nav>
+  {% endif %}
+  <h1 class="pbk-h1">{{ value.heading }}</h1>
+  {% if value.intro %}<p class="pbk-lead">{{ value.intro|linebreaksbr }}</p>{% endif %}
+{% endblock %}

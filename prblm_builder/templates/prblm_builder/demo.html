@@ -53,7 +53,7 @@
           <div class="nav-group" data-group>
             <p class="nav-group-title">{{ group.group }}</p>
             {% for b in group.blocks %}
-              <a class="nav-link" href="#bl-{{ b.name }}" data-target="bl-{{ b.name }}"
+              <a class="nav-link" href="#bl-{% if b.builtin %}builtin-{% endif %}{{ b.name }}" data-target="bl-{% if b.builtin %}builtin-{% endif %}{{ b.name }}"
                  data-search="{{ b.label|lower }} {{ b.name }}">{{ b.label }}</a>
             {% endfor %}
           </div>
@@ -70,10 +70,10 @@
         {% if show_kinds %}{% ifchanged group.kind %}<h2 class="bl-kind-title">{{ group.kind }}</h2>{% endifchanged %}{% endif %}
         <h2 class="bl-group-title">{{ group.group }}</h2>
         {% for b in group.blocks %}
-          <article class="bl-card" id="bl-{{ b.name }}" data-search="{{ b.label|lower }} {{ b.name }}">
+          <article class="bl-card" id="bl-{% if b.builtin %}builtin-{% endif %}{{ b.name }}" data-search="{{ b.label|lower }} {{ b.name }}">
             <div class="bl-card-head"><h3>{{ b.label }}</h3><code>{{ b.name }}</code></div>
             <div class="bl-frame-wrap"><iframe class="bl-frame" scrolling="no" loading="lazy" title="{{ b.label }}"
-                 data-src="{{ preview_url }}?block={{ b.name }}&demo=1"></iframe></div>
+                 data-src="{{ preview_url }}?block={{ b.name }}&demo=1{% if b.builtin %}&builtin=1{% endif %}"></iframe></div>
           </article>
         {% endfor %}
       {% endfor %}

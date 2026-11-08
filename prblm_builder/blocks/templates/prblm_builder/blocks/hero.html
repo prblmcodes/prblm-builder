@@ -1,0 +1,19 @@
+{% extends "prblm_builder/blocks/section.html" %}{% load prblm_blocks %}
+{% block kind %}hero pbk-hero--{{ value.image_position }} pbk-hero--{{ value.alignment }}{% endblock %}
+{% block content %}
+  {% if value.image_position == "background" %}<div class="pbk-hero__bg">{% pbk_image value.image "fill-1920x1080" "Hero background image" "pbk-hero__bg-img" "eager" %}</div>{% endif %}
+  <div class="pbk-hero__grid">
+    <div class="pbk-hero__text">
+      {% if value.eyebrow %}<p class="pbk-eyebrow">{{ value.eyebrow }}</p>{% endif %}
+      <h1 class="pbk-h1">{{ value.heading }}</h1>
+      {% if value.text %}<p class="pbk-lead">{{ value.text|linebreaksbr }}</p>{% endif %}
+      {% if value.primary_button.label or value.secondary_button.label %}
+        <div class="pbk-btns">
+          {% include "prblm_builder/blocks/_link.html" with link=value.primary_button style="primary" %}
+          {% include "prblm_builder/blocks/_link.html" with link=value.secondary_button style="secondary" %}
+        </div>
+      {% endif %}
+    </div>
+    {% if value.image_position == "side" %}<div class="pbk-hero__media">{% pbk_image value.image "fill-1200x900" "Hero image" "pbk-img" "eager" %}</div>{% endif %}
+  </div>
+{% endblock %}

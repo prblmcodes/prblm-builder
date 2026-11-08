@@ -1,0 +1,13 @@
+{% extends "prblm_builder/blocks/section.html" %}
+{% block kind %}faq{% endblock %}
+{% block content %}
+  {% include "prblm_builder/blocks/_heading.html" with eyebrow=value.eyebrow heading=value.heading intro=value.intro %}
+  <div class="pbk-faq__list">
+    {% for item in value.items %}
+      <details class="pbk-faq__item"{% if forloop.first %} open{% endif %}>
+        <summary>{{ item.question }}<span class="pbk-faq__mark" aria-hidden="true"></span></summary>
+        <div class="pbk-rich pbk-faq__answer">{{ item.answer }}</div>
+      </details>
+    {% endfor %}
+  </div>
+{% endblock %}

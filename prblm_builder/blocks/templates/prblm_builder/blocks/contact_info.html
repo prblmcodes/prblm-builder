@@ -1,0 +1,14 @@
+{% extends "prblm_builder/blocks/section.html" %}{% load prblm_blocks %}
+{% block kind %}contact{% endblock %}
+{% block content %}
+  <div class="pbk-contact__grid">
+    {% include "prblm_builder/blocks/_heading.html" with eyebrow=value.eyebrow heading=value.heading intro=value.intro align="left" %}
+    <ul class="pbk-contact__list">
+      {% if value.address %}<li>{% pbk_icon "map-pin" %}<div><strong>Address</strong><p>{{ value.address|linebreaksbr }}</p></div></li>{% endif %}
+      {% if value.email %}<li>{% pbk_icon "mail" %}<div><strong>Email</strong><p><a href="mailto:{{ value.email }}">{{ value.email }}</a></p></div></li>{% endif %}
+      {% if value.phone %}<li>{% pbk_icon "phone" %}<div><strong>Phone</strong><p><a href="tel:{{ value.phone|pbk_tel }}">{{ value.phone }}</a></p></div></li>{% endif %}
+      {% if value.hours %}<li>{% pbk_icon "clock" %}<div><strong>Opening hours</strong><p>{{ value.hours|linebreaksbr }}</p></div></li>{% endif %}
+      {% if value.map_link.label %}<li class="pbk-contact__map">{% include "prblm_builder/blocks/_link.html" with link=value.map_link style="secondary" %}</li>{% endif %}
+    </ul>
+  </div>
+{% endblock %}

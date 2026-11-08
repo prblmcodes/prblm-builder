@@ -103,3 +103,16 @@ def pbk_image(image, spec="width-1200", label="Image", css_class="pbk-img", load
     return format_html(
         '<img class="{}" src="{}" width="{}" height="{}" alt="{}" loading="{}">',
         css_class, rendition.url, rendition.width, rendition.height, alt, loading)
+
+
+@register.simple_tag
+def pbk_uid(prefix="pbk"):
+    """A unique id (e.g. to connect the mobile-menu button to its nav)."""
+    import uuid
+    return f"{prefix}-{uuid.uuid4().hex[:8]}"
+
+
+@register.filter
+def pbk_tel(value):
+    """``+00 123 456`` → ``+00123456`` for a ``tel:`` link."""
+    return re.sub(r"[^\d+]", "", str(value or ""))

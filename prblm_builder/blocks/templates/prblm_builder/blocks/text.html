@@ -1,0 +1,3 @@
+{% extends "prblm_builder/blocks/section.html" %}
+{% block kind %}text pbk-text--{{ value.width }} pbk-text--{{ value.alignment }}{% endblock %}
+{% block content %}<div class="pbk-rich pbk-text__body">{{ value.content }}</div>{% endblock %}

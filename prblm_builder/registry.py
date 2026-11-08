@@ -139,14 +139,25 @@ def _library_stream_blocks():
             yield stream_block
 
 
-def all_blocks():
-    """``{name: block}`` for every previewable block the Block library lists (deduped)."""
+def library_blocks():
+    """``{(name, is_builtin): block}`` for every previewable block the Block library
+    lists. Keyed by name *and* kind, so a site block called ``hero`` and the built-in
+    ``hero`` (used on different page types) both appear."""
     found = {}
     for stream_block in _library_stream_blocks():
         for name, block in stream_block.child_blocks.items():
             if previewable(name, block):
-                found.setdefault(name, block)
+                found.setdefault((name, is_builtin(block)), block)
     return found
+
+
+def all_blocks():
+    """``{name: block}`` for every previewable block (deduped by name; on a clash the
+    site's own block wins over the built-in one)."""
+    out = {}
+    for (name, builtin), block in sorted(library_blocks().items(), key=lambda kv: kv[0][1]):
+        out.setdefault(name, block)
+    return out
 
 
 def grouped_all_blocks():
@@ -157,9 +168,9 @@ def grouped_all_blocks():
 def library_sections():
     """``[(kind, [(group, [(name, block, label), …]), …]), …]`` for the Block library:
     built-in blocks first, then the site's own — each with its usual groups."""
-    found = all_blocks()
-    builtin = {n: b for n, b in found.items() if is_builtin(b)}
-    site = {n: b for n, b in found.items() if n not in builtin}
+    found = library_blocks()
+    builtin = {n: b for (n, is_b), b in found.items() if is_b}
+    site = {n: b for (n, is_b), b in found.items() if not is_b}
     out = []
     if builtin:
         out.append((KIND_BUILTIN, _group(builtin.items())))
@@ -168,6 +179,9 @@ def library_sections():
     return out
 
 
-def find_block(name):
-    """A previewable block by name, searched across the project (for demo previews)."""
-    return all_blocks().get(name)
+def find_block(name, builtin=None):
+    """A previewable block by name, searched across the project (for demo previews).
+    ``builtin=True`` picks the built-in block of that name, ``False`` the site's."""
+    if builtin is None:
+        return all_blocks().get(name)
+    return library_blocks().get((name, bool(builtin)))

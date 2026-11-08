@@ -5,6 +5,8 @@ from wagtail.fields import StreamField
 from wagtail.images.blocks import ImageChooserBlock
 from wagtail.models import Page
 
+from prblm_builder.blocks import builder_blocks
+
 
 class LinkBlock(blocks.StructBlock):
     """A reusable link fragment — used inside other blocks and in the footer snippet,
@@ -42,3 +44,13 @@ class FooterSettings(models.Model):
     """A non-page model with a StreamField — its blocks aren't page sections."""
 
     links = StreamField([("footer_link", LinkBlock())], blank=True)
+
+
+class BlocksPage(Page):
+    """A page made only of the built-in blocks (via the helper), plus one own block."""
+
+    body = StreamField(
+        builder_blocks() + [("own_heading", blocks.CharBlock(template="testapp/blocks/heading.html"))],
+        blank=True)
+
+    content_panels = Page.content_panels + [FieldPanel("body")]

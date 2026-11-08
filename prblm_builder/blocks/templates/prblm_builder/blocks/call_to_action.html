@@ -1,0 +1,14 @@
+{% extends "prblm_builder/blocks/section.html" %}
+{% block kind %}cta{% endblock %}
+{% block content %}
+  <div class="pbk-cta__box">
+    <h2 class="pbk-h2">{{ value.heading }}</h2>
+    {% if value.text %}<p class="pbk-lead">{{ value.text|linebreaksbr }}</p>{% endif %}
+    {% if value.primary_button.label or value.secondary_button.label %}
+      <div class="pbk-btns">
+        {% include "prblm_builder/blocks/_link.html" with link=value.primary_button style="primary" %}
+        {% include "prblm_builder/blocks/_link.html" with link=value.secondary_button style="secondary" %}
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}
