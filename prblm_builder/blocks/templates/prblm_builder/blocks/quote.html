@@ -1,0 +1,8 @@
+{% extends "prblm_builder/blocks/section.html" %}
+{% block kind %}quote{% endblock %}
+{% block content %}
+  <figure class="pbk-quote__fig">
+    <blockquote class="pbk-quote__text"><p>{{ value.quote|linebreaksbr }}</p></blockquote>
+    {% if value.author or value.role %}<figcaption class="pbk-quote__by"><strong>{{ value.author }}</strong>{% if value.author and value.role %} · {% endif %}<span class="pbk-muted">{{ value.role }}</span></figcaption>{% endif %}
+  </figure>
+{% endblock %}

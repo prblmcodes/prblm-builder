@@ -1,0 +1,14 @@
+{% extends "prblm_builder/blocks/section.html" %}
+{% block kind %}stats{% endblock %}
+{% block content %}
+  {% if value.heading %}<h2 class="pbk-h2 pbk-stats__title">{{ value.heading }}</h2>{% endif %}
+  <dl class="pbk-stats__list">
+    {% for item in value.items %}
+      <div class="pbk-stat">
+        <dt class="pbk-stat__label">{{ item.label }}</dt>
+        <dd class="pbk-stat__number">{{ item.number }}</dd>
+        {% if item.note %}<dd class="pbk-stat__note pbk-muted">{{ item.note }}</dd>{% endif %}
+      </div>
+    {% endfor %}
+  </dl>
+{% endblock %}

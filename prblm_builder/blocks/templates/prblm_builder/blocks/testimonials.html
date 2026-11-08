@@ -1,0 +1,19 @@
+{% extends "prblm_builder/blocks/section.html" %}{% load prblm_blocks %}
+{% block kind %}testimonials{% endblock %}
+{% block content %}
+  {% include "prblm_builder/blocks/_heading.html" with eyebrow=value.eyebrow heading=value.heading intro=value.intro %}
+  <div class="pbk-grid" style="--pbk-cols:3">
+    {% for item in value.items %}
+      <figure class="pbk-card pbk-testimonial">
+        <div class="pbk-card__body">
+          <span class="pbk-testimonial__mark" aria-hidden="true">“</span>
+          <blockquote><p>{{ item.quote|linebreaksbr }}</p></blockquote>
+          <figcaption class="pbk-testimonial__by">
+            {% if item.photo %}{% pbk_image item.photo "fill-96x96" item.name "pbk-testimonial__photo" %}{% else %}<span class="pbk-testimonial__initial" aria-hidden="true">{{ item.name|first|upper }}</span>{% endif %}
+            <span><strong>{{ item.name }}</strong>{% if item.role %}<br><span class="pbk-muted">{{ item.role }}</span>{% endif %}</span>
+          </figcaption>
+        </div>
+      </figure>
+    {% endfor %}
+  </div>
+{% endblock %}

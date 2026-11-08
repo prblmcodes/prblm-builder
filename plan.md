@@ -166,7 +166,7 @@ shared link type: label + one of page / URL / anchor.
   - [x] Theme admin page (under Page builder, hidden from Settings)
 - [x] **Phase 3 — Blocks, batch 1**: Header, Footer, Hero, Page banner, Text, Text + image,
       Features, Cards, Call to action, FAQ, Contact info
-- [ ] **Phase 4 — Blocks, batch 2**: Steps, Quote, Testimonials, Logo strip, Stats, Pricing,
+- [x] **Phase 4 — Blocks, batch 2**: Steps, Quote, Testimonials, Logo strip, Stats, Pricing,
       Gallery, Video, Team, Divider
 - [ ] **Phase 5 — Site-wide header & footer**: admin page, canvas integration,
       `{% prblm_header %}` / `{% prblm_footer %}`
@@ -197,3 +197,6 @@ shared link type: label + one of page / URL / anchor.
   keyed by name *and* kind (`?builtin=1` on library previews); (2) Wagtail gives list
   items a fresh random `id` on every save, so "Not edited yet" compared unequal — item ids
   are now ignored when comparing.
+- 2026-11-09 — Phase 4 done: all 21 blocks exist (81 tests, checked visually). Video embeds
+  are built from the URL (youtube-nocookie / Vimeo `dnt=1`), no network call; non-video
+  links are rejected when saving.

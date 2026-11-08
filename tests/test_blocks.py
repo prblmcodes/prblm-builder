@@ -39,7 +39,8 @@ class EveryBlockTests(TestCase):
                 self.assertIn('class="pbk ', html)
                 self.assertIn("blocks.css", html)                 # assets included
                 text = visible_text(html)
-                self.assertTrue(len(text) > 20, text)
+                if name != "divider":                          # a line, no text
+                    self.assertTrue(len(text) > 20, text)
                 self.assertNotRegex(text, r"\bNone\b")
 
     def test_defaults_survive_save_and_load(self):
@@ -138,6 +139,70 @@ class BlockDetailTests(TestCase):
         self.assertIn('href="mailto:hello@example.com"', html)
         self.assertIn('href="tel:+00123456789"', html)
         self.assertIn('id="contact"', html)
+
+
+@override_settings(STORAGES=STORAGES)
+class BatchTwoDetailTests(TestCase):
+    def block(self, name):
+        return dict(builder_blocks())[name]
+
+    def test_twenty_one_blocks(self):
+        self.assertEqual(len(builder_blocks()), 21)
+
+    def test_steps_numbered(self):
+        html = render(self.block("steps"))
+        self.assertIn("<ol", html)
+        self.assertIn(">3</span>", html)
+
+    def test_testimonials_initials_without_photo(self):
+        self.assertIn("pbk-testimonial__initial", render(self.block("testimonials")))
+
+    def test_logo_strip_names_without_images(self):
+        html = render(self.block("logo_strip"))
+        self.assertIn("Client five", html)
+        self.assertIn("pbk-logos--grey", html)
+
+    def test_stats_definition_list(self):
+        html = render(self.block("stats"))
+        self.assertIn("<dl", html)
+        self.assertIn("500+", html)
+
+    def test_pricing_highlight(self):
+        html = render(self.block("pricing"))
+        self.assertEqual(html.count("pbk-plan--highlight"), 1)
+        self.assertIn("Most popular", html)
+        self.assertIn('id="pricing"', html)
+
+    def test_video_embed_urls(self):
+        from prblm_builder.blocks.sections.media import embed_url
+        self.assertEqual(embed_url("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=1"),
+                         "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ")
+        self.assertEqual(embed_url("https://youtu.be/dQw4w9WgXcQ"),
+                         "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ")
+        self.assertEqual(embed_url("https://vimeo.com/76979871"),
+                         "https://player.vimeo.com/video/76979871?dnt=1")
+        self.assertEqual(embed_url("https://example.com/video"), "")
+
+    def test_video_block(self):
+        b = self.block("video")
+        self.assertIn("Video · YouTube or Vimeo link", render(b))     # placeholder
+        v = b.to_python({**b.get_prep_value(b.get_default()), "url": "https://youtu.be/dQw4w9WgXcQ"})
+        self.assertIn('src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"', render(b, v))
+        from django.core.exceptions import ValidationError
+        with self.assertRaises(ValidationError):
+            b.child_blocks["url"].clean("https://example.com/not-a-video")
+
+    def test_gallery_and_team_placeholders(self):
+        self.assertEqual(render(self.block("gallery")).count("Placeholder: Gallery image"), 6)
+        self.assertEqual(render(self.block("team")).count("Placeholder: Photo"), 4)
+
+    def test_divider_styles(self):
+        b = self.block("divider")
+        self.assertIn("<hr", render(b))
+        v = b.to_python({"style": "space", "size": "large", "background": "light"})
+        html = render(b, v)
+        self.assertNotIn("<hr", html)
+        self.assertIn("pbk-divider--large", html)
 
 
 @override_settings(STORAGES=STORAGES)

@@ -1,0 +1,13 @@
+{% extends "prblm_builder/blocks/section.html" %}{% load prblm_blocks %}
+{% block kind %}gallery{% endblock %}
+{% block content %}
+  {% include "prblm_builder/blocks/_heading.html" with heading=value.heading intro=value.intro %}
+  <div class="pbk-grid" style="--pbk-cols:{{ value.columns }}">
+    {% for item in value.images %}
+      <figure class="pbk-gallery__item">
+        {% pbk_image item.image "fill-800x600" "Gallery image" %}
+        {% if item.caption %}<figcaption class="pbk-muted">{{ item.caption }}</figcaption>{% endif %}
+      </figure>
+    {% endfor %}
+  </div>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "prblm_builder/blocks/section.html" %}{% load prblm_blocks %}
+{% block kind %}video{% endblock %}
+{% block content %}
+  {% include "prblm_builder/blocks/_heading.html" with heading=value.heading %}
+  <figure class="pbk-video__fig">
+    {% if value.embed_url %}
+      <div class="pbk-video__frame"><iframe src="{{ value.embed_url }}" title="{{ value.heading|default:'Video' }}" loading="lazy"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen></iframe></div>
+    {% else %}
+      {% pbk_placeholder "Video · YouTube or Vimeo link" 1600 900 %}
+    {% endif %}
+    {% if value.caption %}<figcaption class="pbk-muted">{{ value.caption }}</figcaption>{% endif %}
+  </figure>
+{% endblock %}

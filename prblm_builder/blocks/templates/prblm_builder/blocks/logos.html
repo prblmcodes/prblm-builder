@@ -1,0 +1,10 @@
+{% extends "prblm_builder/blocks/section.html" %}{% load prblm_blocks %}
+{% block kind %}logos{% if value.greyscale %} pbk-logos--grey{% endif %}{% endblock %}
+{% block content %}
+  {% if value.heading %}<p class="pbk-logos__title">{{ value.heading }}</p>{% endif %}
+  <ul class="pbk-logos__list">
+    {% for item in value.items %}
+      <li>{% if item.url %}<a href="{{ item.url }}" rel="noopener">{% endif %}{% if item.logo %}{% pbk_image item.logo "height-96" item.name "pbk-logos__img" %}{% else %}<span class="pbk-logos__name">{{ item.name }}</span>{% endif %}{% if item.url %}</a>{% endif %}</li>
+    {% endfor %}
+  </ul>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends "prblm_builder/blocks/section.html" %}{% load prblm_blocks %}
+{% block kind %}team{% endblock %}
+{% block content %}
+  {% include "prblm_builder/blocks/_heading.html" with eyebrow=value.eyebrow heading=value.heading intro=value.intro %}
+  <div class="pbk-grid" style="--pbk-cols:{{ value.columns }}">
+    {% for m in value.members %}
+      <article class="pbk-member">
+        {% pbk_image m.photo "fill-600x600" "Photo" "pbk-img pbk-member__photo" %}
+        <h3 class="pbk-h3">{{ m.name }}</h3>
+        {% if m.role %}<p class="pbk-member__role">{{ m.role }}</p>{% endif %}
+        {% if m.bio %}<p class="pbk-muted">{{ m.bio|linebreaksbr }}</p>{% endif %}
+        {% if m.link.label %}<a class="pbk-card__link" href="{{ m.link.href|default:'#' }}" rel="noopener">{{ m.link.label }} <span aria-hidden="true">→</span></a>{% endif %}
+      </article>
+    {% endfor %}
+  </div>
+{% endblock %}

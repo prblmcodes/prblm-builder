@@ -25,3 +25,16 @@ class ContactInfoBlock(blocks.StructBlock):
         icon = "mail"
         label = "Contact info"
         group = "Utility"
+
+
+class DividerBlock(blocks.StructBlock):
+    style = blocks.ChoiceBlock(choices=[("line", "Line"), ("space", "Empty space")], default="line")
+    size = blocks.ChoiceBlock(choices=[("small", "Small"), ("medium", "Medium"), ("large", "Large")],
+                              default="medium", help_text="How much space above and below.")
+    background = BackgroundBlock()
+
+    class Meta:
+        template = T + "divider.html"
+        icon = "minus"
+        label = "Divider"
+        group = "Utility"

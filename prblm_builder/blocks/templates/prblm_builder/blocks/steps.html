@@ -1,0 +1,14 @@
+{% extends "prblm_builder/blocks/section.html" %}
+{% block kind %}steps{% endblock %}
+{% block content %}
+  {% include "prblm_builder/blocks/_heading.html" with eyebrow=value.eyebrow heading=value.heading intro=value.intro %}
+  <ol class="pbk-steps__list">
+    {% for item in value.items %}
+      <li class="pbk-step">
+        <span class="pbk-step__num" aria-hidden="true">{{ forloop.counter }}</span>
+        <h3 class="pbk-h3">{{ item.title }}</h3>
+        {% if item.text %}<p class="pbk-muted">{{ item.text|linebreaksbr }}</p>{% endif %}
+      </li>
+    {% endfor %}
+  </ol>
+{% endblock %}

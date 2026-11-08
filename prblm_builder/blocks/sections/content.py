@@ -111,3 +111,42 @@ class CardsBlock(blocks.StructBlock):
         icon = "table"
         label = "Cards"
         group = "Content"
+
+
+class StepItemBlock(blocks.StructBlock):
+    title = blocks.CharBlock()
+    text = blocks.TextBlock(required=False)
+
+
+class StepsBlock(blocks.StructBlock):
+    eyebrow = eyebrow("How it works")
+    heading = blocks.CharBlock(default="Explain your process in a few steps")
+    intro = blocks.TextBlock(required=False, default="Steps are numbered automatically, in this order.")
+    items = blocks.ListBlock(StepItemBlock(), default=[
+        {"title": "First step", "text": "What the visitor does first — for example, get in touch."},
+        {"title": "Second step", "text": "What happens next. Keep each step to one or two sentences."},
+        {"title": "Third step", "text": "The result they get. Three to five steps work best."},
+    ])
+    background = BackgroundBlock()
+    anchor_id = AnchorBlock()
+
+    class Meta:
+        template = T + "steps.html"
+        icon = "list-ol"
+        label = "Steps"
+        group = "Content"
+
+
+class QuoteBlock(blocks.StructBlock):
+    quote = blocks.TextBlock(default="A single strong quote stands out on a page. Use a "
+                                     "customer's words, a founder's belief or a key statistic.")
+    author = blocks.CharBlock(required=False, default="Person's name")
+    role = blocks.CharBlock(required=False, default="Their role or company")
+    background = BackgroundBlock(default="muted")
+    anchor_id = AnchorBlock()
+
+    class Meta:
+        template = T + "quote.html"
+        icon = "openquote"
+        label = "Quote"
+        group = "Content"
