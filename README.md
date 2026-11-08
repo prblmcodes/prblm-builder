@@ -119,7 +119,7 @@ StreamField and renders previews unstyled. After changing a setting, restart the
 | `PRBLM_BUILDER_FIELD_NAMES` | `["body"]` | StreamField name(s) to build on, in priority order — e.g. `["body", "content"]`. A model gets the tab if it has one of these. |
 | `PRBLM_BUILDER_PAGE_MODELS` | `None` | `None` = every page model with a matching field. Or limit it: `["home.StandardPage", "blog.BlogPage"]`. |
 
-### Which blocks show up
+### Block visibility
 
 | Setting | Default | What it does |
 |---|---|---|
