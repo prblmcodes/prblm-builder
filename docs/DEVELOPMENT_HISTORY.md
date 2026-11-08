@@ -42,10 +42,16 @@ Pure introspection, no site-specific code.
   explicit `PRBLM_BUILDER_PAGE_MODELS` list).
 - `stream_block_for(model)` → `(field_name, stream_block)`.
 - `grouped_blocks(stream_block)` — palette groups for one field.
-- `all_blocks()` / `grouped_all_blocks()` / `find_block(name)` — project-wide block
-  catalogue (for the Block library / demo page).
-- `previewable(name, block)` — a block with its own template, not under
-  `PRBLM_BUILDER_EXCLUDE_TEMPLATE_PREFIXES` (e.g. email-only blocks).
+- `all_blocks()` / `grouped_all_blocks()` / `find_block(name)` — the Block library's
+  catalogue. Scope is `PRBLM_BUILDER_LIBRARY_SCOPE`: `"builder"` (default, since 0.2) =
+  the top-level blocks of the builder-enabled page fields, i.e. exactly the palette;
+  `"all"` = top-level blocks of every StreamField in the project.
+- `hidden(name, block)` — the project asked to keep a block out: its own
+  `Meta: builder = False`, or `PRBLM_BUILDER_EXCLUDE_BLOCKS` (name, or dotted class path
+  matched with `isinstance`; a path that doesn't import is ignored).
+- `previewable(name, block)` — has its own template, isn't `hidden`, and isn't under
+  `PRBLM_BUILDER_EXCLUDE_TEMPLATE_PREFIXES` (e.g. email-only blocks). Applies to both the
+  palette and the library.
 
 ### The Layout tab — `panels.py` + `integration.py`
 - `LayoutBuilderPanel` is a Wagtail `Panel` whose bound template (`layout_panel.html`)
@@ -65,7 +71,9 @@ Pure introspection, no site-specific code.
 - `LayoutBuilderForm.clean()` reads those, and `layout.reconcile()` rebuilds the target
   StreamField from the submitted content in the Layout tab's order:
   - existing blocks keep their stored content (matched by id);
-  - new blocks are seeded with demo content;
+  - new blocks get `layout.new_block_value()`: demo content, or — with
+    `PRBLM_BUILDER_SEED_NEW_BLOCKS = False` — `empty_value()`, the block's defaults with
+    unset text fields as `""` (recursing into nested StructBlocks);
   - a duplicate copies its source's content;
   - `_pb_initial` disambiguates a *Layout-tab delete* (a known id now dropped → drop) from
     a *block added in the Content tab* the Layout tab never saw (unknown id → keep), so it
@@ -78,13 +86,18 @@ Pure introspection, no site-specific code.
 ### Previews — `views.py` (`preview`) + `previews.py` + `builder.js`
 - `preview` renders a single block into an iframe document. Modes:
   `?page=<id>&section=<uuid>` = the real stored block; `?page=<id>&block=<name>&demo=1` or
-  `?block=<name>` (unscoped) = demo content; `?chrome=header|footer` = the site header/footer.
+  `?block=<name>` (unscoped) = demo content; `&fresh=1` = a section just added on the
+  canvas (shows the empty value + a "New …" placeholder when seeding is off);
+  `?chrome=header|footer` = the site header/footer, rendered with `page`/`self` when a
+  `?page=` is given. Any `?page=` requires edit permission on that page; malformed
+  `?page=` / `?model=` return 404.
 - It's decorated `@xframe_options_sameorigin` because admin responses default to
   `X-Frame-Options: DENY`, which would blank the iframes.
 - `previews.frame()` wraps the block HTML in a minimal document that loads the host's
   front-end CSS/JS (`PRBLM_BUILDER_PREVIEW_CSS/JS`) and **strips `loading="lazy"`** from
   images (see bug notes — lazy images never enter a scaled/offscreen frame).
-- `builder.js` renders each section iframe at a fixed **1280px desktop width** and scales it
+- `builder.js` renders each section iframe at a **desktop width** (`PRBLM_BUILDER_CANVAS_WIDTH`,
+  default 1280, passed as `data-canvas-width`; palette thumbnails use it too) and scales it
   to fit the canvas column (`scaleFit`), so the editor column's narrow width doesn't force
   the mobile layout. It sets the iframe's **own height** and the host's height from
   `body.scrollHeight`.
@@ -103,9 +116,20 @@ Three layers, best-first:
    only — never alters stored/seeded content.
 
 ### Block library (demo page) — `views.demo` + `demo.html`
-An admin-only page listing every previewable block grouped, each with a live demo preview
-(same engine as the builder). Reachable from Settings → *Block library* and a link injected
-into the editor header's top-right strip. Gated by `PRBLM_BUILDER_DEMO`.
+An admin-only page (`/admin/page-builder/demo/`) listing every previewable block grouped,
+each with a live demo preview (same engine as the builder). Reachable from Settings →
+*Block library* and a link injected into the editor header's top-right strip (that link
+is an admin tweak — off with `PRBLM_BUILDER_ADMIN_TWEAKS = False`). Gated by
+`PRBLM_BUILDER_DEMO`.
+
+Since 0.2 the view test-renders each block server-side (`views._preview_problem`); blocks
+that raise or render no text/media (`_is_blank`) are listed in a collapsed
+"Couldn't preview" section with the reason instead of as an empty/red card. They stay in
+the palette.
+
+### Settings — `settings.py`
+One small reader function per `PRBLM_BUILDER_*` setting, each with its default; the rest
+of the code only calls these (never `django.conf.settings` directly). See §6.
 
 ---
 
@@ -163,7 +187,7 @@ into the editor header's top-right strip. Gated by `PRBLM_BUILDER_DEMO`.
   native editor. Trade-off: `body` is touched in two places, reconciled by id + the
   `_pb_initial` set.
 - **Scaled iframes over a real-width canvas.** The editor column is far narrower than a
-  page, so sections rendered their mobile layout. Rendering at 1280px and CSS-scaling shows
+  page, so sections rendered their mobile layout. Rendering at desktop width (1280px by default, `PRBLM_BUILDER_CANVAS_WIDTH`) and CSS-scaling shows
   the true desktop layout in the available space. Wagtail's own Preview remains the
   full-size preview.
 - **Real content first, synth as fallback.** A real instance carries real images + copy and
@@ -171,6 +195,14 @@ into the editor header's top-right strip. Gated by `PRBLM_BUILDER_DEMO`.
   covers blocks used nowhere yet.
 - **Auto-attach from `ready()` over a mixin.** Host projects shouldn't have to edit each
   page model. Defensive so it can never break the admin.
+- **Select blocks by how they're used, not by where their files live (0.2).** Every
+  Wagtail project shares one structure: a page's StreamField lists the top-level
+  sections; fragments (links, buttons) live inside them. So "a section" = a top-level
+  block of a builder-enabled page field. Path-based rules (template prefixes) are too
+  project-specific; the opt-out lives on the block (`Meta: builder = False`) or by class.
+- **No settings for where models/templates/static live.** Django's app registry,
+  template loaders and staticfiles finders already find them uniformly; settings for
+  paths would only add ways to misconfigure. Settings cover *which* and *how*, not *where*.
 
 ---
 
@@ -205,6 +237,10 @@ into the editor header's top-right strip. Gated by `PRBLM_BUILDER_DEMO`.
   `img.width/height/file_size` after `file.save(…, save=False)`.
 - **LinkBlock over-fill** — synth filled every destination (page + url + document +
   relative), which fails `LinkBlock.clean()`; fill exactly one (a relative path) + label.
+- **Empty block showed "None"** (0.2) — `block.get_default()` for a CharBlock is `None`,
+  which a template renders as the text "None". An empty new block must use what
+  Wagtail's editor saves for a blank field: `field.to_python("")` → `""`, recursing into
+  nested StructBlocks (a nested struct's default is a StructValue full of `None`s).
 
 ---
 
@@ -240,14 +276,21 @@ A block can also opt out itself: `class Meta: builder = False`.
 
 - Some editor-chrome niceties hook into **Wagtail admin internals** and are the most likely
   to need attention on a new Wagtail version (they all degrade gracefully — the feature just
-  doesn't activate):
-  - full-width canvas: `.w-form-width`, `.editor-view.side-panel-open`;
-  - header "Block library" link: `[data-side-panel-toggle]`;
-  - ride-along save's hidden-field injection: `form[data-edit-form]`.
+  doesn't activate). All present in Wagtail 8.1:
+  - full-width canvas: `.w-form-width`, `.editor-view.side-panel-open` *(admin tweak)*;
+  - header "Block library" link: `[data-side-panel-toggle]` *(admin tweak)*;
+  - ride-along save's hidden-field injection: `form[data-edit-form]` *(essential — not
+    switchable)*.
+  The two admin tweaks can be turned off with `PRBLM_BUILDER_ADMIN_TWEAKS = False`.
 - Built against Wagtail 7 / Django 5.2; from v0.1.0 it targets **Wagtail 8.1+ / Django 6.1+ /
   Python 3.12+** (CI covers Python 3.12–3.14).
-- The test suite (`prblm_builder/tests/test_builder.py`) runs against the bundled test
-  project (`python runtests.py`) or inside a host project (`manage.py test prblm_builder`).
+- Tests: `prblm_builder/tests/test_builder.py` (generic, shipped — runs in the bundled
+  test project or inside a host project via `manage.py test prblm_builder`) and
+  `tests/test_options.py` (settings + Block-library rules; needs the edge-case blocks in
+  `tests/testapp`, so it only runs in this repo). `python runtests.py` runs both.
+- With `PRBLM_BUILDER_SEED_NEW_BLOCKS = False`, the empty block is written straight into
+  the stored data after form validation, so required fields aren't enforced on it — a
+  page can be published with an empty section until it's filled in.
 - The Layout tab reads sections from the page's stored (live) row, not the latest draft
   revision — unverified whether a page with unpublished draft changes shows stale
   sections on the canvas. Check when testing in a second project.
@@ -257,20 +300,30 @@ A block can also opt out itself: `class Meta: builder = False`.
 ## 8. File map
 
 ```
-prblm_builder/
+prblm_builder/                the installable app (what the wheel ships)
   apps.py            AppConfig.ready() → integration.autoenable()
   integration.py     auto-attach the Layout tab + base_form_class to enabled models
   panels.py          LayoutBuilderPanel (embeds the builder in the Layout tab)
   forms.py           LayoutBuilderForm (reconciles the arrangement on save)
-  layout.py          reconcile(stream_block, current_raw, layout, initial_ids)
-  registry.py        block/model introspection
+  layout.py          reconcile(…), new_block_value(), empty_value()
+  registry.py        block/model introspection; hidden(), previewable(), library scope
   views.py           builder, builder_new, preview, demo, save, page_preview
   previews.py        demo content engine: real_instance_for, synth_value, trim_for_demo, frame
   settings.py        PRBLM_BUILDER_* readers (all optional)
-  wagtail_hooks.py   admin URLs, Settings menu item, page-header buttons
+  wagtail_hooks.py   admin URLs + "Block library" Settings menu item
   templates/prblm_builder/  builder.html, layout_panel.html, demo.html
   static/prblm_builder/     builder.css, builder.js, vendor/sortable.min.js
-  tests/test_builder.py     integration + reconcile unit tests
+  tests/test_builder.py     generic integration + reconcile tests
+tests/                        test project (repo only, not shipped)
+  settings.py, urls.py      minimal Wagtail settings
+  testapp/                  StandardPage (+ opted-out, broken, empty and link blocks),
+                            FooterSettings (a non-page StreamField)
+  test_options.py           settings + Block-library rule tests
+runtests.py                   test runner (also `runtests.py makemigrations`)
+.github/workflows/test.yml    CI: Python 3.12–3.14 + wheel build check
+README.md                     user docs: install, settings reference, troubleshooting
+CHANGELOG.md                  per-release changes
+LICENSE                       MIT
 ```
 
 ---
@@ -279,11 +332,19 @@ prblm_builder/
 
 1. ~~**Demo project + CI**~~ — done in v0.1.0 (`tests/`, `runtests.py`, GitHub Actions).
 2. ~~**LICENSE**~~ — MIT, v0.1.0.
-3. **Version-proof the admin-chrome features** — feature-detect the Wagtail internals above
-   and add a setting to disable the DOM-injection bits; document supported versions.
+3. **Version-proof the admin-chrome features** — ~~setting to disable the DOM-injection
+   bits~~ (`PRBLM_BUILDER_ADMIN_TWEAKS`, 0.2). Still to do: feature-detect the internals
+   instead of relying on them silently failing.
 4. **HTTP-level test** for the ride-along save (hidden field → form `clean`), not just the
    `reconcile` unit tests.
 5. **Optional default-content editor** — an admin UI to override each block's demo/default
    content (synthesis stays the fallback). This was scoped but deferred.
 6. **Publish to PyPI** so other projects `pip install prblm-builder`.
-7. **Install into another Wagtail project** to shake out the version-specific chrome bits.
+7. ~~**Install into another Wagtail project**~~ — done after 0.1.0; led to the 0.2 changes.
+   Still to verify there: whether the Layout tab shows a page's unpublished draft
+   sections (it reads the live row — see §7).
+8. **Optional built-in blocks (planned 0.3)** — an opt-in app (e.g.
+   `prblm_builder.blocks`) with ~8–10 starter sections (hero, text + image, features,
+   CTA, testimonials, FAQ, gallery, cards, stats). Hard part is styling that works on any
+   site: prefixed CSS + CSS variables for theming. Block names/fields must stay stable
+   once released (stored content depends on them). The core stays block-agnostic.

@@ -10,11 +10,25 @@ Works on any Wagtail site: it discovers your blocks by introspection — no bloc
 maintain — and attaches itself automatically to every page type that has a buildable
 StreamField.
 
+- [Requirements](#requirements)
+- [Install](#install)
+- [Quick setup](#quick-setup)
+- [Use](#use)
+- [Settings reference](#settings-reference)
+- [Which blocks show up](#which-blocks-show-up)
+- [How it works](#how-it-works)
+- [Project structure](#project-structure)
+- [Development](#development)
+- [Troubleshooting](#troubleshooting)
+
 ## Requirements
 
 - Python 3.12+
 - Django 6.1+
 - Wagtail 8.1+ (below 9)
+
+No front-end tooling is needed (no Node, no Tailwind). The builder ships its own CSS/JS;
+previews simply load your site's compiled CSS.
 
 ## Install
 
@@ -29,110 +43,226 @@ pip install "prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.g
 ```
 
 Or put the same `prblm-builder @ git+…@v0.2.0` line in `requirements.txt`. You can also
-download the wheel attached to a GitHub release and `pip install prblm_builder-0.2.0-py3-none-any.whl`.
+download the wheel attached to a GitHub release and
+`pip install prblm_builder-0.2.0-py3-none-any.whl`.
 
-Then add it to your settings:
+To upgrade later, change the tag (e.g. `@v0.2.0` → `@v0.3.0`) and reinstall. See
+[CHANGELOG.md](CHANGELOG.md) for what changed in each version.
 
-```python
-INSTALLED_APPS = [
-    "prblm_builder",
-    # … your apps, wagtail apps, …
-]
-```
+## Quick setup
 
-No migrations, no URL changes — it registers its admin URLs through Wagtail hooks. Any
-page model with a StreamField named `body` now has a **Layout** tab.
+1. Add the app to your settings (the file with `INSTALLED_APPS`, e.g.
+   `<project>/settings/base.py`):
 
-## Configure (all optional)
+   ```python
+   INSTALLED_APPS = [
+       "prblm_builder",
+       # … your apps, wagtail apps, …
+   ]
+   ```
 
-```python
-# point previews at your front-end assets so sections look like production
-PRBLM_BUILDER_PREVIEW_CSS = ["css/your-site.css"]     # static paths or URLs
-PRBLM_BUILDER_PREVIEW_JS = ["js/your-site.js"]
-PRBLM_BUILDER_PREVIEW_BODY_CLASS = ""                 # class on the preview <body>
-PRBLM_BUILDER_HEADER_TEMPLATE = ""                    # site header shown on the canvas
-PRBLM_BUILDER_FOOTER_TEMPLATE = ""                    # site footer shown on the canvas
-PRBLM_BUILDER_FIELD_NAMES = ["body"]                  # which StreamField to build (priority order)
-PRBLM_BUILDER_PAGE_MODELS = None                      # None = auto-detect; or ["app.Model"]
-PRBLM_BUILDER_DEMO = True                             # the admin-only Block library
-PRBLM_BUILDER_EXCLUDE_TEMPLATE_PREFIXES = ()          # block templates to hide (e.g. email blocks)
-PRBLM_BUILDER_INDEX_SCAN_LIMIT = 500                  # pages/model scanned for real demo content
+2. That's it for the basics — no migrations, no URL changes (admin URLs are registered
+   through Wagtail hooks). Every page model with a StreamField named `body` now has a
+   **Layout** tab.
 
-# since 0.2.0
-PRBLM_BUILDER_EXCLUDE_BLOCKS = []                     # hide blocks by name ("link") or class path
-PRBLM_BUILDER_LIBRARY_SCOPE = "builder"               # "builder" = palette blocks; "all" = every StreamField
-PRBLM_BUILDER_SEED_NEW_BLOCKS = True                  # False = new blocks start empty, not with demo content
-PRBLM_BUILDER_CANVAS_WIDTH = 1280                     # desktop width (px) sections render at on the canvas
-PRBLM_BUILDER_PLACEHOLDER_IMAGES = True               # False = never add placeholder images to the library
-PRBLM_BUILDER_ADMIN_TWEAKS = True                     # False = no full-width tab / header link (Wagtail internals)
-```
+3. Recommended: make previews look like your site by pointing them at your front-end CSS,
+   in the same settings file. Paths are relative to a `static/` or `templates/` folder,
+   exactly as you'd write them in `{% static '…' %}` or `{% include '…' %}`:
 
-With nothing configured, it enables any page model that has a StreamField named `body`
-and renders previews unstyled. Blocks need their own `template` to be previewable.
+   ```python
+   # file on disk: core/static/css/main.css  →  "css/main.css"
+   PRBLM_BUILDER_PREVIEW_CSS = ["css/main.css"]
 
-## Which blocks show up
+   # file on disk: core/templates/components/footer.html  →  "components/footer.html"
+   PRBLM_BUILDER_FOOTER_TEMPLATE = "components/footer.html"
+   ```
 
-The Layout palette and the Block library list the **top-level blocks of your page
-`body` fields** — the sections an editor can actually place. Blocks used only *inside*
-other blocks (links, buttons, cards…) or only in non-page StreamFields never appear.
-
-To hide a block that is a top-level option but isn't a real section, either:
-
-```python
-# 1. on the block itself — travels with the block, whatever it's called
-class LinkBlock(blocks.StructBlock):
-    ...
-    class Meta:
-        template = "components/link.html"
-        builder = False
-
-# 2. or in settings — by StreamField name, or by class (also hides subclasses)
-PRBLM_BUILDER_EXCLUDE_BLOCKS = ["link", "core.blocks.LinkBlock"]
-```
-
-Blocks that error or render nothing with demo content are listed in a collapsed
-**"Couldn't preview"** section at the bottom of the Block library, with the reason — they
-stay available in the Layout palette.
-
-## Header and footer on the canvas
-
-`PRBLM_BUILDER_HEADER_TEMPLATE` / `_FOOTER_TEMPLATE` are rendered with the request, and
-with `page` / `self` set to the page being edited (not set on a brand-new unsaved page).
+4. In production, run `python manage.py collectstatic` as usual so the builder's
+   CSS/JS are served.
 
 ## Use
 
 - **Any page:** open it in the editor → the **Layout** tab. Drag sections from the left,
   reorder/duplicate/delete, and **Save draft / Publish** as usual. Undo/redo with
   Ctrl/⌘+Z and Ctrl/⌘+Shift+Z.
+- **Edit content:** each section's words and images are edited in the normal **Content**
+  tab. New sections start with demo content (or empty — see `PRBLM_BUILDER_SEED_NEW_BLOCKS`).
 - **New page:** the Layout tab works before the first save — arrange, then the sections
   save with the page.
-- **Block library:** Settings → *Block library* (or the link in the editor header) shows
-  every block with realistic demo content.
+- **Block library:** **Settings → Block library** in the admin sidebar (or the link in the
+  editor header) shows every block with realistic demo content. Its address is
+  `/admin/page-builder/demo/` (use your own admin prefix if it isn't `admin/`).
+
+## Settings reference
+
+Every setting is optional and goes in your Django settings file. With nothing set, the
+plugin enables any page model with a `body` StreamField and renders previews unstyled.
+
+### Previews — make the canvas look like your site
+
+| Setting | Default | What it does |
+|---|---|---|
+| `PRBLM_BUILDER_PREVIEW_CSS` | `[]` | CSS files loaded into every preview. Static paths (`"css/main.css"`) or full URLs. |
+| `PRBLM_BUILDER_PREVIEW_JS` | `[]` | JS files loaded into every preview (e.g. sliders, accordions). |
+| `PRBLM_BUILDER_PREVIEW_BODY_CLASS` | `""` | Classes for the preview `<body>`. Copy them from the `<body class="…">` in your `base.html` if your CSS relies on them (fonts, colours). Leave empty if your `<body>` has no classes. |
+| `PRBLM_BUILDER_HEADER_TEMPLATE` | `""` | Template of your site header, shown above the canvas. Gets `page` / `self` (the page being edited; not set on a brand-new unsaved page). |
+| `PRBLM_BUILDER_FOOTER_TEMPLATE` | `""` | Same, for the footer, shown below the canvas. |
+| `PRBLM_BUILDER_CANVAS_WIDTH` | `1280` | Desktop width (px) sections render at before being scaled to fit the editor. Set it to your design width (e.g. `1440`). |
+
+### Which pages get the Layout tab
+
+| Setting | Default | What it does |
+|---|---|---|
+| `PRBLM_BUILDER_FIELD_NAMES` | `["body"]` | StreamField name(s) to build on, in priority order — e.g. `["body", "content"]`. A model gets the tab if it has one of these. |
+| `PRBLM_BUILDER_PAGE_MODELS` | `None` | `None` = every page model with a matching field. Or limit it: `["home.StandardPage", "blog.BlogPage"]`. |
+
+### Which blocks show up
+
+| Setting | Default | What it does |
+|---|---|---|
+| `PRBLM_BUILDER_EXCLUDE_BLOCKS` | `[]` | Hide blocks from the palette + Block library, by StreamField name (`"link"`) or dotted class path (`"core.blocks.LinkBlock"`, also hides subclasses). |
+| `PRBLM_BUILDER_EXCLUDE_TEMPLATE_PREFIXES` | `()` | Hide blocks whose template path starts with one of these (e.g. `("emails/",)` for email-only blocks). |
+| `PRBLM_BUILDER_LIBRARY_SCOPE` | `"builder"` | What the Block library lists: `"builder"` = the same blocks as the Layout palette; `"all"` = top-level blocks of *every* StreamField in the project (snippets, settings models…). |
+| `PRBLM_BUILDER_DEMO` | `True` | `False` turns the Block library off (its menu item, header link and page). |
+
+A block can also hide itself — see [Which blocks show up](#which-blocks-show-up).
+
+### New blocks and demo content
+
+| Setting | Default | What it does |
+|---|---|---|
+| `PRBLM_BUILDER_SEED_NEW_BLOCKS` | `True` | `True` = a block added in the Layout tab starts with realistic demo content. `False` = it starts empty (the block's own defaults) and shows a "New …" placeholder on the canvas until filled in. Use `False` if demo text risks getting published. |
+| `PRBLM_BUILDER_PLACEHOLDER_IMAGES` | `True` | If the site has no images, the plugin creates a few gradient images titled "Builder placeholder …" for demo content. `False` = never create them (demos then have no image). |
+| `PRBLM_BUILDER_INDEX_SCAN_LIMIT` | `500` | Pages per model scanned to find real content to use in demos (newest first). Lower it on very large sites. |
+
+### Admin integration
+
+| Setting | Default | What it does |
+|---|---|---|
+| `PRBLM_BUILDER_ADMIN_TWEAKS` | `True` | Editor niceties that rely on Wagtail admin internals: the full-width Layout tab and the "Block library" link in the editor header. Set `False` if a Wagtail upgrade breaks them — the Layout tab and saving keep working. |
+
+### Example
+
+```python
+# <project>/settings/base.py
+INSTALLED_APPS = ["prblm_builder", ...]
+
+PRBLM_BUILDER_PREVIEW_CSS = ["css/main.css"]
+PRBLM_BUILDER_PREVIEW_BODY_CLASS = "font-sans text-gray-900"
+PRBLM_BUILDER_HEADER_TEMPLATE = "components/header.html"
+PRBLM_BUILDER_FOOTER_TEMPLATE = "components/footer.html"
+PRBLM_BUILDER_CANVAS_WIDTH = 1440
+PRBLM_BUILDER_EXCLUDE_BLOCKS = ["core.blocks.LinkBlock"]
+PRBLM_BUILDER_SEED_NEW_BLOCKS = False
+```
+
+## Which blocks show up
+
+The Layout palette and the Block library list the **top-level blocks of your page
+`body` fields** — the sections an editor can actually place. Blocks used only *inside*
+other blocks (links, buttons, cards…) or only in non-page StreamFields never appear.
+A block also needs its own `template` to be shown (it's what the preview renders).
+
+To hide a block that *is* a top-level option but isn't a real section, either:
+
+```python
+# 1. On the block itself — travels with the block, whatever it's called or wherever it lives
+class LinkBlock(blocks.StructBlock):
+    ...
+    class Meta:
+        template = "components/link.html"
+        builder = False
+
+# or on an inline block
+("note", blocks.CharBlock(template="blocks/note.html", builder=False))
+
+# 2. Or in settings — by StreamField name, or by class (also hides subclasses)
+PRBLM_BUILDER_EXCLUDE_BLOCKS = ["link", "core.blocks.LinkBlock"]
+```
+
+Blocks that error or show nothing with demo content are listed in a collapsed
+**"Couldn't preview"** section at the bottom of the Block library, with the reason. They
+stay available in the Layout palette — hide them with one of the options above if they
+aren't sections.
 
 ## How it works
 
-- **No block list.** It introspects each page model's StreamField(s) for the blocks to
-  offer (`PRBLM_BUILDER_FIELD_NAMES`, default `body`).
+- **No block list.** It asks each page model's StreamField which blocks it allows
+  (`PRBLM_BUILDER_FIELD_NAMES`, default `body`). Models, templates and static files are
+  found the normal Django/Wagtail way, so no paths need configuring.
+- **Auto-attach.** On startup it adds the Layout tab to each enabled page model's editor
+  and wraps its form, so your models need no code changes.
 - **Ride-along save.** The Layout tab writes the arrangement into hidden fields on the
-  edit form; a composed `base_form_class` reconciles order + membership on the page's own
-  save. Existing blocks keep their content; new ones are seeded with demo content.
+  edit form; on Save/Publish the form rebuilds the StreamField in that order. Existing
+  blocks keep their content; new ones get demo content (or start empty); duplicates copy
+  their source. Blocks added or deleted in the Content tab are respected.
 - **Real demo content.** Previews prefer a real instance of each block used elsewhere on
-  the site (real images + copy), falling back to deterministic synthesis. With
-  `PRBLM_BUILDER_SEED_NEW_BLOCKS = False`, new blocks start empty instead and show a
-  "New …" placeholder on the canvas until you fill them in. If the site has
-  no images, it creates a few soft-gradient placeholder images (titled "Builder placeholder …") in the image library.
+  the site (real images + copy, with its page as context), falling back to generated
+  content. Long text is shortened in previews only — never in saved content.
+- **Scaled previews.** Each section renders in its own iframe at desktop width
+  (`PRBLM_BUILDER_CANVAS_WIDTH`) and is scaled down to fit, so you see the desktop layout
+  even in a narrow editor column.
 
-Some editor-chrome niceties (full-width canvas, the header link) rely on Wagtail admin
-CSS classes and degrade gracefully if a future Wagtail version changes them.
+## Project structure
+
+```
+prblm_builder/                  the installable Django app
+  apps.py                       on startup → integration.autoenable()
+  integration.py                adds the Layout tab + save form to every enabled page model
+  panels.py                     LayoutBuilderPanel — the Layout tab (embeds the builder iframe)
+  forms.py                      LayoutBuilderForm — applies the arrangement on Save/Publish
+  layout.py                     reconcile() — merges arrangement + content; new-block values
+  registry.py                   finds page models + blocks; palette/library lists; hiding rules
+  previews.py                   demo content (real → generated → trimmed) + preview HTML frame
+  views.py                      builder, builder_new, preview, demo (Block library), save
+  wagtail_hooks.py              admin URLs + "Block library" Settings menu item
+  settings.py                   reads every PRBLM_BUILDER_* setting (with defaults)
+  templates/prblm_builder/      builder.html (canvas), layout_panel.html (tab), demo.html (library)
+  static/prblm_builder/         builder.js, builder.css, vendor/sortable.min.js
+  tests/test_builder.py         generic tests — also runnable inside a host project
+tests/                          test project for this repo (not shipped)
+  settings.py, urls.py          minimal Wagtail settings
+  testapp/                      StandardPage + edge-case blocks (opted-out, broken, empty, link)
+  test_options.py               tests for the settings and Block library rules
+runtests.py                     runs all tests against tests/
+.github/workflows/test.yml      CI: tests on Python 3.12–3.14 + wheel build check
+docs/DEVELOPMENT_HISTORY.md     architecture, design decisions, bugs + lessons, roadmap
+CHANGELOG.md                    what changed in each release
+```
 
 ## Development
 
 ```bash
+git clone git@github.com:prblmcodes/prblm-builder.git
+cd prblm-builder
+python -m venv .venv && source .venv/bin/activate
 pip install -e .
-python runtests.py          # runs the suite against the bundled test project (tests/)
+python runtests.py                                   # all tests
+python runtests.py tests.test_options                # one module
+python runtests.py makemigrations                    # after changing tests/testapp/models.py
 ```
 
-CI runs the tests on Python 3.12–3.14 against the latest Wagtail 8.x / Django 6.x.
+Inside a host project you can also run the generic tests against its own models:
+`python manage.py test prblm_builder` (needs a page model whose StreamField has a
+`rich_text` block).
+
+Releasing: bump `version` in `pyproject.toml`, add a `CHANGELOG.md` entry, commit, then
+`git tag -a vX.Y.Z -m "…" && git push origin main vX.Y.Z`, and create the GitHub release
+from the tag (attach the wheel from `python -m build`).
+
+## Troubleshooting
+
+| Symptom | Likely cause / fix |
+|---|---|
+| No Layout tab on a page type | Its StreamField isn't called `body` → set `PRBLM_BUILDER_FIELD_NAMES`, or check `PRBLM_BUILDER_PAGE_MODELS`. |
+| A block is missing from the palette | It has no `template`, or it's hidden (`builder = False`, `PRBLM_BUILDER_EXCLUDE_BLOCKS`, template prefix). |
+| A non-section block (link, button) shows up | It's a top-level option of a page `body` field → hide it with `builder = False` or `PRBLM_BUILDER_EXCLUDE_BLOCKS`. |
+| Previews are unstyled | `PRBLM_BUILDER_PREVIEW_CSS` not set or wrong path (relative to `static/`). |
+| Fonts/colours differ from the site | Your CSS relies on `<body>` classes → set `PRBLM_BUILDER_PREVIEW_BODY_CLASS`. |
+| `/demo` gives 404 | The Block library lives under the admin: `/admin/page-builder/demo/`. |
+| Block library 404 at the right address | `PRBLM_BUILDER_DEMO = False` is set. |
+| Canvas blank on a server | `collectstatic` not run. |
+| Full-width tab / header link broke after a Wagtail upgrade | Set `PRBLM_BUILDER_ADMIN_TWEAKS = False` and open an issue. |
 
 ## License
 
