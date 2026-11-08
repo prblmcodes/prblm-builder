@@ -4,6 +4,7 @@
 ``{% pbk_icon name %}``          an inline icon
 ``{% pbk_image image spec label %}``  an <img>, or a labelled placeholder when empty
 ``{% pbk_placeholder label w h %}``   a labelled SVG placeholder
+``{% prblm_header %}`` / ``{% prblm_footer %}``  the site-wide Header & footer
 """
 import re
 from importlib import metadata
@@ -116,3 +117,17 @@ def pbk_uid(prefix="pbk"):
 def pbk_tel(value):
     """``+00 123 456`` → ``+00123456`` for a ``tel:`` link."""
     return re.sub(r"[^\d+]", "", str(value or ""))
+
+
+@register.simple_tag(takes_context=True)
+def prblm_header(context):
+    """The site-wide Header from Page builder → Header & footer (``""`` if none)."""
+    from .. import chrome
+    return chrome.render("header", context.get("request"), context.get("page"))
+
+
+@register.simple_tag(takes_context=True)
+def prblm_footer(context):
+    """The site-wide Footer from Page builder → Header & footer (``""`` if none)."""
+    from .. import chrome
+    return chrome.render("footer", context.get("request"), context.get("page"))

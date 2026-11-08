@@ -168,7 +168,7 @@ shared link type: label + one of page / URL / anchor.
       Features, Cards, Call to action, FAQ, Contact info
 - [x] **Phase 4 — Blocks, batch 2**: Steps, Quote, Testimonials, Logo strip, Stats, Pricing,
       Gallery, Video, Team, Divider
-- [ ] **Phase 5 — Site-wide header & footer**: admin page, canvas integration,
+- [x] **Phase 5 — Site-wide header & footer**: admin page, canvas integration,
       `{% prblm_header %}` / `{% prblm_footer %}`
 - [ ] **Phase 6 — Page models**: Builder page (+ hide setting), `builder_blocks()` helper
 - [ ] **Phase 7 — Release**: tests for every block (render, defaults, no "None", a11y basics),
@@ -200,3 +200,7 @@ shared link type: label + one of page / URL / anchor.
 - 2026-11-09 — Phase 4 done: all 21 blocks exist (81 tests, checked visually). Video embeds
   are built from the URL (youtube-nocookie / Vimeo `dnt=1`), no network call; non-video
   links are rejected when saving.
+- 2026-11-09 — Phase 5 done (88 tests). Core got a `prblm_builder_chrome` hook so the
+  optional blocks app can supply the canvas header/footer without the core depending on
+  it. Precedence: `PRBLM_BUILDER_HEADER/FOOTER_TEMPLATE` setting → site-wide Header &
+  footer → none. Migrations squashed into one `0001_initial` (nothing released yet).

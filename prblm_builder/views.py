@@ -111,6 +111,37 @@ def _preview_problem(block_name, block, request):
     return None
 
 
+# ----------------------------------------------------------------- site header / footer
+CHROME_HOOK = "prblm_builder_chrome"
+
+
+def _chrome_html(kind, request, page=None):
+    """HTML of the site header or footer shown around the canvas. The site's own
+    template setting wins; otherwise any ``prblm_builder_chrome`` hook (the optional
+    blocks app's site-wide Header & footer) may supply it. ``""`` when there is none."""
+    from django.template.loader import render_to_string
+    from wagtail import hooks
+
+    tmpl = cfg.header_template() if kind == "header" else cfg.footer_template()
+    if tmpl:
+        ctx = {"page": page, "self": page} if page is not None else {}
+        return render_to_string(tmpl, ctx, request=request)  # request → context processors
+    for fn in hooks.get_hooks(CHROME_HOOK):
+        try:
+            html = fn(kind, request, page)
+        except Exception:
+            html = ""
+        if html:
+            return html
+    return ""
+
+
+def _has_chrome(kind, request):
+    if (cfg.header_template() if kind == "header" else cfg.footer_template()):
+        return True
+    return bool(_chrome_html(kind, request))
+
+
 # ----------------------------------------------------------------- per-page builder
 @xframe_options_sameorigin  # so it can be framed by the editor's Layout tab (same origin)
 def builder(request, page_id):
@@ -131,9 +162,9 @@ def builder(request, page_id):
         "save_url": reverse("prblm_builder:save", args=[page.id]),
         "context_param": f"page={page.id}",
         "header_src": (reverse("prblm_builder:preview") + f"?page={page.id}&chrome=header")
-        if cfg.header_template() else "",
+        if _has_chrome("header", request) else "",
         "footer_src": (reverse("prblm_builder:preview") + f"?page={page.id}&chrome=footer")
-        if cfg.footer_template() else "",
+        if _has_chrome("footer", request) else "",
         "edit_url": reverse("wagtailadmin_pages:edit", args=[page.id]),
         "preview_page_url": reverse("prblm_builder:page_preview", args=[page.id]),
         "back_url": reverse("wagtailadmin_explore", args=[page.get_parent().id]),
@@ -170,9 +201,9 @@ def builder_new(request):
         "save_url": "",
         "context_param": f"model={label}",
         "header_src": (reverse("prblm_builder:preview") + f"?model={label}&chrome=header")
-        if cfg.header_template() else "",
+        if _has_chrome("header", request) else "",
         "footer_src": (reverse("prblm_builder:preview") + f"?model={label}&chrome=footer")
-        if cfg.footer_template() else "",
+        if _has_chrome("footer", request) else "",
         "edit_url": "",
         "preview_page_url": "",
         "back_url": "",
@@ -234,20 +265,17 @@ def preview(request):       # builder frames this from the same origin, so allow
     # Site header/footer chrome (shown around the page on the canvas).
     chrome = request.GET.get("chrome")
     if chrome in ("header", "footer"):
-        from django.template.loader import render_to_string
-        tmpl = cfg.header_template() if chrome == "header" else cfg.footer_template()
-        if not tmpl:
-            raise Http404
-        ctx = {}
+        chrome_page = None
         if request.GET.get("page"):
             # The page being edited, so headers/footers that use ``page`` render as on
             # the site. (A brand-new unsaved page has none.)
             chrome_page = _specific_page(request.GET["page"])
             if not _can_edit(chrome_page, request.user):
                 raise PermissionDenied
-            ctx = {"page": chrome_page, "self": chrome_page}
         request.is_preview = True
-        html = render_to_string(tmpl, ctx, request=request)  # request → context processors
+        html = _chrome_html(chrome, request, chrome_page)
+        if not html:
+            raise Http404
         return HttpResponse(previews.frame(html, request))
 
     page = None

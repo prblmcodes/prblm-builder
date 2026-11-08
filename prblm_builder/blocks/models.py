@@ -3,8 +3,10 @@ from django.core.validators import RegexValidator
 from django.db import models
 from wagtail.admin.panels import FieldPanel, MultiFieldPanel
 from wagtail.contrib.settings.models import BaseSiteSetting
+from wagtail.fields import StreamField
 
 from . import theme
+from .sections.site import FooterBlock, HeaderBlock
 
 D = theme.DEFAULTS
 HEX = RegexValidator(r"^#[0-9a-fA-F]{6}$", "Use a 6-digit hex colour, like #2563eb.")
@@ -59,3 +61,23 @@ class ThemeSettings(BaseSiteSetting):
     class Meta:
         verbose_name = "Theme"
         verbose_name_plural = "Theme"
+
+
+class SiteChrome(BaseSiteSetting):
+    """One Header and one Footer for the whole site. Always shown around the page on the
+    builder canvas; on the live site via ``{% prblm_header %}`` / ``{% prblm_footer %}``."""
+
+    header = StreamField(
+        [("header", HeaderBlock())], blank=True, max_num=1,
+        help_text="Add one Header. It's shown above every page in the builder; put "
+                  "{% prblm_header %} in your base template to show it on the site too.")
+    footer = StreamField(
+        [("footer", FooterBlock())], blank=True, max_num=1,
+        help_text="Add one Footer. It's shown below every page in the builder; put "
+                  "{% prblm_footer %} in your base template to show it on the site too.")
+
+    panels = [FieldPanel("header"), FieldPanel("footer")]
+
+    class Meta:
+        verbose_name = "Header & footer"
+        verbose_name_plural = "Header & footer"
