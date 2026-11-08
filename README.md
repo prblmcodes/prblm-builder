@@ -16,6 +16,7 @@ StreamField.
 - [Use](#use)
 - [Settings reference](#settings-reference)
 - [Which blocks show up](#which-blocks-show-up)
+  - [Hiding a block](#hiding-a-block)
 - [How it works](#how-it-works)
 - [Project structure](#project-structure)
 - [Development](#development)
@@ -95,8 +96,10 @@ To upgrade later, change the tag (e.g. `@v0.2.0` → `@v0.3.0`) and reinstall. S
 
 ## Settings reference
 
-Every setting is optional and goes in your Django settings file. With nothing set, the
-plugin enables any page model with a `body` StreamField and renders previews unstyled.
+Every setting is optional and goes in your Django settings file (the one with
+`INSTALLED_APPS`). With nothing set, the plugin enables any page model with a `body`
+StreamField and renders previews unstyled. After changing a setting, restart the server
+(`runserver` does this automatically) and hard-refresh the admin page.
 
 ### Previews — make the canvas look like your site
 
@@ -120,26 +123,33 @@ plugin enables any page model with a `body` StreamField and renders previews uns
 
 | Setting | Default | What it does |
 |---|---|---|
-| `PRBLM_BUILDER_EXCLUDE_BLOCKS` | `[]` | Hide blocks from the palette + Block library, by StreamField name (`"link"`) or dotted class path (`"core.blocks.LinkBlock"`, also hides subclasses). |
+| `PRBLM_BUILDER_EXCLUDE_BLOCKS` | `[]` | Hide blocks from the palette + Block library. Each entry is either the block's **name in the StreamField** (`"link"`) or the **full import path of its class** (`"core.blocks.LinkBlock"`, also hides subclasses). A bare class name like `"LinkBlock"` does **not** work — see [Hiding a block](#hiding-a-block). |
 | `PRBLM_BUILDER_EXCLUDE_TEMPLATE_PREFIXES` | `()` | Hide blocks whose template path starts with one of these (e.g. `("emails/",)` for email-only blocks). |
 | `PRBLM_BUILDER_LIBRARY_SCOPE` | `"builder"` | What the Block library lists: `"builder"` = the same blocks as the Layout palette; `"all"` = top-level blocks of *every* StreamField in the project (snippets, settings models…). |
 | `PRBLM_BUILDER_DEMO` | `True` | `False` turns the Block library off (its menu item, header link and page). |
 
-A block can also hide itself — see [Which blocks show up](#which-blocks-show-up).
+A block can also hide itself — see [Hiding a block](#hiding-a-block).
 
 ### New blocks and demo content
 
 | Setting | Default | What it does |
 |---|---|---|
 | `PRBLM_BUILDER_SEED_NEW_BLOCKS` | `True` | `True` = a block added in the Layout tab starts with realistic demo content. `False` = it starts empty (the block's own defaults) and shows a "New …" placeholder on the canvas until filled in. Use `False` if demo text risks getting published. |
-| `PRBLM_BUILDER_PLACEHOLDER_IMAGES` | `True` | If the site has no images, the plugin creates a few gradient images titled "Builder placeholder …" for demo content. `False` = never create them (demos then have no image). |
+| `PRBLM_BUILDER_PLACEHOLDER_IMAGES` | `True` | Only matters when your Wagtail **image library is empty**. Demo previews normally use real images from your library; if there are none, the plugin creates a few grey gradient images titled "Builder placeholder …". `False` = never create them (demos then have no image). On a site that already has images, changing this does nothing visible. |
 | `PRBLM_BUILDER_INDEX_SCAN_LIMIT` | `500` | Pages per model scanned to find real content to use in demos (newest first). Lower it on very large sites. |
 
 ### Admin integration
 
 | Setting | Default | What it does |
 |---|---|---|
-| `PRBLM_BUILDER_ADMIN_TWEAKS` | `True` | Editor niceties that rely on Wagtail admin internals: the full-width Layout tab and the "Block library" link in the editor header. Set `False` if a Wagtail upgrade breaks them — the Layout tab and saving keep working. |
+| `PRBLM_BUILDER_ADMIN_TWEAKS` | `True` | Two extras in the **page editor** that rely on Wagtail admin internals. Set `False` if a Wagtail upgrade breaks them — the Layout tab and saving keep working. See the table below. |
+
+What `PRBLM_BUILDER_ADMIN_TWEAKS` changes (in the page editor only — not the Block library page or the canvas itself):
+
+| | `True` (default) | `False` |
+|---|---|---|
+| Layout tab width | Stretches to the full editor width (while the preview / comments side panel is closed) | Wagtail's normal form width (~840px) |
+| "Block library" button | Shown in the editor's top-right header, next to the preview / comments icons | Not shown (still reachable from **Settings → Block library**) |
 
 ### Example
 
@@ -163,10 +173,28 @@ The Layout palette and the Block library list the **top-level blocks of your pag
 other blocks (links, buttons, cards…) or only in non-page StreamFields never appear.
 A block also needs its own `template` to be shown (it's what the preview renders).
 
-To hide a block that *is* a top-level option but isn't a real section, either:
+### Hiding a block
+
+To hide a block that *is* a top-level option but isn't a real section, use **one** of
+these three ways. Take this page model as the example:
 
 ```python
-# 1. On the block itself — travels with the block, whatever it's called or wherever it lives
+# core/blocks.py
+class LinkBlock(blocks.StructBlock):
+    ...
+
+# core/models.py
+class StandardPage(Page):
+    body = StreamField([
+        ("hero", HeroBlock()),
+        ("link", LinkBlock()),     # ← "link" is the block's NAME in the StreamField
+    ])
+```
+
+**A. On the block itself (recommended).** It travels with the block, whatever it's called
+or wherever it's used:
+
+```python
 class LinkBlock(blocks.StructBlock):
     ...
     class Meta:
@@ -175,10 +203,32 @@ class LinkBlock(blocks.StructBlock):
 
 # or on an inline block
 ("note", blocks.CharBlock(template="blocks/note.html", builder=False))
-
-# 2. Or in settings — by StreamField name, or by class (also hides subclasses)
-PRBLM_BUILDER_EXCLUDE_BLOCKS = ["link", "core.blocks.LinkBlock"]
 ```
+
+**B. In settings, by name.** Use the name from the StreamField: the first item of each
+`("name", Block())` pair.
+
+```python
+PRBLM_BUILDER_EXCLUDE_BLOCKS = ["link"]
+```
+
+**C. In settings, by class.** Use the full import path: the module the class is defined
+in, plus the class name. This also hides subclasses and catches the block under any name.
+
+```python
+PRBLM_BUILDER_EXCLUDE_BLOCKS = ["core.blocks.LinkBlock"]           # class in core/blocks.py
+PRBLM_BUILDER_EXCLUDE_BLOCKS = ["core.blocks.links.LinkBlock"]     # class in core/blocks/links.py
+```
+
+| ✅ Works | ❌ Doesn't work | Why |
+|---|---|---|
+| `["link"]` | `["LinkBlock"]` | No dot → read as a StreamField *name*; no block is named `LinkBlock` |
+| `["core.blocks.LinkBlock"]` | `["blocks.LinkBlock"]` | The path must be importable from your project (`from core.blocks import LinkBlock`) |
+| `["link"]` | `"link"` | Must be a list; a plain string is read letter by letter |
+| `["link"]` | `["Link"]` | Names are case-sensitive |
+
+An entry that doesn't match anything is silently ignored (so a typo never breaks the
+admin) — if a block still shows up, check the entry against the table above.
 
 Blocks that error or show nothing with demo content are listed in a collapsed
 **"Couldn't preview"** section at the bottom of the Block library, with the reason. They
@@ -257,6 +307,9 @@ from the tag (attach the wheel from `python -m build`).
 | No Layout tab on a page type | Its StreamField isn't called `body` → set `PRBLM_BUILDER_FIELD_NAMES`, or check `PRBLM_BUILDER_PAGE_MODELS`. |
 | A block is missing from the palette | It has no `template`, or it's hidden (`builder = False`, `PRBLM_BUILDER_EXCLUDE_BLOCKS`, template prefix). |
 | A non-section block (link, button) shows up | It's a top-level option of a page `body` field → hide it with `builder = False` or `PRBLM_BUILDER_EXCLUDE_BLOCKS`. |
+| `PRBLM_BUILDER_EXCLUDE_BLOCKS` has no effect | You used a bare class name (`"LinkBlock"`) — use the StreamField name (`"link"`) or the full path (`"core.blocks.LinkBlock"`). See [Hiding a block](#hiding-a-block). |
+| `PRBLM_BUILDER_PLACEHOLDER_IMAGES` does nothing | Expected when your image library has images — it only applies to an empty library. |
+| `PRBLM_BUILDER_ADMIN_TWEAKS` seems to do nothing | Look in the **page editor**: Layout tab width and the "Block library" button in the top-right header. If that button never appears even with `True`, please open an issue. |
 | Previews are unstyled | `PRBLM_BUILDER_PREVIEW_CSS` not set or wrong path (relative to `static/`). |
 | Fonts/colours differ from the site | Your CSS relies on `<body>` classes → set `PRBLM_BUILDER_PREVIEW_BODY_CLASS`. |
 | `/demo` gives 404 | The Block library lives under the admin: `/admin/page-builder/demo/`. |
