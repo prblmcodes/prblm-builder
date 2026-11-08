@@ -116,3 +116,5 @@ Ships as **v0.4.0** (Header & footer storage changes).
 - 2026-11-09 — Phase 5 docs + version done; 113 tests; real 0.3 → 0.4 upgrade verified.
   Waiting for the owner's test before merging and tagging.
 - 2026-11-09 — Merged to `main` and tagged `v0.4.0`.
+- 2026-11-09 — v0.4.1 patch: sidebar titles (Block library + Layout tab) lose their side
+  margins so they align with the search box (measured in the browser: all at the box edge).

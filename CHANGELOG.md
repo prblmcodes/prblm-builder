@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.1 — 2026-11-09
+
+**Fixed**
+- Sidebar titles in the Block library ("Built-in blocks", "Your site's blocks" and the
+  group titles) and in the Layout tab's sidebar no longer have side margins: they now line
+  up with the search box, and the fold arrows with its right edge.
+
 ## 0.4.0 — 2026-11-09
 
 **Changed**

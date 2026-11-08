@@ -44,15 +44,15 @@ Install from a GitHub release tag:
 
 ```bash
 # public repo
-pip install "prblm-builder @ git+https://github.com/prblmcodes/prblm-builder.git@v0.4.0"
+pip install "prblm-builder @ git+https://github.com/prblmcodes/prblm-builder.git@v0.4.1"
 
 # private repo (uses your GitHub SSH key)
-pip install "prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@v0.4.0"
+pip install "prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@v0.4.1"
 ```
 
-Or put the same `prblm-builder @ git+…@v0.4.0` line in `requirements.txt`. You can also
+Or put the same `prblm-builder @ git+…@v0.4.1` line in `requirements.txt`. You can also
 download the wheel attached to a GitHub release and
-`pip install prblm_builder-0.4.0-py3-none-any.whl`.
+`pip install prblm_builder-0.4.1-py3-none-any.whl`.
 
 To upgrade later, change the tag (e.g. `@v0.4.0` → `@v0.5.0`) and reinstall. See
 [CHANGELOG.md](CHANGELOG.md) for what changed in each version.
