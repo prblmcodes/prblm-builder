@@ -4,7 +4,7 @@
 ``{% pbk_icon name %}``          an inline icon
 ``{% pbk_image image spec label %}``  an <img>, or a labelled placeholder when empty
 ``{% pbk_placeholder label w h %}``   a labelled SVG placeholder
-``{% prblm_header %}`` / ``{% prblm_footer %}``  the site-wide Header & footer
+``{% prblm_header %}`` / ``{% prblm_footer %}``  the page's header / footer (site default)
 """
 import re
 from importlib import metadata
@@ -120,14 +120,20 @@ def pbk_tel(value):
 
 
 @register.simple_tag(takes_context=True)
-def prblm_header(context):
-    """The site-wide Header from Page builder → Header & footer (``""`` if none)."""
+def prblm_header(context, name=None):
+    """The header for this page: on a Builder page its own choice, elsewhere the site
+    default. ``{% prblm_header "Main header" %}`` picks one by name. ``""`` if none."""
     from .. import chrome
-    return chrome.render("header", context.get("request"), context.get("page"))
+    return chrome.render("header", context.get("request"), _page(context), name)
 
 
 @register.simple_tag(takes_context=True)
-def prblm_footer(context):
-    """The site-wide Footer from Page builder → Header & footer (``""`` if none)."""
+def prblm_footer(context, name=None):
+    """The footer for this page — see ``prblm_header``."""
     from .. import chrome
-    return chrome.render("footer", context.get("request"), context.get("page"))
+    return chrome.render("footer", context.get("request"), _page(context), name)
+
+
+def _page(context):
+    page = context.get("page")
+    return getattr(page, "specific", page) if page is not None else None

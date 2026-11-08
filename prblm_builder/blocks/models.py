@@ -1,6 +1,7 @@
-"""Site settings for the built-in blocks: the Theme (and, later, Header & footer)."""
+"""Built-in blocks app models: the Theme, reusable Headers / Footers, the Builder page."""
 from django.core.validators import RegexValidator
 from django.db import models
+from wagtail.admin.forms import WagtailAdminModelForm
 from wagtail.admin.panels import FieldPanel, MultiFieldPanel
 from wagtail.contrib.settings.models import BaseSiteSetting
 from wagtail.fields import StreamField
@@ -64,39 +65,135 @@ class ThemeSettings(BaseSiteSetting):
         verbose_name_plural = "Theme"
 
 
-class SiteChrome(BaseSiteSetting):
-    """One Header and one Footer for the whole site. Always shown around the page on the
-    builder canvas; on the live site via ``{% prblm_header %}`` / ``{% prblm_footer %}``."""
+def _stored(name, block):
+    # Stored (JSON-ready) form — works both for new model instances and as the initial
+    # value of Wagtail's add form (which can't read (name, value) tuples).
+    return [{"type": name, "value": block.get_prep_value(block.get_default())}]
 
-    header = StreamField(
-        [("header", HeaderBlock())], blank=True, max_num=1,
-        help_text="Add one Header. It's shown above every page in the builder; put "
-                  "{% prblm_header %} in your base template to show it on the site too.")
-    footer = StreamField(
-        [("footer", FooterBlock())], blank=True, max_num=1,
-        help_text="Add one Footer. It's shown below every page in the builder; put "
-                  "{% prblm_footer %} in your base template to show it on the site too.")
 
-    panels = [FieldPanel("header"), FieldPanel("footer")]
+def header_default():
+    """A new Header starts with the block's explanatory example content."""
+    return _stored("header", HeaderBlock())
+
+
+def footer_default():
+    return _stored("footer", FooterBlock())
+
+
+class _ChromeItemForm(WagtailAdminModelForm):
+    """Wagtail's add view builds this form without an instance, so Django would use the
+    field's raw callable default (which the StreamField widget can't render) and add a
+    hidden "initial" copy of it. Take the starting content from a fresh instance instead."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if "content" in self.fields:
+            self.fields["content"].show_hidden_initial = False
+            if not self.is_bound and "content" not in self.initial:
+                self.initial["content"] = self.instance.content
+
+
+class _SiteChromeItem(models.Model):
+    """Shared by SiteHeader / SiteFooter: a named, reusable header or footer."""
+
+    name = models.CharField(max_length=100, help_text="For your reference, e.g. \"Main header\".")
+    is_default = models.BooleanField(
+        default=False, verbose_name="Use as site default",
+        help_text="Shown on pages that don't choose another one (only one can be the default).")
+
+    base_form_class = _ChromeItemForm
 
     class Meta:
-        verbose_name = "Header & footer"
-        verbose_name_plural = "Header & footer"
+        abstract = True
+        ordering = ["-is_default", "name"]
+
+    def __str__(self):
+        return f"{self.name} (site default)" if self.is_default else self.name
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.is_default:  # only one default per kind
+            type(self).objects.exclude(pk=self.pk).filter(is_default=True).update(is_default=False)
+
+    def render(self, request=None, page=None):
+        """This header/footer's HTML (``""`` if its content is empty)."""
+        stream = self.content
+        if not stream:
+            return ""
+        return stream[0].render(context={"request": request, "page": page, "self": page})
+
+
+class SiteHeader(_SiteChromeItem):
+    content = StreamField([("header", HeaderBlock())], min_num=1, max_num=1,
+                          default=header_default, verbose_name="Header")
+
+    panels = [FieldPanel("name"), FieldPanel("is_default"), FieldPanel("content")]
+
+    class Meta(_SiteChromeItem.Meta):
+        verbose_name = "Header"
+        verbose_name_plural = "Headers"
+
+
+class SiteFooter(_SiteChromeItem):
+    content = StreamField([("footer", FooterBlock())], min_num=1, max_num=1,
+                          default=footer_default, verbose_name="Footer")
+
+    panels = [FieldPanel("name"), FieldPanel("is_default"), FieldPanel("content")]
+
+    class Meta(_SiteChromeItem.Meta):
+        verbose_name = "Footer"
+        verbose_name_plural = "Footers"
+
+
+CHROME_CHOICES = [
+    ("default", "Site default"),
+    ("custom", "Choose one"),
+    ("site", "My site's own (from the template setting)"),
+    ("none", "None"),
+]
 
 
 class BuilderPage(Page):
     """A ready-made page type built from the 21 built-in blocks — no code needed.
 
-    Renders as a complete page (site-wide header, sections, site-wide footer) from
+    Renders as a complete page (header, sections, footer) from
     ``prblm_builder/blocks/builder_page.html``; put a template with that name in your own
     templates folder to render it inside your site's layout instead. Hide the type from
     "Add page" with ``PRBLM_BUILDER_PAGE_TYPE = False``.
     """
 
     body = StreamField(builder_blocks(), blank=True)
+    header_choice = models.CharField(
+        "Header", max_length=10, choices=CHROME_CHOICES, default="default",
+        help_text="\"My site's own\" uses PRBLM_BUILDER_HEADER_TEMPLATE.")
+    header = models.ForeignKey(
+        SiteHeader, null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
+        help_text="Used when Header is \"Choose one\".")
+    footer_choice = models.CharField(
+        "Footer", max_length=10, choices=CHROME_CHOICES, default="default",
+        help_text="\"My site's own\" uses PRBLM_BUILDER_FOOTER_TEMPLATE.")
+    footer = models.ForeignKey(
+        SiteFooter, null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
+        help_text="Used when Footer is \"Choose one\".")
 
-    content_panels = Page.content_panels + [FieldPanel("body")]
+    content_panels = Page.content_panels + [
+        FieldPanel("body"),
+        MultiFieldPanel([FieldPanel("header_choice"), FieldPanel("header"),
+                         FieldPanel("footer_choice"), FieldPanel("footer")],
+                        heading="Header & footer"),
+    ]
     template = "prblm_builder/blocks/builder_page.html"
 
     class Meta:
         verbose_name = "Builder page"
+
+    def clean(self):
+        super().clean()
+        from django.core.exceptions import ValidationError
+        errors = {}
+        if self.header_choice == "custom" and not self.header_id:
+            errors["header"] = "Choose a header, or pick another Header option."
+        if self.footer_choice == "custom" and not self.footer_id:
+            errors["footer"] = "Choose a footer, or pick another Footer option."
+        if errors:
+            raise ValidationError(errors)

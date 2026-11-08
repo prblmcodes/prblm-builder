@@ -1,19 +1,42 @@
-"""Admin wiring for the built-in blocks: Theme (and later Header & footer) live in the
-plugin's "Page builder" sidebar section instead of Wagtail's Settings menu."""
+"""Admin wiring for the built-in blocks. Theme, Headers and Footers live in the plugin's
+"Page builder" sidebar section instead of Wagtail's Settings / Snippets menus."""
+from django.urls import reverse
 from wagtail import hooks
+from wagtail.admin.menu import MenuItem
 from wagtail.contrib.settings.registry import SettingMenuItem, registry
+from wagtail.snippets.models import register_snippet
+from wagtail.snippets.views.snippets import SnippetViewSet
 
 from prblm_builder.wagtail_hooks import MENU_HOOK
 
 from . import chrome
-from .models import SiteChrome, ThemeSettings
+from .models import SiteFooter, SiteHeader, ThemeSettings
 
 PREFIX = "prblm-builder-"
 
 # Registered as Wagtail site settings (gives the edit view, per-site values and
 # permissions); the Settings-menu entry this adds is removed below.
 registry.register(ThemeSettings, icon="sliders", name=PREFIX + "theme")
-registry.register(SiteChrome, icon="desktop", name=PREFIX + "chrome")
+
+
+class SiteHeaderViewSet(SnippetViewSet):
+    model = SiteHeader
+    icon = "arrow-up"
+    menu_label = "Headers"
+    add_to_admin_menu = False
+    list_display = ["name", "is_default"]
+
+
+class SiteFooterViewSet(SnippetViewSet):
+    model = SiteFooter
+    icon = "arrow-down"
+    menu_label = "Footers"
+    add_to_admin_menu = False
+    list_display = ["name", "is_default"]
+
+
+register_snippet(SiteHeaderViewSet)
+register_snippet(SiteFooterViewSet)
 
 
 @hooks.register("construct_settings_menu")
@@ -26,12 +49,29 @@ def theme_menu_item():
     return SettingMenuItem(ThemeSettings, icon="sliders", name=PREFIX + "theme-page", order=200)
 
 
+def _snippet_list_url(model):
+    return reverse(f"wagtailsnippets_{model._meta.app_label}_{model._meta.model_name}:list")
+
+
 @hooks.register(MENU_HOOK)
-def chrome_menu_item():
-    return SettingMenuItem(SiteChrome, icon="desktop", name=PREFIX + "chrome-page", order=300)
+def headers_menu_item():
+    return MenuItem("Headers", _snippet_list_url(SiteHeader), name=PREFIX + "headers",
+                    icon_name="arrow-up", order=300)
+
+
+@hooks.register(MENU_HOOK)
+def footers_menu_item():
+    return MenuItem("Footers", _snippet_list_url(SiteFooter), name=PREFIX + "footers",
+                    icon_name="arrow-down", order=310)
+
+
+@hooks.register("prblm_builder_chrome_for_page")
+def builder_page_chrome(kind, request, page, model):
+    """A Builder page decides its own header/footer (see chrome.for_page)."""
+    return chrome.for_page(kind, request, page, model)
 
 
 @hooks.register("prblm_builder_chrome")
-def site_chrome(kind, request, page):
-    """Supplies the canvas header/footer from Page builder → Header & footer."""
+def site_default_chrome(kind, request, page):
+    """Other pages: the site-default header/footer on the canvas."""
     return chrome.render(kind, request, page)

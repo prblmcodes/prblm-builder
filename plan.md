@@ -76,7 +76,7 @@ Ships as **v0.4.0** (Header & footer storage changes).
       after a failed save. Tests.
 - [x] **Phase 2 — Collapsible groups**: Block library (kinds + groups, sidebar ↔ preview
       sync) and Layout sidebar; remembered per browser. Tests + visual check.
-- [ ] **Phase 3 — Headers & Footers**: models, admin lists under Page builder, default
+- [x] **Phase 3 — Headers & Footers**: models, admin lists under Page builder, default
       checkbox, data migration from 0.3, Builder page choices, template tags, canvas. Tests.
 - [ ] **Phase 4 — Builder page placement + extra blocks**: the two settings, system checks.
       Tests.
@@ -95,3 +95,11 @@ Ships as **v0.4.0** (Header & footer storage changes).
   the preview cards and vice versa, survives reload, search still finds folded blocks).
   Shared `fold.js`; the Layout sidebar now also splits Built-in / Your site's blocks. Also
   fixed the canvas empty-state text (it mentioned a pencil button the Layout tab doesn't have).
+- 2026-11-09 — Phase 3 done (105 tests incl. a migration test that starts from a real 0.3
+  database; browser-checked: create a Header in the admin → it opens pre-filled → mark as
+  default → a new Builder page shows it → choosing "None" removes it). Core canvas logic
+  moved to `prblm_builder/chrome.py` with a new `prblm_builder_chrome_for_page` hook so a
+  Builder page's own choice beats the template setting. Lesson: Wagtail's add view builds
+  forms without an instance, so a callable StreamField default reaches the widget raw — the
+  Header/Footer form seeds `initial` from a fresh instance. Registering them as snippets
+  also makes Wagtail's general "Snippets" menu appear (harmless; documented).

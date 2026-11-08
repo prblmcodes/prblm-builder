@@ -17,6 +17,7 @@ from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.decorators.http import require_POST
 from wagtail.models import Page
 
+from . import chrome
 from . import layout as layout_mod
 from . import previews, registry
 from . import settings as cfg
@@ -120,34 +121,8 @@ def _preview_problem(block_name, block, request):
 
 
 # ----------------------------------------------------------------- site header / footer
-CHROME_HOOK = "prblm_builder_chrome"
-
-
-def _chrome_html(kind, request, page=None):
-    """HTML of the site header or footer shown around the canvas. The site's own
-    template setting wins; otherwise any ``prblm_builder_chrome`` hook (the optional
-    blocks app's site-wide Header & footer) may supply it. ``""`` when there is none."""
-    from django.template.loader import render_to_string
-    from wagtail import hooks
-
-    tmpl = cfg.header_template() if kind == "header" else cfg.footer_template()
-    if tmpl:
-        ctx = {"page": page, "self": page} if page is not None else {}
-        return render_to_string(tmpl, ctx, request=request)  # request → context processors
-    for fn in hooks.get_hooks(CHROME_HOOK):
-        try:
-            html = fn(kind, request, page)
-        except Exception:
-            html = ""
-        if html:
-            return html
-    return ""
-
-
-def _has_chrome(kind, request):
-    if (cfg.header_template() if kind == "header" else cfg.footer_template()):
-        return True
-    return bool(_chrome_html(kind, request))
+def _has_chrome(kind, request, page=None, model=None):
+    return bool(chrome.html(kind, request, page, model))
 
 
 # ----------------------------------------------------------------- per-page builder
@@ -171,9 +146,9 @@ def builder(request, page_id):
         "save_url": reverse("prblm_builder:save", args=[page.id]),
         "context_param": f"page={page.id}",
         "header_src": (reverse("prblm_builder:preview") + f"?page={page.id}&chrome=header")
-        if _has_chrome("header", request) else "",
+        if _has_chrome("header", request, page) else "",
         "footer_src": (reverse("prblm_builder:preview") + f"?page={page.id}&chrome=footer")
-        if _has_chrome("footer", request) else "",
+        if _has_chrome("footer", request, page) else "",
         "edit_url": reverse("wagtailadmin_pages:edit", args=[page.id]),
         "preview_page_url": reverse("prblm_builder:page_preview", args=[page.id]),
         "back_url": reverse("wagtailadmin_explore", args=[page.get_parent().id]),
@@ -211,9 +186,9 @@ def builder_new(request):
         "save_url": "",
         "context_param": f"model={label}",
         "header_src": (reverse("prblm_builder:preview") + f"?model={label}&chrome=header")
-        if _has_chrome("header", request) else "",
+        if _has_chrome("header", request, model=model) else "",
         "footer_src": (reverse("prblm_builder:preview") + f"?model={label}&chrome=footer")
-        if _has_chrome("footer", request) else "",
+        if _has_chrome("footer", request, model=model) else "",
         "edit_url": "",
         "preview_page_url": "",
         "back_url": "",
@@ -281,9 +256,14 @@ def preview(request):       # builder frames this from the same origin, so allow
     ``?model=<app.Model>&block=<name>`` → demo preview with no page (standalone).
     """
     # Site header/footer chrome (shown around the page on the canvas).
-    chrome = request.GET.get("chrome")
-    if chrome in ("header", "footer"):
-        chrome_page = None
+    chrome_kind = request.GET.get("chrome")
+    if chrome_kind in ("header", "footer"):
+        chrome_page = chrome_model = None
+        if request.GET.get("model"):
+            try:
+                chrome_model = django_apps.get_model(*request.GET["model"].split("."))
+            except (ValueError, LookupError):
+                raise Http404("Unknown page model.")
         if request.GET.get("page"):
             # The page being edited, so headers/footers that use ``page`` render as on
             # the site. (A brand-new unsaved page has none.)
@@ -291,7 +271,7 @@ def preview(request):       # builder frames this from the same origin, so allow
             if not _can_edit(chrome_page, request.user):
                 raise PermissionDenied
         request.is_preview = True
-        html = _chrome_html(chrome, request, chrome_page)
+        html = chrome.html(chrome_kind, request, chrome_page, chrome_model)
         if not html:
             raise Http404
         return HttpResponse(previews.frame(html, request))
