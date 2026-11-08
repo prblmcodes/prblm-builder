@@ -6,6 +6,7 @@
   <title>Block library</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="stylesheet" href="{% static 'prblm_builder/builder.css' %}">
+  <script src="{% static 'prblm_builder/fold.js' %}" defer></script>
   <style>
     .bl-main{padding:22px 26px 100px}  /* full width of the available area */
     .bl-head{margin:4px 2px 18px}
@@ -26,13 +27,21 @@
     .bl-skip ul{margin:0;padding:0 14px 12px 32px;font-size:13px;color:#55555c}
     .bl-skip li{margin:5px 0}
     .bl-skip code{font-size:11px;background:#f3f3f6;padding:2px 6px;border-radius:5px}
+    .bl-kind-head,.bl-group-head{max-width:100%}
+    .bl-kind-head{margin:34px 2px 0;padding-bottom:8px;border-bottom:1px solid var(--pb-line)}
+    .bl-head + .bl-kind-head{margin-top:10px}
+    .bl-group-head{margin:28px 2px 2px}
+    .bl-group-head .bl-group-title,.bl-kind-head .bl-kind-title{margin:0 !important;padding:0 !important;border:0 !important}
+    .nav-kind-head{margin:16px 8px 2px}
+    .nav-group .pb-fold-head{margin:12px 8px 4px}
+    .nav-group .nav-group-title{margin:0 !important}
     .bl-kind-title{margin:34px 2px 0;font-family:var(--pb-font);font-size:18px;font-weight:700;padding-bottom:8px;border-bottom:1px solid var(--pb-line)}
     .bl-head + .bl-kind-title{margin-top:10px}
     .nav-kind-title{margin:16px 8px 2px;font-size:12px;font-weight:700;color:var(--pb-ink)}
     .nav-group-title{margin:12px 8px 4px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--pb-mute)}
   </style>
 </head>
-<body class="pb">
+<body class="pb" data-fold-store="library">
   <header class="pb-bar">
     <a class="pb-back" href="/admin/" title="Back">&larr;</a>
     <div class="pb-title"><span class="pb-kicker">Page builder</span><h1>Block library</h1></div>
@@ -48,14 +57,20 @@
       <p class="pb-palette-title">Sections</p>
       <input type="search" id="bl-search" class="pb-search" placeholder="Search sections…" autocomplete="off">
       <nav id="bl-nav">
-        {% for group in groups %}
-          {% if show_kinds %}{% ifchanged group.kind %}<p class="nav-kind-title">{{ group.kind }}</p>{% endifchanged %}{% endif %}
-          <div class="nav-group" data-group>
-            <p class="nav-group-title">{{ group.group }}</p>
-            {% for b in group.blocks %}
-              <a class="nav-link" href="#bl-{% if b.builtin %}builtin-{% endif %}{{ b.name }}" data-target="bl-{% if b.builtin %}builtin-{% endif %}{{ b.name }}"
-                 data-search="{{ b.label|lower }} {{ b.name }}">{{ b.label }}</a>
-            {% endfor %}
+        {% for kind in kinds %}
+          {% if show_kinds %}<div class="pb-fold-head nav-kind-head"><p class="nav-kind-title">{{ kind.kind }}</p>{% include "prblm_builder/_fold_button.html" with key=kind.key label=kind.kind %}</div>{% endif %}
+          <div data-fold-body="{{ kind.key }}">
+          {% for group in kind.groups %}
+            <div class="nav-group" data-group>
+              <div class="pb-fold-head"><p class="nav-group-title">{{ group.group }}</p>{% include "prblm_builder/_fold_button.html" with key=group.key label=group.group %}</div>
+              <div data-fold-body="{{ group.key }}">
+              {% for b in group.blocks %}
+                <a class="nav-link" href="#bl-{% if b.builtin %}builtin-{% endif %}{{ b.name }}" data-target="bl-{% if b.builtin %}builtin-{% endif %}{{ b.name }}"
+                   data-search="{{ b.label|lower }} {{ b.name }}">{{ b.label }}</a>
+              {% endfor %}
+              </div>
+            </div>
+          {% endfor %}
           </div>
         {% endfor %}
       </nav>
@@ -66,16 +81,22 @@
         <h2>Block library</h2>
         <p>{{ total }} section{{ total|pluralize }} you can drop onto a page — shown with demo content. Use these in the <strong>Layout</strong> builder.</p>
       </div>
-      {% for group in groups %}
-        {% if show_kinds %}{% ifchanged group.kind %}<h2 class="bl-kind-title">{{ group.kind }}</h2>{% endifchanged %}{% endif %}
-        <h2 class="bl-group-title">{{ group.group }}</h2>
-        {% for b in group.blocks %}
-          <article class="bl-card" id="bl-{% if b.builtin %}builtin-{% endif %}{{ b.name }}" data-search="{{ b.label|lower }} {{ b.name }}">
-            <div class="bl-card-head"><h3>{{ b.label }}</h3><code>{{ b.name }}</code></div>
-            <div class="bl-frame-wrap"><iframe class="bl-frame" scrolling="no" loading="lazy" title="{{ b.label }}"
-                 data-src="{{ preview_url }}?block={{ b.name }}&demo=1{% if b.builtin %}&builtin=1{% endif %}"></iframe></div>
-          </article>
+      {% for kind in kinds %}
+        {% if show_kinds %}<div class="pb-fold-head bl-kind-head"><h2 class="bl-kind-title">{{ kind.kind }}</h2>{% include "prblm_builder/_fold_button.html" with key=kind.key label=kind.kind %}</div>{% endif %}
+        <div data-fold-body="{{ kind.key }}">
+        {% for group in kind.groups %}
+          <div class="pb-fold-head bl-group-head"><h2 class="bl-group-title">{{ group.group }}</h2>{% include "prblm_builder/_fold_button.html" with key=group.key label=group.group %}</div>
+          <div data-fold-body="{{ group.key }}">
+          {% for b in group.blocks %}
+            <article class="bl-card" id="bl-{% if b.builtin %}builtin-{% endif %}{{ b.name }}" data-search="{{ b.label|lower }} {{ b.name }}">
+              <div class="bl-card-head"><h3>{{ b.label }}</h3><code>{{ b.name }}</code></div>
+              <div class="bl-frame-wrap"><iframe class="bl-frame" scrolling="no" loading="lazy" title="{{ b.label }}"
+                   data-src="{{ preview_url }}?block={{ b.name }}&demo=1{% if b.builtin %}&builtin=1{% endif %}"></iframe></div>
+            </article>
+          {% endfor %}
+          </div>
         {% endfor %}
+        </div>
       {% endfor %}
       {% if unpreviewable %}
         <details class="bl-skip" id="bl-unpreviewable">
@@ -105,12 +126,13 @@
           try{ var b=f.contentDocument&&f.contentDocument.body; if(b&&window.ResizeObserver) new ResizeObserver(function(){fit(f);}).observe(b); }catch(e){} });
         if(io) io.observe(f); else f.src=f.dataset.src;
       });
+      document.addEventListener("prblm-builder:fold", function(e){ if(!e.detail.folded) setTimeout(function(){ main.querySelectorAll(".bl-frame").forEach(fit); },60); });
       /* device toggle */
       var db=document.querySelectorAll("#bl-devices button");
       db.forEach(function(b){ b.addEventListener("click", function(){ db.forEach(function(x){x.classList.remove("active");}); b.classList.add("active"); main.setAttribute("data-device", b.dataset.device); setTimeout(function(){ main.querySelectorAll(".bl-frame").forEach(fit); },240); }); });
       /* search */
       var s=document.getElementById("bl-search"), none=document.getElementById("bl-none");
-      if(s) s.addEventListener("input", function(){ var q=s.value.trim().toLowerCase(), any=false;
+      if(s) s.addEventListener("input", function(){ var q=s.value.trim().toLowerCase(), any=false; document.body.classList.toggle("pb-searching", !!q);
         document.querySelectorAll(".bl-card").forEach(function(c){ var hit=!q||c.dataset.search.indexOf(q)!==-1; c.style.display=hit?"":"none"; if(hit)any=true; });
         document.querySelectorAll(".nav-link").forEach(function(l){ l.style.display=(!q||l.dataset.search.indexOf(q)!==-1)?"":"none"; });
         document.querySelectorAll(".nav-group").forEach(function(g){ g.style.display=g.querySelectorAll('.nav-link:not([style*="display: none"])').length?"":"none"; });
@@ -123,8 +145,8 @@
       // Group titles + the page heading follow the same width so they stay above the
       // card's left edge rather than at the far left.
       st.textContent=
-        '#bl-main[data-device="tablet"] .bl-card,#bl-main[data-device="tablet"] .bl-group-title,#bl-main[data-device="tablet"] .bl-head{max-width:834px;margin-left:auto;margin-right:auto}'+
-        '#bl-main[data-device="mobile"] .bl-card,#bl-main[data-device="mobile"] .bl-group-title,#bl-main[data-device="mobile"] .bl-head{max-width:390px;margin-left:auto;margin-right:auto}';
+        '#bl-main[data-device="tablet"] .bl-card,#bl-main[data-device="tablet"] .bl-group-head,#bl-main[data-device="tablet"] .bl-kind-head,#bl-main[data-device="tablet"] .bl-head{max-width:834px;margin-left:auto;margin-right:auto}'+
+        '#bl-main[data-device="mobile"] .bl-card,#bl-main[data-device="mobile"] .bl-group-head,#bl-main[data-device="mobile"] .bl-kind-head,#bl-main[data-device="mobile"] .bl-head{max-width:390px;margin-left:auto;margin-right:auto}';
       document.head.appendChild(st);
       /* scrollspy */
       var links=document.querySelectorAll(".nav-link");

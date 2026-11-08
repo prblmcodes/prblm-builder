@@ -58,3 +58,33 @@ class SaveFlowTests(TestCase):
         js = open(finders.find("prblm_builder/builder.js")).read()
         self.assertIn("prblm-builder:dirty", js)
         self.assertIn("pb-restore", js)
+
+
+@override_settings(STORAGES=STORAGES)
+class FoldTests(TestCase):
+    """v0.4 Phase 2: foldable kinds/groups in the palette and the Block library."""
+
+    def setUp(self):
+        self.client.force_login(get_user_model().objects.create_superuser("fd", "fd@example.com", "pw"))
+
+    def test_library_has_fold_controls_matching_sidebar_and_main(self):
+        r = self.client.get(reverse("prblm_builder:demo"))
+        html = r.content.decode()
+        self.assertIn('data-fold-store="library"', html)
+        self.assertIn("prblm_builder/fold.js", html)
+        for kind in r.context["kinds"]:
+            # one button in the sidebar + one in the preview column, same key
+            self.assertEqual(html.count(f'data-fold="{kind["key"]}"'), 2)
+            self.assertEqual(html.count(f'data-fold-body="{kind["key"]}"'), 2)
+            for group in kind["groups"]:
+                self.assertEqual(html.count(f'data-fold="{group["key"]}"'), 2)
+
+    def test_palette_kinds_and_groups(self):
+        from tests.testapp.models import BlocksPage
+        page = Page.objects.get(depth=2).add_child(instance=BlocksPage(title="Fold", slug="fold-x"))
+        r = self.client.get(reverse("prblm_builder:builder", args=[page.id]) + "?embed=1")
+        self.assertTrue(r.context["show_kinds"])
+        self.assertEqual([k["key"] for k in r.context["palette"]], ["builtin", "site"])
+        self.assertContains(r, 'data-fold="builtin:page-openers"')
+        self.assertContains(r, 'class="pb-pgroup-items" data-fold-body="builtin:page-openers"')
+        self.assertContains(r, 'data-fold-store="palette"')

@@ -273,7 +273,7 @@
     },
     onSort: refresh,
   });
-  document.querySelectorAll(".pb-pgroup").forEach(function (g) {
+  document.querySelectorAll(".pb-pgroup-items").forEach(function (g) {
     new Sortable(g, { group: { name: "pb", pull: "clone", put: false }, sort: false,
       draggable: ".pb-pitem", forceFallback: true, fallbackOnBody: true });
   });
@@ -332,6 +332,7 @@
   var search = document.getElementById("pb-search");
   if (search) search.addEventListener("input", function () {
     var q = search.value.trim().toLowerCase();
+    document.body.classList.toggle("pb-searching", !!q);   // searching shows folded groups too
     document.querySelectorAll(".pb-pitem").forEach(function (it) {
       it.style.display = (!q || it.dataset.search.indexOf(q) !== -1) ? "" : "none";
     });

@@ -122,6 +122,26 @@ def grouped_blocks(stream_block):
     return _group(stream_block.child_blocks.items())
 
 
+KIND_KEYS = {KIND_BUILTIN: "builtin", KIND_SITE: "site"}
+
+
+def _split_kinds(pairs):
+    builtin = [(n, b) for n, b in pairs if is_builtin(b)]
+    site = [(n, b) for n, b in pairs if not is_builtin(b)]
+    return [(KIND_BUILTIN, builtin), (KIND_SITE, site)]
+
+
+def palette_sections(stream_block):
+    """``[(kind, [(group, [(name, block, label), …]), …]), …]`` for one field's palette —
+    built-in blocks first, then the site's own; empty kinds left out."""
+    out = []
+    for kind, pairs in _split_kinds(list(stream_block.child_blocks.items())):
+        groups = _group(pairs)
+        if groups:
+            out.append((kind, groups))
+    return out
+
+
 def _library_stream_blocks():
     """The StreamBlocks the Block library draws from (``PRBLM_BUILDER_LIBRARY_SCOPE``)."""
     if cfg.library_scope() == "all":

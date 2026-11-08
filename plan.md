@@ -74,7 +74,7 @@ Ships as **v0.4.0** (Header & footer storage changes).
 
 - [x] **Phase 1 — Save flow**: banner + Save draft now + placeholder title; keep arrangement
       after a failed save. Tests.
-- [ ] **Phase 2 — Collapsible groups**: Block library (kinds + groups, sidebar ↔ preview
+- [x] **Phase 2 — Collapsible groups**: Block library (kinds + groups, sidebar ↔ preview
       sync) and Layout sidebar; remembered per browser. Tests + visual check.
 - [ ] **Phase 3 — Headers & Footers**: models, admin lists under Page builder, default
       checkbox, data migration from 0.3, Builder page choices, template tags, canvas. Tests.
@@ -91,3 +91,7 @@ Ships as **v0.4.0** (Header & footer storage changes).
   "Save draft now" → saved as "Untitled page 3" with both blocks in the Content tab. The
   Layout iframe stays lazy-loaded (so an unopened Layout tab never overrides Content-tab
   reordering); after a failed save the arrangement is also re-submitted via hidden inputs.
+- 2026-11-09 — Phase 2 done (100 tests; browser-checked: folding in the library sidebar hides
+  the preview cards and vice versa, survives reload, search still finds folded blocks).
+  Shared `fold.js`; the Layout sidebar now also splits Built-in / Your site's blocks. Also
+  fixed the canvas empty-state text (it mentioned a pencil button the Layout tab doesn't have).

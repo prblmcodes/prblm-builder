@@ -8,8 +8,9 @@
   <link rel="stylesheet" href="{% static 'prblm_builder/builder.css' %}">
   <script src="{% static 'prblm_builder/vendor/sortable.min.js' %}"></script>
   <script src="{% static 'prblm_builder/builder.js' %}" defer></script>
+  <script src="{% static 'prblm_builder/fold.js' %}" defer></script>
 </head>
-<body class="pb{% if embed %} pb-embed{% endif %}">
+<body class="pb{% if embed %} pb-embed{% endif %}" data-fold-store="palette">
   {% if not embed %}
   <header class="pb-bar">
     {% if not embed %}<a class="pb-back" href="{{ back_url }}" title="Back to explorer">&larr;</a>{% endif %}
@@ -47,10 +48,15 @@
       <p class="pb-palette-title">Add a section</p>
       <input type="search" id="pb-search" class="pb-search" placeholder="Search sections…" autocomplete="off">
       <div id="pb-palette-list">
-        {% for group, blocks in palette %}
+        {% for kind in palette %}
+         <div class="pb-pkind">
+          {% if show_kinds %}<div class="pb-fold-head pb-pkind-head"><p class="pb-pkind-title">{{ kind.kind }}</p>{% include "prblm_builder/_fold_button.html" with key=kind.key label=kind.kind %}</div>{% endif %}
+          <div data-fold-body="{{ kind.key }}">
+          {% for group in kind.groups %}
           <div class="pb-pgroup" data-group>
-            <p class="pb-pgroup-title">{{ group }}</p>
-            {% for b in blocks %}
+            <div class="pb-fold-head"><p class="pb-pgroup-title">{{ group.group }}</p>{% include "prblm_builder/_fold_button.html" with key=group.key label=group.group %}</div>
+            <div class="pb-pgroup-items" data-fold-body="{{ group.key }}">
+            {% for b in group.blocks %}
               <div class="pb-pitem" data-type="{{ b.type }}" data-label="{{ b.label }}"
                    data-search="{{ b.label|lower }} {{ b.type }}" title="Drag onto the page, or click to add">
                 <div class="pb-thumb">
@@ -60,7 +66,11 @@
                 <span class="pb-pitem-name"><span class="pb-grip" aria-hidden="true">&#8942;&#8942;</span>{{ b.label }}</span>
               </div>
             {% endfor %}
+            </div>
           </div>
+          {% endfor %}
+          </div>
+         </div>
         {% endfor %}
       </div>
     </aside>
@@ -75,8 +85,8 @@
         <div class="pb-sections" id="pb-canvas">
           <div class="pb-empty" id="pb-empty">
             <strong>Start building the page</strong>
-            Drag a section here, or click one in the list on the left.<br>
-            Edit a section's content with the <em>pencil</em> button, or in the normal <em>Edit content</em> screen.
+            <span>Drag a section here, or click one in the list on the left.</span>
+            <span>{% if embed %}After saving, edit each section's words and images in the <b>Content</b> tab.{% else %}Edit a section's content with its pencil button.{% endif %}</span>
           </div>
         </div>
         {% if footer_src %}

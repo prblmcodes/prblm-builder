@@ -53,9 +53,17 @@ def _sections(page, field_name):
 
 
 def _palette(stream_block):
-    """``[(group, [{type, label}, …]), …]`` for the builder sidebar."""
-    groups = registry.grouped_blocks(stream_block)
-    return [(g, [{"type": n, "label": lbl} for (n, _b, lbl) in items]) for g, items in groups]
+    """The builder sidebar: ``[{kind, key, groups: [{group, key, blocks: [{type, label}]}]}]``
+    — kinds (built-in / site) and groups each foldable by their ``key``."""
+    from django.utils.text import slugify
+    out = []
+    for kind, groups in registry.palette_sections(stream_block):
+        kkey = registry.KIND_KEYS[kind]
+        out.append({"kind": kind, "key": kkey, "groups": [
+            {"group": g, "key": f"{kkey}:{slugify(g)}",
+             "blocks": [{"type": n, "label": lbl} for (n, _b, lbl) in items]}
+            for g, items in groups]})
+    return out
 
 
 def _render_block(block, value, request, page=None):
@@ -158,6 +166,7 @@ def builder(request, page_id):
         "field_name": field_name,
         "sections": _sections(page, field_name),
         "palette": _palette(stream_block),
+        "show_kinds": len(_palette(stream_block)) > 1,
         "preview_url": reverse("prblm_builder:preview"),
         "save_url": reverse("prblm_builder:save", args=[page.id]),
         "context_param": f"page={page.id}",
@@ -197,6 +206,7 @@ def builder_new(request):
         "field_name": field_name,
         "sections": [],
         "palette": _palette(stream_block),
+        "show_kinds": len(_palette(stream_block)) > 1,
         "preview_url": reverse("prblm_builder:preview"),
         "save_url": "",
         "context_param": f"model={label}",
@@ -216,9 +226,12 @@ def demo(request):
     a live demo preview (same content engine as the builder). Admin-only via the URL."""
     if not cfg.demo_enabled():
         raise Http404("The block library is disabled (PRBLM_BUILDER_DEMO).")
-    groups, unpreviewable = [], []
+    from django.utils.text import slugify
+    groups, unpreviewable, kinds = [], [], []
     sections = registry.library_sections()
     for kind, kind_groups in sections:
+        kkey = registry.KIND_KEYS[kind]
+        kind_entry = {"kind": kind, "key": kkey, "groups": []}
         for g, items in kind_groups:
             ok = []
             builtin = kind == registry.KIND_BUILTIN
@@ -229,9 +242,14 @@ def demo(request):
                 else:
                     ok.append({"name": name, "label": label, "builtin": builtin})
             if ok:
-                groups.append({"kind": kind, "group": g, "blocks": ok})
+                entry = {"kind": kind, "group": g, "key": f"{kkey}:{slugify(g)}", "blocks": ok}
+                groups.append(entry)
+                kind_entry["groups"].append(entry)
+        if kind_entry["groups"]:
+            kinds.append(kind_entry)
     return render(request, "prblm_builder/demo.html", {
         "groups": groups,
+        "kinds": kinds,
         # Kind headings ("Built-in blocks" / "Your site's blocks") only when both exist.
         "show_kinds": len(sections) > 1,
         "total": sum(len(g["blocks"]) for g in groups),
