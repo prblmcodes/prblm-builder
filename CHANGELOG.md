@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0 — unreleased
+## 0.3.0 — 2026-11-09
 
 **Built-in blocks (new, optional app `prblm_builder.blocks`)**
 - 21 ready-made sections: Header, Footer, Hero, Page banner, Text, Text + image, Features,

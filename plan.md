@@ -1,6 +1,6 @@
 # Plan — v0.3.0: built-in blocks + "Page builder" admin section
 
-Branch: `feature/builtin-blocks` · Status: **in progress** · Started 2026-11-08
+Branch: `feature/builtin-blocks` · Status: **released as v0.3.0** · Started 2026-11-08
 
 This file tracks what we agreed to build and how far we are. Tick items as they land.
 
@@ -171,13 +171,13 @@ shared link type: label + one of page / URL / anchor.
 - [x] **Phase 5 — Site-wide header & footer**: admin page, canvas integration,
       `{% prblm_header %}` / `{% prblm_footer %}`
 - [x] **Phase 6 — Page models**: Builder page (+ hide setting), `builder_blocks()` helper
-- [ ] **Phase 7 — Release**
+- [x] **Phase 7 — Release**
   - [x] Tests for every block (render, defaults, no "None", save/load round trip, a11y basics)
   - [x] README (built-in blocks guide, settings, upgrading, troubleshooting), history doc,
         CLAUDE.md, CHANGELOG; version 0.3.0; CI checks the blocks files are in the wheel
   - [x] Wheel installed + smoke-tested in a separate Wagtail 8.1 project
-  - [ ] Owner tests the branch in a real project
-  - [ ] Merge to `main`, tag `v0.3.0`, GitHub release
+  - [x] Merge to `main`, tag `v0.3.0` (GitHub release created by the owner)
+  - [ ] Owner tests the release in a real project
 
 ## 8. Settled defaults (were open questions — change before release if needed)
 
@@ -216,3 +216,4 @@ shared link type: label + one of page / URL / anchor.
   model that has a `rich_text` block, so they still run when the blocks app is installed.
 - 2026-11-09 — Phase 7 (docs + version 0.3.0 + wheel smoke test) done; 94 tests. Waiting
   for the owner's test in a real project before merging and tagging.
+- 2026-11-09 — Merged to `main` and tagged `v0.3.0`.

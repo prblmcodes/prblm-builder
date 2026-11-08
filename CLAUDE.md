@@ -67,8 +67,7 @@ site content where a block is used, else synthesis).
 Target stack: **Wagtail 8.1+ (<9), Django 6.1+, Python 3.12+** (latest stable as of v0.3.0).
 
 ## Current state
-Latest release v0.2.0; **v0.3.0** (built-in blocks) is ready on branch
-`feature/builtin-blocks` — progress and decisions in `plan.md`. Install in another project
+Latest release **v0.3.0** (built-in blocks; plan, decisions and log in `plan.md`). Install in another project
 with `pip install "prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@<tag or branch>"`.
 Tests: `prblm_builder/tests/` (generic, shipped) + `tests/test_options.py` (needs the
 edge-case blocks in `tests/testapp`).
