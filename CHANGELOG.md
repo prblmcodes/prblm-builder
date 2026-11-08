@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.4.0 — unreleased
+
+**Changed**
+- **Headers & Footers** replace 0.3's single *Header & footer* page: create as many as you
+  like under *Page builder → Headers / Footers*, mark one of each as the **site default**.
+  `migrate` moves existing content over automatically.
+- **Builder page** chooses its header and footer: site default, a specific one, the site's
+  own template, or none.
+
+**Added**
+- Layout tab: after any change, a banner explains that new sections appear in the Content
+  tab once saved, with **Save draft now** (fills "Untitled page N" if the title is empty).
+  A failed save keeps the arrangement.
+- Foldable groups (built-in / site blocks and each group) in the Layout sidebar and the
+  Block library, synced between the library's sidebar and previews, remembered per browser.
+- `PRBLM_BUILDER_PAGE_PARENTS` — allow Builder pages under page types that restrict their
+  children.
+- `PRBLM_BUILDER_PAGE_EXTRA_BLOCKS` — the site's own blocks on the Builder page, without
+  migrations inside the plugin.
+- `{% prblm_header "Name" %}` / `{% prblm_footer "Name" %}` to pick one by name.
+- Developers: `prblm_builder_chrome_for_page` hook (a page type decides its own canvas
+  header/footer).
+
+**Fixed**
+- Canvas empty-state text no longer mentions a pencil button in the Layout tab.
+
 ## 0.3.0 — 2026-11-09
 
 **Built-in blocks (new, optional app `prblm_builder.blocks`)**

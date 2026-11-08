@@ -37,6 +37,8 @@ jobs:
           python -m zipfile -l dist/*.whl | grep -q "blocks/static/prblm_builder/blocks/blocks.css"
           python -m zipfile -l dist/*.whl | grep -q "blocks/templates/prblm_builder/blocks/hero.html"
           python -m zipfile -l dist/*.whl | grep -q "blocks/migrations/0001_initial.py"
+          python -m zipfile -l dist/*.whl | grep -q "blocks/migrations/0002_headers_footers.py"
+          python -m zipfile -l dist/*.whl | grep -q "static/prblm_builder/fold.js"
       - uses: actions/upload-artifact@v4
         with:
           name: dist

@@ -81,8 +81,13 @@ Ships as **v0.4.0** (Header & footer storage changes).
       checkbox, data migration from 0.3, Builder page choices, template tags, canvas. Tests.
 - [x] **Phase 4 — Builder page placement + extra blocks**: the two settings, system checks.
       Tests.
-- [ ] **Phase 5 — Release**: README (incl. "Builder page only at root?" explanation),
-      CHANGELOG, history doc, CLAUDE.md, version 0.4.0, wheel smoke test, merge + tag.
+- [ ] **Phase 5 — Release**
+  - [x] README (incl. "Builder page only at root?"), CHANGELOG, history doc, CLAUDE.md,
+        version 0.4.0, CI wheel checks
+  - [x] Real upgrade test: 0.3.0 install with Header & footer content → install 0.4.0 wheel →
+        `migrate` → content is a default Header, Builder page shows it
+  - [ ] Owner tests in a real project
+  - [ ] Merge to `main`, tag `v0.4.0`
 
 ## 4. Progress log
 
@@ -108,3 +113,5 @@ Ships as **v0.4.0** (Header & footer storage changes).
   `makemigrations prblm_builder_blocks --check` still reports no changes. Lesson: Wagtail
   caches allowed child types in `cls._clean_subpage_models`, set to `None` on every page
   class — reset it to `None`, don't delete it (deleting falls back to the base class's cache).
+- 2026-11-09 — Phase 5 docs + version done; 113 tests; real 0.3 → 0.4 upgrade verified.
+  Waiting for the owner's test before merging and tagging.

@@ -24,14 +24,15 @@ site content where a block is used, else synthesis).
   rules (`Meta: builder = False`, `PRBLM_BUILDER_EXCLUDE_BLOCKS`).
 - `prblm_builder/previews.py` — demo content engine (real-instance → synth → trim) + iframe frame.
 - `prblm_builder/views.py` — builder / builder_new / preview / demo / save.
-- `prblm_builder/static/prblm_builder/builder.{js,css}` — the canvas (SortableJS, scaled iframes, undo/redo).
+- `prblm_builder/static/prblm_builder/builder.{js,css}` — the canvas (SortableJS, scaled iframes, undo/redo); `fold.js` — foldable groups.
+- `prblm_builder/chrome.py` — header/footer around the canvas (hooks → template setting → default).
 - `prblm_builder/settings.py` — one reader per `PRBLM_BUILDER_*` setting (all optional).
   User-facing reference: README "Settings reference"; dev table: history doc §6.
 - `prblm_builder/blocks/` — **optional** app with the 21 built-in blocks (`sections/`), Theme
-  + Header & footer settings + Builder page (`models.py`), `{% prblm_assets %}` etc.
+  + Headers/Footers (snippets) + Builder page (`models.py`, `fields.py`), `{% prblm_assets %}` etc.
   (`templatetags/prblm_blocks.py`), self-contained `blocks.css`/`blocks.js`. The core must
   never import it; it plugs in via hooks (`register_prblm_builder_menu_item`,
-  `prblm_builder_chrome`).
+  `prblm_builder_chrome`, `prblm_builder_chrome_for_page`).
 - `tests/` + `runtests.py` — the bundled test project (not shipped); CI in `.github/workflows/`.
 
 ## Conventions / gotchas (learned the hard way)
@@ -57,8 +58,9 @@ site content where a block is used, else synthesis).
 - **Wagtail quirks:** `ChoiceBlock` ignores `Meta.default` (set it in `__init__`); admin
   menus are built once (use `is_shown()` for setting-dependent items); list items get a
   fresh random `id` on every save (strip ids before comparing content).
-- **Check CSS visually** — render blocks to HTML and screenshot with headless Chrome
-  (see the history doc); tests can't see layout.
+- **Check CSS / JS in a real browser** — screenshot blocks with headless Chrome, and drive
+  admin flows with Playwright (`channel="chrome"`) against a throwaway dev server (see the
+  history doc); Django tests can't run the JS or see layout.
 
 ## Running / testing
 `python runtests.py` runs `prblm_builder/tests/` against the bundled test project in

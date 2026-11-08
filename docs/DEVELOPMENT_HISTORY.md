@@ -152,10 +152,18 @@ would be cached forever.
   zero-specificity `:where(html)` system-font fallback, so any site font wins.
 - **Theme** (`ThemeSettings`, a Wagtail site setting) → `theme.css()` → `:root{--pbk-…}`;
   values are validated (hex colours, font lists stripped of `;{}<>\`).
-- **Site-wide Header & footer** (`SiteChrome`, one Header + one Footer StreamField per
-  site). The core asks the `prblm_builder_chrome` hook for canvas header/footer HTML when
-  no `PRBLM_BUILDER_HEADER/FOOTER_TEMPLATE` is set; the blocks app answers from
-  `SiteChrome`. `{% prblm_header %}` / `{% prblm_footer %}` render them anywhere.
+- **Headers & Footers** (0.4; 0.3 had a single per-site `SiteChrome`): `SiteHeader` /
+  `SiteFooter` snippet models (name, `is_default`, one block each, pre-filled), listed under
+  Page builder. Canvas resolution lives in core `prblm_builder/chrome.py`:
+  `prblm_builder_chrome_for_page` hooks first (the blocks app answers for Builder pages
+  from the page's `header_choice`/`footer_choice`: default / custom / site template /
+  none), then the template setting, then `prblm_builder_chrome` hooks (site default).
+  `{% prblm_header %}` / `{% prblm_footer %}` follow the same rules; an optional name picks one.
+- **Builder page extras** (0.4): `PRBLM_BUILDER_PAGE_PARENTS` appends BuilderPage to the
+  listed types' `subpage_types` at startup (resetting Wagtail's `_clean_subpage_models`
+  cache to `None`). `PRBLM_BUILDER_PAGE_EXTRA_BLOCKS` is applied through
+  `BuilderBodyField`, whose `deconstruct()` always reports the built-ins only — so a
+  site's extra blocks never trigger a migration in the installed package.
 - **Builder page** (`BuilderPage`): all 21 blocks; renders a standalone HTML document
   (`builder_page.html`: site header, sections, site footer) so it works without any site
   templates; overridable by path. `PRBLM_BUILDER_PAGE_TYPE` sets `is_creatable` at startup.
@@ -223,6 +231,14 @@ of the code only calls these (never `django.conf.settings` directly). See §6.
     "Page builder" admin section; built-in blocks app. Lesson: Wagtail builds admin
     menus once — a menu hook that returns `None` based on a setting is cached forever;
     use a `MenuItem` subclass with `is_shown()`.
+11. **0.4 (plan in `plan.md`)** — feedback from a real project: save banner + "Save draft
+    now" with a placeholder title, arrangement kept after a failed save; foldable groups;
+    reusable Headers/Footers with per-Builder-page choice (data migration from 0.3);
+    Builder page placement + extra blocks settings. Lessons: Wagtail's snippet add view
+    builds forms without an instance, so a callable StreamField default reaches the widget
+    raw (seed `form.initial` from a fresh instance); reset `_clean_subpage_models` to `None`,
+    never delete it; browser-test JS flows with Playwright + system Chrome
+    (`channel="chrome"`) against a throwaway dev server.
 
 ---
 
@@ -321,6 +337,8 @@ previews unstyled.
 | `PRBLM_BUILDER_LIBRARY_SCOPE` | `"builder"` | Block library = palette blocks, or `"all"` StreamFields (0.2) |
 | ~~`PRBLM_BUILDER_SEED_NEW_BLOCKS`~~ | — | Removed in 0.3 (startup warning W001 if still set) |
 | `PRBLM_BUILDER_PAGE_TYPE` | `True` | Built-in "Builder page" creatable (0.3, blocks app only) |
+| `PRBLM_BUILDER_PAGE_PARENTS` | `[]` | Page types allowed to hold Builder pages (0.4) |
+| `PRBLM_BUILDER_PAGE_EXTRA_BLOCKS` | `None` | Site blocks on the Builder page, no migration (0.4) |
 | `PRBLM_BUILDER_CANVAS_WIDTH` | `1280` | Desktop width sections render at on the canvas (0.2) |
 | `PRBLM_BUILDER_PLACEHOLDER_IMAGES` | `True` | Allow creating placeholder images (0.2) |
 | `PRBLM_BUILDER_ADMIN_TWEAKS` | `True` | Full-width tab + header link (Wagtail internals) (0.2) |

@@ -11,8 +11,8 @@ maintain — and attaches itself automatically to every page type that has a bui
 StreamField.
 
 Optionally, it also ships **21 ready-made section blocks** (header, hero, features,
-pricing, FAQ, footer, …), a ready-made **Builder page** type, a **Theme** page and a
-site-wide **Header & footer** — fully self-contained, nothing extra to install. See
+pricing, FAQ, footer, …), a ready-made **Builder page** type, a **Theme** page and
+reusable **Headers & Footers** — fully self-contained, nothing extra to install. See
 [Built-in blocks](#built-in-blocks-optional).
 
 - [Requirements](#requirements)
@@ -44,17 +44,17 @@ Install from a GitHub release tag:
 
 ```bash
 # public repo
-pip install "prblm-builder @ git+https://github.com/prblmcodes/prblm-builder.git@v0.3.0"
+pip install "prblm-builder @ git+https://github.com/prblmcodes/prblm-builder.git@v0.4.0"
 
 # private repo (uses your GitHub SSH key)
-pip install "prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@v0.3.0"
+pip install "prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@v0.4.0"
 ```
 
-Or put the same `prblm-builder @ git+…@v0.3.0` line in `requirements.txt`. You can also
+Or put the same `prblm-builder @ git+…@v0.4.0` line in `requirements.txt`. You can also
 download the wheel attached to a GitHub release and
-`pip install prblm_builder-0.3.0-py3-none-any.whl`.
+`pip install prblm_builder-0.4.0-py3-none-any.whl`.
 
-To upgrade later, change the tag (e.g. `@v0.3.0` → `@v0.4.0`) and reinstall. See
+To upgrade later, change the tag (e.g. `@v0.4.0` → `@v0.5.0`) and reinstall. See
 [CHANGELOG.md](CHANGELOG.md) for what changed in each version.
 
 ## Quick setup
@@ -97,13 +97,20 @@ To upgrade later, change the tag (e.g. `@v0.3.0` → `@v0.4.0`) and reinstall. S
 - **Edit content:** each section's words and images are edited in the normal **Content**
   tab. New sections start with demo content; until you change it, the canvas marks the
   section **"Not edited yet"** so placeholder text doesn't get published by accident.
-- **New page:** the Layout tab works before the first save — arrange, then the sections
-  save with the page.
+- **Save to edit new sections:** the Content tab is Wagtail's own editor, so sections
+  added in the Layout tab show up there **after you save**. After any layout change a
+  banner says so, with a **Save draft now** button. On a brand-new page without a title
+  it fills in **"Untitled page 23"** (rename it later) and saves. If a save fails (e.g. a
+  required field is empty), your arrangement is kept.
+- **New page:** the Layout tab works before the first save — arrange, then save.
+- **Fold groups:** in the Layout sidebar and the Block library, click the arrow next to a
+  group (or *Built-in blocks* / *Your site's blocks*) to fold it. In the Block library,
+  folding in the sidebar also hides those previews. Your browser remembers what's folded.
 - **Page builder menu:** the plugin adds a **Page builder** section to the admin sidebar:
   - **Block library** — every block with a live preview, grouped into *Built-in blocks*
     and *Your site's blocks*. Address: `/admin/page-builder/demo/` (use your own admin
     prefix if it isn't `admin/`). Also linked from the editor header.
-  - **Theme** and **Header & footer** — only when the built-in blocks app is installed.
+  - **Theme**, **Headers** and **Footers** — only when the built-in blocks app is installed.
 
 ## Built-in blocks (optional)
 
@@ -119,7 +126,7 @@ it's clear what goes where.
 INSTALLED_APPS = [
     "prblm_builder",
     "prblm_builder.blocks",          # the built-in blocks
-    "wagtail.contrib.settings",      # needed for Theme and Header & footer
+    "wagtail.contrib.settings",      # needed for the Theme
     # …
 ]
 ```
@@ -131,10 +138,33 @@ python manage.py migrate
 Then use the blocks in one (or both) of these ways.
 
 **1. The ready-made "Builder page" (no code).** In the admin, *Add child page* → **Builder
-page**. It has all 21 blocks and a Layout tab, and renders as a complete page: the
-site-wide header, your sections, the site-wide footer. To render it inside your own site
-layout instead, create a template at `prblm_builder/blocks/builder_page.html` in your
-templates folder. To hide the page type from *Add page*: `PRBLM_BUILDER_PAGE_TYPE = False`.
+page**. It has all 21 blocks and a Layout tab, and renders as a complete page: a header,
+your sections, a footer (each page chooses which — see
+[Headers & footers](#headers--footers)). To render it inside your own site layout instead,
+create a template at `prblm_builder/blocks/builder_page.html` in your templates folder.
+To hide the page type from *Add page*: `PRBLM_BUILDER_PAGE_TYPE = False`.
+
+> **Builder page only offered at the very top (next to Home)?** Your home page type
+> limits which pages can go under it (a `subpage_types` list in its code). Allow Builder
+> pages there with a setting — no code change:
+>
+> ```python
+> PRBLM_BUILDER_PAGE_PARENTS = ["home.HomePage"]   # "app_label.ModelName", one or more
+> ```
+
+**Your own blocks on the Builder page.** List them in a setting — they appear in the
+Builder page's palette under *Your site's blocks*, and no migration is needed:
+
+```python
+PRBLM_BUILDER_PAGE_EXTRA_BLOCKS = [
+    ("quote_card", "core.blocks.QuoteCardBlock"),   # ("name", "dotted path to the block")
+]
+# or a function that returns [(name, block), …]:
+# PRBLM_BUILDER_PAGE_EXTRA_BLOCKS = "core.blocks.builder_page_blocks"
+```
+
+Names must not clash with the built-in ones (`hero`, `faq`, …) — you'll get a clear error
+at startup if they do, or if a path can't be imported.
 
 **2. In your own page models**, next to your own blocks:
 
@@ -202,23 +232,34 @@ site. Developers can also override the CSS variables (`--pbk-c-brand`, `--pbk-ra
 in their own CSS, or override any block template by placing a file with the same path
 (e.g. `prblm_builder/blocks/hero.html`) in their templates folder.
 
-### Header & footer (site-wide)
+### Headers & footers
 
-**Page builder → Header & footer** holds one Header and one Footer for the whole site.
+**Page builder → Headers** and **Page builder → Footers** are lists: create as many as
+you like (e.g. "Main header", "Campaign header"), click one to edit it. A new one starts
+pre-filled with example content. Tick **Use as site default** on the one most pages
+should use — only one header and one footer can be the default.
 
-- **In the builder:** they're shown above and below every page on the Layout canvas.
-  (If you've set `PRBLM_BUILDER_HEADER_TEMPLATE` / `_FOOTER_TEMPLATE`, those win.)
-- **On the Builder page:** shown automatically.
-- **On your own templates (optional):** add the tags where you want them:
+Which one shows where:
 
-  ```django
-  {% load prblm_blocks %}
-  {% prblm_header %}
-  …
-  {% prblm_footer %}
-  ```
+| Where | Header / footer shown |
+|---|---|
+| **Builder page** | Its own choice (in the page's *Header & footer* panel): **Site default**, **Choose one** (a specific header/footer), **My site's own** (your `PRBLM_BUILDER_HEADER_TEMPLATE` / `_FOOTER_TEMPLATE`), or **None**. |
+| **Layout canvas of your other page types** | Your `PRBLM_BUILDER_HEADER/FOOTER_TEMPLATE` if set, otherwise the site default, otherwise nothing. |
+| **Your own templates** (optional) | Wherever you add the tags below. |
 
-  Each renders nothing if no Header / Footer has been set, so they're safe to add.
+```django
+{% load prblm_blocks %}
+{% prblm_header %}                    {# the site default (on a Builder page: its choice) #}
+…
+{% prblm_footer %}
+{% prblm_header "Campaign header" %}  {# a specific one, by name #}
+```
+
+Each tag renders nothing if there's no matching header/footer, so they're safe to add.
+Headers and footers are shared by all sites in a multi-site setup.
+
+They're stored as Wagtail *snippets*, so Wagtail's own **Snippets** menu also appears and
+lists them — editing them there is the same.
 
 ### Rules that keep your content safe
 
@@ -287,8 +328,10 @@ What `PRBLM_BUILDER_ADMIN_TWEAKS` changes (in the page editor only — not the B
 | Setting | Default | What it does |
 |---|---|---|
 | `PRBLM_BUILDER_PAGE_TYPE` | `True` | `False` hides the ready-made **Builder page** type from *Add page*. Existing Builder pages keep working. Only applies when `prblm_builder.blocks` is installed. |
+| `PRBLM_BUILDER_PAGE_PARENTS` | `[]` | Page types under which Builder pages may be added, e.g. `["home.HomePage"]` — needed when a page type limits its children with `subpage_types`. Unknown names give startup warning `prblm_builder_blocks.W001`. |
+| `PRBLM_BUILDER_PAGE_EXTRA_BLOCKS` | `None` | Your own blocks on the Builder page: `[("name", "dotted.path.Block"), …]` or the dotted path of a function returning `[(name, block), …]`. No migration needed. |
 
-The Theme and the site-wide Header & footer are set in the admin, not in settings.
+The Theme, Headers and Footers are set in the admin, not in settings.
 
 ### Example
 
@@ -406,26 +449,29 @@ prblm_builder/                  the installable Django app
   wagtail_hooks.py              admin URLs + the "Page builder" sidebar section
   settings.py                   reads every PRBLM_BUILDER_* setting (with defaults)
   checks.py                     startup warnings (e.g. removed settings)
+  chrome.py                     header/footer around the canvas (template setting / hooks)
   templates/prblm_builder/      builder.html (canvas), layout_panel.html (tab), demo.html (library)
-  static/prblm_builder/         builder.js, builder.css, vendor/sortable.min.js
+  static/prblm_builder/         builder.js, builder.css, fold.js, vendor/sortable.min.js
   tests/test_builder.py         generic tests — also runnable inside a host project
   blocks/                       optional app "prblm_builder.blocks" (built-in blocks)
     __init__.py                 builder_blocks() helper
     sections/                   the 21 blocks: site, heroes, content, conversion, media, utility
       base.py                   shared LinkBlock, BackgroundBlock, AnchorBlock, icon choice
-    models.py                   ThemeSettings, SiteChrome (Header & footer), BuilderPage
+    models.py                   ThemeSettings, SiteHeader, SiteFooter, BuilderPage
+    fields.py                   Builder page body: built-ins + PRBLM_BUILDER_PAGE_EXTRA_BLOCKS
     theme.py                    theme values → CSS variables
-    chrome.py                   renders the site-wide header/footer
+    chrome.py                   which header/footer a page shows
     icons.py                    the built-in line icons
     templatetags/prblm_blocks.py  prblm_assets, prblm_header/footer, pbk_icon, pbk_image
     templates/prblm_builder/blocks/  one template per block + builder_page.html
     static/prblm_builder/blocks/     blocks.css, blocks.js
-    wagtail_hooks.py            Theme / Header & footer menu items, canvas header/footer
+    wagtail_hooks.py            Theme / Headers / Footers menu items, canvas header/footer
 tests/                          test project for this repo (not shipped)
   settings.py, urls.py          minimal Wagtail settings
   testapp/                      StandardPage + edge-case blocks; BlocksPage (built-ins)
   test_options.py               settings and Block library rules
   test_blocks*.py, test_site_chrome.py, test_builder_page.py   built-in blocks
+  test_save_flow.py, test_page_options.py   save banner, folding, page placement, extra blocks
 runtests.py                     runs all tests against tests/
 .github/workflows/test.yml      CI: tests on Python 3.12–3.14 + wheel build check
 docs/DEVELOPMENT_HISTORY.md     architecture, design decisions, bugs + lessons, roadmap
@@ -454,6 +500,14 @@ Releasing: bump `version` in `pyproject.toml`, add a `CHANGELOG.md` entry, commi
 from the tag (attach the wheel from `python -m build`).
 
 ## Upgrading
+
+**0.3 → 0.4**
+- Run `python manage.py migrate`. Your 0.3 **Header & footer** content moves
+  automatically into **Page builder → Headers / Footers**, marked as the site default.
+- `{% prblm_header %}` / `{% prblm_footer %}` keep working (they show the site default).
+- Builder pages get *Header* / *Footer* options; existing ones use **Site default**, so
+  nothing changes on your site.
+- New optional settings: `PRBLM_BUILDER_PAGE_PARENTS`, `PRBLM_BUILDER_PAGE_EXTRA_BLOCKS`.
 
 **0.2 → 0.3**
 - `PRBLM_BUILDER_SEED_NEW_BLOCKS` was removed: new blocks always start with content and
@@ -484,6 +538,10 @@ from the tag (attach the wheel from `python -m build`).
 | No "Builder page" in *Add page* | `prblm_builder.blocks` not installed / not migrated, or `PRBLM_BUILDER_PAGE_TYPE = False`. |
 | Theme changes don't affect my own blocks | Expected — the Theme only styles the built-in blocks. |
 | Site-wide header not on my live pages | Add `{% load prblm_blocks %}{% prblm_header %}` to your base template (the Builder page shows it automatically). |
+| Builder page only offered at the top level, not under Home | Your home page type restricts its children: add `PRBLM_BUILDER_PAGE_PARENTS = ["home.HomePage"]`. |
+| New sections don't appear in the Content tab | Save the page first (use **Save draft now** in the banner) — the Content tab only shows saved sections. |
+| `ImproperlyConfigured: PRBLM_BUILDER_PAGE_EXTRA_BLOCKS …` | A block path can't be imported, an entry isn't a `("name", "path")` pair, or a name clashes with a built-in block. The message says which. |
+| A "Snippets" menu appeared | Headers and Footers are stored as snippets; Wagtail lists them there too. |
 | Warning `prblm_builder.W001` | Remove `PRBLM_BUILDER_SEED_NEW_BLOCKS` from your settings. |
 
 ## License
