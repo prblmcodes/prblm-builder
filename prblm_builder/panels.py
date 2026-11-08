@@ -27,6 +27,7 @@ class LayoutBuilderPanel(Panel):
             from . import settings as cfg
             ctx = super().get_context_data(parent_context)
             ctx["demo_url"] = reverse("prblm_builder:demo") if cfg.demo_enabled() else ""
+            ctx["admin_tweaks"] = cfg.admin_tweaks()
             pk = getattr(self.instance, "pk", None)
             if pk:
                 ctx["builder_url"] = reverse("prblm_builder:builder", args=[pk]) + "?embed=1"

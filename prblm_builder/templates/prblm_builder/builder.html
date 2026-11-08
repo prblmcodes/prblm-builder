@@ -39,7 +39,8 @@
        data-save-url="{{ save_url }}"
        data-context="{{ context_param }}"
        data-edit-url="{{ edit_url }}"
-       data-csrf="{{ csrf_token }}">
+       data-csrf="{{ csrf_token }}"
+       data-canvas-width="{{ canvas_width }}">
     {{ sections|json_script:"pb-sections" }}
 
     <aside class="pb-palette">

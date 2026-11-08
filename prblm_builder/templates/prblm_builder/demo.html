@@ -21,6 +21,11 @@
     .nav-link{display:block;padding:6px 10px;border-radius:7px;font-size:13.5px;color:#55555c;text-decoration:none}
     .nav-link:hover{background:#f6f1ee;color:var(--pb-ink)}
     .nav-link.active{background:rgba(43,108,176,.12);color:var(--pb-accent);font-weight:600}
+    .bl-skip{margin:36px 0 0;border:1px dashed var(--pb-line);border-radius:12px;background:#fafafb}
+    .bl-skip summary{cursor:pointer;padding:12px 14px;font-size:13.5px;color:var(--pb-mute)}
+    .bl-skip ul{margin:0;padding:0 14px 12px 32px;font-size:13px;color:#55555c}
+    .bl-skip li{margin:5px 0}
+    .bl-skip code{font-size:11px;background:#f3f3f6;padding:2px 6px;border-radius:5px}
     .nav-group-title{margin:12px 8px 4px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--pb-mute)}
   </style>
 </head>
@@ -67,6 +72,20 @@
           </article>
         {% endfor %}
       {% endfor %}
+      {% if unpreviewable %}
+        <details class="bl-skip" id="bl-unpreviewable">
+          <summary>Couldn't preview {{ unpreviewable|length }} block{{ unpreviewable|pluralize }} on {{ unpreviewable|pluralize:"its,their" }} own</summary>
+          <ul>
+            {% for b in unpreviewable %}
+              <li><strong>{{ b.label }}</strong> <code>{{ b.name }}</code> — {{ b.reason }}</li>
+            {% endfor %}
+          </ul>
+          <p style="margin:0;padding:0 14px 12px;font-size:12.5px;color:var(--pb-mute)">
+            These still appear in the Layout palette. To hide one, add <code>builder = False</code>
+            to the block's <code>Meta</code>, or list it in <code>PRBLM_BUILDER_EXCLUDE_BLOCKS</code>.
+          </p>
+        </details>
+      {% endif %}
       <p class="no-results" id="bl-none" style="display:none;padding:50px;text-align:center;color:var(--pb-mute)">No sections match your search.</p>
     </main>
   </div>

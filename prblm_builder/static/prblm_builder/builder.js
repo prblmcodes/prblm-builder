@@ -51,7 +51,7 @@
   /* ---------- preview iframes: lazy load + auto height (section frames) ---------- */
   // Embedded, the editor column is too narrow to render sections at real width, so
   // each frame renders at a fixed DESKTOP width and is scaled down to fit its host.
-  var CANVAS_W = 1280;
+  var CANVAS_W = parseInt(wrap.dataset.canvasWidth, 10) || 1280;   // PRBLM_BUILDER_CANVAS_WIDTH
   function scaleFit(frame, isChrome) {
     try {
       var host = frame.closest(".pb-sec") || frame.closest(".pb-chrome");
@@ -117,7 +117,7 @@
   function previewSrc(s) {
     var q = CFG.context + "&block=" + encodeURIComponent(s.type);
     if (s.copyFrom) return CFG.preview + "?" + q + "&section=" + encodeURIComponent(s.copyFrom);
-    if (s.isNew) return CFG.preview + "?" + q + "&demo=1";
+    if (s.isNew) return CFG.preview + "?" + q + "&demo=1&fresh=1";
     return CFG.preview + "?" + q + "&section=" + encodeURIComponent(s.id);
   }
 
@@ -284,9 +284,10 @@
     try {
       var thumb = f.closest(".pb-thumb"), doc = f.contentDocument;
       if (!thumb || !doc || !doc.documentElement) return;
+      f.style.width = CANVAS_W + "px";
       var h = doc.documentElement.scrollHeight;
       f.style.height = h + "px";
-      var scale = thumb.clientWidth / 1280;
+      var scale = thumb.clientWidth / CANVAS_W;
       f.style.transform = "scale(" + scale + ")";
       // height fits the section's real (scaled) height — narrow sections get short
       // thumbnails — capped so a very tall section can't dominate the list.

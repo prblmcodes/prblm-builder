@@ -126,7 +126,10 @@ _IMG_CACHE = {}
 
 def placeholder_image(width=1200, height=800):
     """A reusable soft-gradient placeholder Wagtail Image (fallback when the site has
-    no images of its own)."""
+    no images of its own). Returns None when ``PRBLM_BUILDER_PLACEHOLDER_IMAGES`` is
+    off — the demo then simply has no image."""
+    if not cfg.placeholder_images():
+        return None
     key = (width, height)
     if key in _IMG_CACHE:
         return _IMG_CACHE[key]

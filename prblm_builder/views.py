@@ -5,12 +5,14 @@ content is edited in Wagtail's normal editor. Existing blocks keep their stored 
 across a reorder; newly added blocks are seeded with demo content.
 """
 import json
+import re
 
 from django.apps import apps as django_apps
 from django.core.exceptions import PermissionDenied
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
+from django.utils.html import escape, strip_tags
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.decorators.http import require_POST
 from wagtail.models import Page
@@ -51,18 +53,54 @@ def _palette(stream_block):
     return [(g, [{"type": n, "label": lbl} for (n, _b, lbl) in items]) for g, items in groups]
 
 
-def _render_block_safe(block, value, request, page=None):
+def _render_block(block, value, request, page=None):
     # Mark the request as a preview so blocks that fill themselves with sample data
     # under preview (the common Wagtail convention) show demo content on the canvas.
     request.is_preview = True
     ctx = {"request": request, "sample_fill": True}
     if page is not None:
         ctx["page"] = page
+    return block.render(value, context=ctx)
+
+
+def _render_block_safe(block, value, request, page=None):
     try:
-        return block.render(value, context=ctx)
+        return _render_block(block, value, request, page)
     except Exception as exc:
         return (f'<div style="padding:24px;font-family:sans-serif;color:#7a1010;'
                 f'background:#fdecec">Preview unavailable: {type(exc).__name__}</div>')
+
+
+_VISIBLE_TAGS = re.compile(r"<(img|picture|svg|video|iframe|canvas|object|embed|hr)\b", re.I)
+
+
+def _is_blank(html):
+    """True if rendered HTML shows nothing: no text and no media."""
+    html = str(html or "")
+    return not strip_tags(html).strip() and not _VISIBLE_TAGS.search(html)
+
+
+def _demo_value(block_name, block):
+    """``(value, page)`` to preview a block with: a real instance used on the site
+    (with its page, so hero-style blocks render fully), else synthesised content —
+    trimmed for display."""
+    value, src_page = previews.real_instance_for(block_name)
+    if value is None:
+        value = previews.demo_value(block, block_name, prefer_real=False)
+    return previews.trim_for_demo(block, value), src_page
+
+
+def _preview_problem(block_name, block, request):
+    """Why a block can't be previewed on its own (``None`` if it can): it errors, or
+    renders nothing with demo content (e.g. a link/button fragment)."""
+    try:
+        value, src_page = _demo_value(block_name, block)
+        html = _render_block(block, value, request, src_page)
+    except Exception as exc:
+        return f"Error while rendering ({type(exc).__name__})"
+    if _is_blank(html):
+        return "Shows no text or images with demo content"
+    return None
 
 
 # ----------------------------------------------------------------- per-page builder
@@ -91,6 +129,7 @@ def builder(request, page_id):
         "edit_url": reverse("wagtailadmin_pages:edit", args=[page.id]),
         "preview_page_url": reverse("prblm_builder:page_preview", args=[page.id]),
         "back_url": reverse("wagtailadmin_explore", args=[page.get_parent().id]),
+        "canvas_width": cfg.canvas_width(),
     })
 
 
@@ -129,6 +168,7 @@ def builder_new(request):
         "edit_url": "",
         "preview_page_url": "",
         "back_url": "",
+        "canvas_width": cfg.canvas_width(),
     })
 
 
@@ -137,11 +177,21 @@ def demo(request):
     a live demo preview (same content engine as the builder). Admin-only via the URL."""
     if not cfg.demo_enabled():
         raise Http404("The block library is disabled (PRBLM_BUILDER_DEMO).")
-    groups = [{"group": g, "blocks": [{"name": n, "label": lbl} for (n, _b, lbl) in items]}
-              for g, items in registry.grouped_all_blocks()]
+    groups, unpreviewable = [], []
+    for g, items in registry.grouped_all_blocks():
+        ok = []
+        for name, block, label in items:
+            problem = _preview_problem(name, block, request)
+            if problem:
+                unpreviewable.append({"name": name, "label": label, "reason": problem})
+            else:
+                ok.append({"name": name, "label": label})
+        if ok:
+            groups.append({"group": g, "blocks": ok})
     return render(request, "prblm_builder/demo.html", {
         "groups": groups,
         "total": sum(len(g["blocks"]) for g in groups),
+        "unpreviewable": unpreviewable,
         "preview_url": reverse("prblm_builder:preview"),
     })
 
@@ -175,8 +225,16 @@ def preview(request):       # builder frames this from the same origin, so allow
         tmpl = cfg.header_template() if chrome == "header" else cfg.footer_template()
         if not tmpl:
             raise Http404
+        ctx = {}
+        if request.GET.get("page"):
+            # The page being edited, so headers/footers that use ``page`` render as on
+            # the site. (A brand-new unsaved page has none.)
+            chrome_page = _specific_page(request.GET["page"])
+            if not _can_edit(chrome_page, request.user):
+                raise PermissionDenied
+            ctx = {"page": chrome_page, "self": chrome_page}
         request.is_preview = True
-        html = render_to_string(tmpl, {}, request=request)  # request → context processors
+        html = render_to_string(tmpl, ctx, request=request)  # request → context processors
         return HttpResponse(previews.frame(html, request))
 
     page = None
@@ -207,14 +265,23 @@ def preview(request):       # builder frames this from the same origin, so allow
         else registry.find_block(block_name)
     if block is None:
         raise Http404(f"Unknown block {block_name!r}")
+    # A section just added on the canvas, when new blocks start empty: show what will
+    # actually be saved (the block's defaults), not demo content.
+    if request.GET.get("fresh") and not cfg.seed_new_blocks():
+        html = _render_block_safe(block, layout_mod.empty_value(block), request, page)
+        if _is_blank(html):
+            html = (
+                '<div style="padding:40px 24px;font-family:sans-serif;text-align:center;'
+                'color:#5a5a66;background:#fafafb;border:2px dashed #d6d6de">'
+                f'<strong>New {escape(registry.block_label(block_name, block))}</strong><br>'
+                'Add its content in the Content tab.</div>')
+        return HttpResponse(previews.frame(html, request))
+
     # Demo content: prefer a real instance of this block used on the site — real images
     # and copy, and its page as context so hero-style blocks (which read the page's
-    # title / header_image / excerpt) render fully instead of an empty band.
-    value, src_page = previews.real_instance_for(block_name)
-    if value is None:
-        value = previews.demo_value(block, block_name, prefer_real=False)
-    # Trim long rich-text / text for an elegant demo (display only).
-    value = previews.trim_for_demo(block, value)
+    # title / header_image / excerpt) render fully instead of an empty band. Long text
+    # is trimmed for an elegant demo (display only).
+    value, src_page = _demo_value(block_name, block)
     html = _render_block_safe(block, value, request, src_page or page)
     return HttpResponse(previews.frame(html, request))
 

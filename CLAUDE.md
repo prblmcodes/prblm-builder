@@ -44,8 +44,10 @@ site content where a block is used, else synthesis).
 Target stack: **Wagtail 8.1+ (<9), Django 6.1+, Python 3.12+** (latest stable as of v0.1.0).
 
 ## Current state
-v0.1.0 is the first GitHub release (MIT). Install in another project with
-`pip install "prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@v0.1.0"`.
+Latest release v0.2.0 (MIT; see CHANGELOG.md). Install in another project with
+`pip install "prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@v0.2.0"`.
+Tests: `prblm_builder/tests/` (generic, shipped) + `tests/test_options.py` (needs the
+edge-case blocks in `tests/testapp`).
 Next: install into a second real Wagtail project; remaining roadmap in the history doc.
 
 ## Note on the raw transcript

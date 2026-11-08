@@ -80,10 +80,14 @@ class BuilderTests(TestCase):
     def test_block_library_and_every_block_preview(self):
         """The Block library renders, and every block gets a demo preview (synthesised
         content, incl. placeholder images) without erroring."""
-        self.assertEqual(self.client.get(reverse("prblm_builder:demo")).status_code, 200)
+        r = self.client.get(reverse("prblm_builder:demo"))
+        self.assertEqual(r.status_code, 200)
+        skipped = {b["name"] for b in r.context["unpreviewable"]}  # listed separately
         base = reverse("prblm_builder:preview")
         for _group, items in registry.grouped_all_blocks():
             for name, _block, _label in items:
+                if name in skipped:
+                    continue
                 r = self.client.get(f"{base}?block={name}")
                 self.assertEqual(r.status_code, 200, name)
                 self.assertNotContains(r, "Preview unavailable", msg_prefix=name)

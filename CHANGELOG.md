@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.2.0 — 2026-11-08
+
+**Block selection**
+- The Block library now lists the same blocks as the Layout palette (top-level blocks of
+  builder-enabled page fields). Blocks used only nested inside others, or only in
+  non-page StreamFields, no longer appear. *Behaviour change* — set
+  `PRBLM_BUILDER_LIBRARY_SCOPE = "all"` for the old project-wide list.
+- A block can opt out with `class Meta: builder = False`.
+- New `PRBLM_BUILDER_EXCLUDE_BLOCKS`: hide blocks by name or dotted class path.
+- Blocks that error or render nothing are listed in a collapsed "Couldn't preview"
+  section of the Block library, with the reason, instead of an empty/red card.
+
+**New settings**
+- `PRBLM_BUILDER_SEED_NEW_BLOCKS` — `False` makes new blocks start empty (text fields
+  `""`, never `"None"`), with a "New …" placeholder on the canvas.
+- `PRBLM_BUILDER_CANVAS_WIDTH` — desktop width sections render at (default 1280).
+- `PRBLM_BUILDER_PLACEHOLDER_IMAGES` — `False` stops the plugin adding placeholder images.
+- `PRBLM_BUILDER_LIBRARY_SCOPE` — `"builder"` (default) or `"all"`.
+- `PRBLM_BUILDER_ADMIN_TWEAKS` — `False` turns off the parts that hook into Wagtail
+  admin internals (full-width Layout tab, editor-header link).
+
+**Other**
+- Header/footer templates on the canvas now get `page` / `self` (the page being edited).
+
 ## 0.1.0 — 2026-11-08
 
 First public release.

@@ -22,7 +22,7 @@ def main():
         call_command("makemigrations", "testapp")
         return 0
     runner = get_runner(settings)(verbosity=2)
-    failures = runner.run_tests(args or ["prblm_builder"])
+    failures = runner.run_tests(args or ["prblm_builder", "tests"])
     return 1 if failures else 0
 
 

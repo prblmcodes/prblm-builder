@@ -15,12 +15,45 @@ editor. This module reconciles the two so one Save keeps both:
   Without it we'd either resurrect deleted sections or silently drop new ones.
 
 Existing sections keep their stored content exactly; brand-new ones are seeded with
-realistic demo content (so a built-and-published page is never blank); a duplicate copies
-its source's content.
+realistic demo content (or start empty with ``PRBLM_BUILDER_SEED_NEW_BLOCKS = False``);
+a duplicate copies its source's content.
 """
 import uuid
 
 from . import previews
+from . import settings as cfg
+
+
+def empty_value(block):
+    """A block's own defaults, with unset text fields as ``""`` rather than ``None`` —
+    what Wagtail's editor saves for a blank field (``None`` would render as "None")."""
+    from wagtail import blocks
+
+    if isinstance(block, blocks.StructBlock):
+        default = block.get_default()
+        out = {}
+        for name, child in block.child_blocks.items():
+            value = default.get(name)
+            # Recurse into nested structs (their own text fields may be None too).
+            if value is None or isinstance(child, blocks.StructBlock):
+                value = empty_value(child)
+            out[name] = value
+        return block.normalize(out)
+    default = block.get_default()
+    if default is None and isinstance(block, blocks.FieldBlock):
+        try:
+            return block.field.to_python("")
+        except Exception:
+            return None
+    return default
+
+
+def new_block_value(block, name):
+    """Stored (prep) value for a block just added in the Layout tab: demo content, or
+    the block's own empty defaults when ``PRBLM_BUILDER_SEED_NEW_BLOCKS`` is off."""
+    if cfg.seed_new_blocks():
+        return block.get_prep_value(previews.demo_value(block, name))
+    return block.get_prep_value(empty_value(block))
 
 
 def reconcile(stream_block, current_raw, layout, initial_ids=None):
@@ -55,8 +88,7 @@ def reconcile(stream_block, current_raw, layout, initial_ids=None):
         # content was deleted elsewhere, so it falls through here only when flagged
         # new; an unflagged vanished id is simply dropped.
         if item.get("new") or copy_from:
-            demo = block.get_prep_value(previews.demo_value(block, t))
-            result.append({"type": t, "value": demo, "id": sid})
+            result.append({"type": t, "value": new_block_value(block, t), "id": sid})
 
     # Sections added in the normal editor that the Layout tab never knew about are
     # kept (appended after the arranged ones). Ones the Layout tab *did* know and

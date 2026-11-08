@@ -144,6 +144,14 @@ into the editor header's top-right strip. Gated by `PRBLM_BUILDER_DEMO`.
 7. **Extraction** to this standalone repo.
 8. **v0.1.0 release** — moved to Wagtail 8.1 / Django 6.1, bundled test project + CI, MIT
    license, preview view hardened (bad params → 404, stored sections need edit permission).
+9. **v0.2.0** — first install in a second project showed a reusable *link* block in the
+   Block library with no preview. Fixed generically rather than by path: the library now
+   lists only the palette's blocks (top-level blocks of builder-enabled page fields);
+   blocks can opt out with `Meta: builder = False` or `PRBLM_BUILDER_EXCLUDE_BLOCKS`
+   (name or class); unpreviewable blocks go to a collapsed "Couldn't preview" list. Added
+   settings: SEED_NEW_BLOCKS, CANVAS_WIDTH, PLACEHOLDER_IMAGES, LIBRARY_SCOPE,
+   ADMIN_TWEAKS; header/footer get the page. Lesson: an "empty" new block must use `""`
+   for text fields — Wagtail's `get_default()` is `None`, which renders as "None".
 
 ---
 
@@ -217,6 +225,14 @@ previews unstyled.
 | `PRBLM_BUILDER_DEMO` | `True` | The admin-only Block library |
 | `PRBLM_BUILDER_EXCLUDE_TEMPLATE_PREFIXES` | `()` | Block template prefixes to hide |
 | `PRBLM_BUILDER_INDEX_SCAN_LIMIT` | `500` | Pages/model scanned for real demo content |
+| `PRBLM_BUILDER_EXCLUDE_BLOCKS` | `()` | Hide blocks by name or dotted class path (0.2) |
+| `PRBLM_BUILDER_LIBRARY_SCOPE` | `"builder"` | Block library = palette blocks, or `"all"` StreamFields (0.2) |
+| `PRBLM_BUILDER_SEED_NEW_BLOCKS` | `True` | `False` = new blocks start empty (0.2) |
+| `PRBLM_BUILDER_CANVAS_WIDTH` | `1280` | Desktop width sections render at on the canvas (0.2) |
+| `PRBLM_BUILDER_PLACEHOLDER_IMAGES` | `True` | Allow creating placeholder images (0.2) |
+| `PRBLM_BUILDER_ADMIN_TWEAKS` | `True` | Full-width tab + header link (Wagtail internals) (0.2) |
+
+A block can also opt out itself: `class Meta: builder = False`.
 
 ---
 

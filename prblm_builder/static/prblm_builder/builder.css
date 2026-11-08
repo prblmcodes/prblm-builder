@@ -48,7 +48,7 @@ body.pb-embed.pb-expanded .pb-divider{display:none}
 /* The editor column is too narrow to render sections at their real width (they'd
    fall back to the mobile layout), so in the tab each section/chrome frame renders
    at a fixed DESKTOP width and is scaled to fit — you see the true desktop layout,
-   just smaller. JS sets each frame's width (1280) + scale and the host's height. */
+   just smaller. JS sets each frame's width (PRBLM_BUILDER_CANVAS_WIDTH, default 1280) + scale and the host's height. */
 body.pb-embed .pb-sec,
 body.pb-embed .pb-chrome{overflow:hidden}
 body.pb-embed .pb-frame,

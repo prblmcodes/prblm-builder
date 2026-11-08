@@ -55,11 +55,37 @@ def block_label(name, block):
     return getattr(block.meta, "label", None) or name.replace("_", " ").title()
 
 
+def _excluded_classes():
+    """Block classes named in ``PRBLM_BUILDER_EXCLUDE_BLOCKS`` (dotted paths). A path
+    that doesn't import is ignored rather than breaking the admin."""
+    from django.utils.module_loading import import_string
+    out = []
+    for item in cfg.exclude_blocks():
+        if "." not in str(item):
+            continue
+        try:
+            out.append(import_string(item))
+        except ImportError:
+            continue
+    return tuple(c for c in out if isinstance(c, type))
+
+
+def hidden(name, block):
+    """True if the project asked to keep this block out of the builder: the block's own
+    ``Meta: builder = False``, or ``PRBLM_BUILDER_EXCLUDE_BLOCKS`` (by name or class)."""
+    if getattr(block.meta, "builder", True) is False:
+        return True
+    if name in cfg.exclude_blocks():
+        return True
+    classes = _excluded_classes()
+    return bool(classes) and isinstance(block, classes)
+
+
 def previewable(name, block):
-    """A block worth showing: it has a template of its own and isn't excluded
-    (e.g. newsletter email blocks)."""
+    """A block worth showing: it has a template of its own, isn't hidden by the
+    project, and isn't under an excluded template prefix (e.g. email blocks)."""
     template = getattr(block.meta, "template", None)
-    if not template:
+    if not template or hidden(name, block):
         return False
     return not template.startswith(cfg.exclude_template_prefixes())
 
@@ -85,20 +111,30 @@ def grouped_blocks(stream_block):
     return _group(stream_block.child_blocks.items())
 
 
-def all_blocks():
-    """``{name: block}`` for every previewable block anywhere in the project (deduped).
+def _library_stream_blocks():
+    """The StreamBlocks the Block library draws from (``PRBLM_BUILDER_LIBRARY_SCOPE``)."""
+    if cfg.library_scope() == "all":
+        for model in django_apps.get_models():
+            for field in model._meta.get_fields():
+                if isinstance(field, StreamField):
+                    yield field.stream_block
+        return
+    # "builder": exactly what the Layout palettes offer — top-level blocks of the
+    # builder-enabled page fields. Blocks only used nested inside others (links,
+    # buttons, …) or in non-page StreamFields never show up.
+    for model in enabled_page_models():
+        _name, stream_block = stream_block_for(model)
+        if stream_block is not None:
+            yield stream_block
 
-    Walks every model's StreamFields — the demo/block-library page shows the whole
-    catalogue, not just one field's.
-    """
+
+def all_blocks():
+    """``{name: block}`` for every previewable block the Block library lists (deduped)."""
     found = {}
-    for model in django_apps.get_models():
-        for field in model._meta.get_fields():
-            if not isinstance(field, StreamField):
-                continue
-            for name, block in field.stream_block.child_blocks.items():
-                if previewable(name, block):
-                    found.setdefault(name, block)
+    for stream_block in _library_stream_blocks():
+        for name, block in stream_block.child_blocks.items():
+            if previewable(name, block):
+                found.setdefault(name, block)
     return found
 
 

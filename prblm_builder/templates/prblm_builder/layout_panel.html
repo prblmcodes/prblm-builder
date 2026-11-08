@@ -2,9 +2,9 @@
 {% comment %}Wagtail caps editor content at .w-form-width (840px); let the Layout tab
 use the full width — but ONLY when no side panel (preview / comments / checks) is open,
 so an open preview panel shrinks the canvas to sit beside it instead of being overlaid.{% endcomment %}
-<style>.editor-view:not(.side-panel-open) .w-form-width:has(.prblm-layout-panel){max-width:none}</style>
+{% if admin_tweaks %}<style>.editor-view:not(.side-panel-open) .w-form-width:has(.prblm-layout-panel){max-width:none}</style>{% endif %}
 
-{% if demo_url %}
+{% if demo_url and admin_tweaks %}
 {% comment %}Add a 'Block library' link (opens in a new tab) to the editor header's
 top-right strip, next to the preview / checks / comments toggles.{% endcomment %}
 <script>

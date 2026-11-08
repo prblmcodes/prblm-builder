@@ -10,6 +10,10 @@ previews at its own front-end CSS/JS so sections look like production.
     PRBLM_BUILDER_PREVIEW_BODY_CLASS = "font-body antialiased"
     PRBLM_BUILDER_FIELD_NAMES = ["body"]                 # which StreamField to build
     PRBLM_BUILDER_PAGE_MODELS = ["home.StandardPage"]    # None = auto-detect
+    PRBLM_BUILDER_EXCLUDE_BLOCKS = ["link"]              # hide by name or class path
+    PRBLM_BUILDER_SEED_NEW_BLOCKS = False                # new blocks start empty
+
+See the README for the full list.
 """
 from django.conf import settings
 
@@ -68,3 +72,45 @@ def exclude_template_prefixes():
     """Block templates under these prefixes are left out of the palette + demo
     (e.g. newsletter email blocks that only render inside an email)."""
     return tuple(_get("PRBLM_BUILDER_EXCLUDE_TEMPLATE_PREFIXES", ()))
+
+
+def exclude_blocks():
+    """Blocks hidden from the palette + Block library, by StreamField name
+    (``"link"``) or dotted block class path (``"core.blocks.LinkBlock"`` — also
+    hides subclasses). A block can opt out itself with ``class Meta: builder = False``."""
+    return tuple(_get("PRBLM_BUILDER_EXCLUDE_BLOCKS", ()))
+
+
+def library_scope():
+    """What the Block library lists: ``"builder"`` (default) = the blocks offered in the
+    Layout palettes (top-level blocks of builder-enabled page fields); ``"all"`` = the
+    top-level blocks of every StreamField in the project (snippets, settings, …)."""
+    scope = _get("PRBLM_BUILDER_LIBRARY_SCOPE", "builder")
+    return scope if scope in ("builder", "all") else "builder"
+
+
+def seed_new_blocks():
+    """Whether a block added in the Layout tab starts with demo content (True) or
+    empty, with the block's own defaults (False)."""
+    return bool(_get("PRBLM_BUILDER_SEED_NEW_BLOCKS", True))
+
+
+def canvas_width():
+    """Desktop width (px) sections render at on the canvas before being scaled to fit."""
+    try:
+        return max(320, int(_get("PRBLM_BUILDER_CANVAS_WIDTH", 1280)))
+    except (TypeError, ValueError):
+        return 1280
+
+
+def placeholder_images():
+    """Whether the plugin may create gradient placeholder images in the image library
+    when the site has no images to use for demo content."""
+    return bool(_get("PRBLM_BUILDER_PLACEHOLDER_IMAGES", True))
+
+
+def admin_tweaks():
+    """Editor niceties that hook into Wagtail admin internals: the full-width Layout tab
+    and the 'Block library' link in the editor header. Turn off if a Wagtail upgrade
+    breaks them. (The Layout tab and saving work either way.)"""
+    return bool(_get("PRBLM_BUILDER_ADMIN_TWEAKS", True))
