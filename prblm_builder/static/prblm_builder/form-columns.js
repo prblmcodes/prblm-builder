@@ -10,17 +10,27 @@
   var script = document.currentScript;
   var MODE = (script && script.getAttribute("data-mode")) || "builtin";
   var MIN_WIDTH = 560;   // narrower than this: one column
+  // Block forms (StreamField) and the plugin's own panel groups (e.g. the Theme page:
+  // a MultiFieldPanel with classname "pbk-form").
+  var PANEL = ".w-panel.pbk-form > .w-panel__content";
   var CONTAINERS = MODE === "all"
-    ? ".struct-block, .pbk-form, [data-block-settings]"
-    : ".pbk-form, .pbk-form .struct-block, .pbk-form [data-block-settings]";
+    ? ".struct-block, .pbk-form, [data-block-settings], " + PANEL
+    : ".pbk-form, .pbk-form .struct-block, .pbk-form [data-block-settings], " + PANEL;
 
-  function isField(el) { return el.hasAttribute && el.hasAttribute("data-contentpath"); }
+  // A field: a block field (data-contentpath) or a model-form field panel.
+  function isField(el) {
+    return el.hasAttribute && (el.hasAttribute("data-contentpath") || el.classList.contains("w-panel__wrapper"));
+  }
   function visible(el) { return !el.hidden && el.offsetParent !== null; }
   function isWide(el) {
     // Long text, rich text, or a group of fields (a list, a nested block, a stream).
-    // (Lists and streams are recognised by their containers, so an empty list counts too.)
-    return !!el.querySelector('textarea, .Draftail-Editor, [data-draftail-input], [data-contentpath], ' +
-      '[data-streamfield-list-container], [data-streamfield-list-count], [data-streamfield-stream-container]');
+    // (Lists and streams are recognised by their containers, so an empty list counts too.
+    // A model-form field panel holds its own [data-contentpath] element, so for those only
+    // the content counts.)
+    var long = 'textarea, .Draftail-Editor, [data-draftail-input], [data-streamfield-list-container], ' +
+               '[data-streamfield-list-count], [data-streamfield-stream-container]';
+    if (el.classList.contains("w-panel__wrapper")) return !!el.querySelector(long);
+    return !!el.querySelector(long + ", [data-contentpath]");
   }
 
   function layout(container) {

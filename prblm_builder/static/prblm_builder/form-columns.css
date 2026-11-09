@@ -4,20 +4,22 @@
 .pb-cols > .pb-col-half{grid-column:auto}
 .pb-cols > .pb-col-full{grid-column:1 / -1}
 /* Fields fill their column: Wagtail's field box shrinks to its content by default. */
-.pb-cols > [data-contentpath] .w-field{display:block;width:100%}
+.pb-cols > * .w-field{display:block;width:100%}
 /* Choosers (image / page / document): a full-width box like the other fields. */
-.pb-cols > [data-contentpath] .chooser{display:block;width:100%;box-sizing:border-box;padding:8px 12px;
+.pb-cols > * .chooser{display:block;width:100%;box-sizing:border-box;padding:8px 12px;
   border:1px solid var(--w-color-border-field-default, #c8c8d0);border-radius:.3125rem}
-.pb-cols > [data-contentpath] .chooser.blank{border-style:dashed}
+.pb-cols > * .chooser.blank{border-style:dashed}
 /* Fields fill their column: dropdowns, inputs and choosers. */
-.pb-cols > [data-contentpath] select,
-.pb-cols > [data-contentpath] input[type="text"],
-.pb-cols > [data-contentpath] input[type="email"],
-.pb-cols > [data-contentpath] input[type="url"],
-.pb-cols > [data-contentpath] input[type="number"],
-.pb-cols > [data-contentpath] input[type="date"],
-.pb-cols > [data-contentpath] .w-field__input,
-.pb-cols > [data-contentpath] .chooser{width:100%;max-width:none}
+.pb-cols > * select,
+.pb-cols > * input[type="text"],
+.pb-cols > * input[type="email"],
+.pb-cols > * input[type="url"],
+.pb-cols > * input[type="number"],
+.pb-cols > * input[type="date"],
+.pb-cols > * input[type="color"],
+.pb-cols > * .w-field__input,
+.pb-cols > * .chooser{width:100%;max-width:none}
 /* The block's settings area: a divider underneath while it's open. */
 [data-block-settings]:not([hidden]){padding-bottom:18px;margin-bottom:18px;
   border-bottom:1px solid var(--w-color-border-furniture, #e6e6e6)}
+.pb-cols > * input[type="color"]{height:42px;padding:4px;cursor:pointer}

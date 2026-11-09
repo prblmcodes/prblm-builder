@@ -90,7 +90,7 @@ Previous plans: `docs/plans/` (v0.3.0 built-in blocks, v0.4.0 feedback round, v0
 - [x] **Phase 3 — Two-column block forms**: `form-columns.js` + CSS, `pbk-form` on built-in
       blocks, settings-area divider, re-layout on changes, setting. Tests + browser checks
       (Hero, FAQ list items, link type switch, settings open/closed, narrow window).
-- [ ] **Phase 4 — Plugin admin forms** (Theme page) + opt-in for site blocks ("all").
+- [x] **Phase 4 — Plugin admin forms** (Theme page) + opt-in for site blocks ("all").
       Browser check.
 - [ ] **Phase 5 — Examples guide**: `docs/EXAMPLES.md` + `tests/examples/` app + tests.
 - [ ] **Phase 6 — Release**: README (link the examples, new setting, tab order, sync),
@@ -126,3 +126,7 @@ Previous plans: `docs/plans/` (v0.3.0 built-in blocks, v0.4.0 feedback round, v0
   selects to fill the column; an empty ListBlock has no `[data-contentpath]` children, so
   lists are recognised by `[data-streamfield-list-container]`; paired fields are aligned to
   their bottom edge so inputs line up when only one has help text.
+- Phase 4 done (159 tests; browser: Theme page groups in two columns with full-width colour
+  pickers; with "all", a site block's own fields + settings area use the same layout).
+  Finding: in model forms each field panel (`.w-panel__wrapper`) contains its own
+  `[data-contentpath]`, so "has nested fields → full width" must only apply to block fields.

@@ -49,17 +49,19 @@ class ThemeSettings(BaseSiteSetting):
         max_length=10, choices=theme.WIDTH_CHOICES, default=D["content_width"],
         help_text="Maximum width of section content.")
 
+    # classname "pbk-form": the plugin's two-column form layout (form-columns.js).
     panels = [
         MultiFieldPanel([_color_panel("brand_color"), _color_panel("on_brand_color")],
-                        heading="Brand"),
+                        heading="Brand", classname="pbk-form"),
         MultiFieldPanel([_color_panel("text_color"), _color_panel("muted_text_color"),
                          _color_panel("background_color"), _color_panel("muted_background_color")],
-                        heading="Light sections"),
+                        heading="Light sections", classname="pbk-form"),
         MultiFieldPanel([_color_panel("dark_background_color"), _color_panel("on_dark_color")],
-                        heading="Dark sections"),
+                        heading="Dark sections", classname="pbk-form"),
         MultiFieldPanel([FieldPanel("font_family"), FieldPanel("heading_font_family")],
-                        heading="Fonts"),
-        MultiFieldPanel([FieldPanel("radius"), FieldPanel("content_width")], heading="Shape"),
+                        heading="Fonts", classname="pbk-form"),
+        MultiFieldPanel([FieldPanel("radius"), FieldPanel("content_width")], heading="Shape",
+                        classname="pbk-form"),
     ]
 
     class Meta:

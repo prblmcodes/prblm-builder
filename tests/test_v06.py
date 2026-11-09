@@ -95,3 +95,9 @@ class FormColumnsTests(TestCase):
         from prblm_builder.blocks.sections.heroes import HeroBlock
         self.assertIn("pbk-form", HeroBlock().meta.form_classname)
         self.assertIn("pbk-form", LinkBlock().meta.form_classname)
+
+
+class ThemeFormColumnsTests(TestCase):
+    def test_theme_groups_marked_for_two_columns(self):
+        from prblm_builder.blocks.models import ThemeSettings
+        self.assertTrue(all("pbk-form" in p.classname for p in ThemeSettings.panels))
