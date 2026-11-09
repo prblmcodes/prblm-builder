@@ -62,3 +62,36 @@ class TabSyncWiringTests(TestCase):
         self.assertIn("if (!dirtied) return;", js)
         for needle in ("prblm-builder:structure", "window.prblmBuilder", "writeContentInput"):
             self.assertIn(needle, js)
+
+
+@override_settings(STORAGES=STORAGES)
+class FormColumnsTests(TestCase):
+    """The layout itself runs in the browser (checked with Playwright); these guard the setup."""
+
+    def setUp(self):
+        self.client.force_login(get_user_model().objects.create_superuser("fc", "fc@example.com", "pw"))
+
+    def admin_html(self):
+        return self.client.get(reverse("wagtailadmin_home")).content.decode()
+
+    def test_loaded_for_builtin_blocks_by_default(self):
+        html = self.admin_html()
+        self.assertIn("prblm_builder/form-columns.js", html)
+        self.assertIn('data-mode="builtin"', html)
+        self.assertIn("prblm_builder/form-columns.css", html)
+
+    @override_settings(PRBLM_BUILDER_FORM_COLUMNS="all")
+    def test_all_mode(self):
+        self.assertIn('data-mode="all"', self.admin_html())
+
+    @override_settings(PRBLM_BUILDER_FORM_COLUMNS=False)
+    def test_off(self):
+        html = self.admin_html()
+        self.assertNotIn("form-columns.js", html)
+        self.assertNotIn("form-columns.css", html)
+
+    def test_builtin_block_forms_are_marked(self):
+        from prblm_builder.blocks.sections.base import LinkBlock
+        from prblm_builder.blocks.sections.heroes import HeroBlock
+        self.assertIn("pbk-form", HeroBlock().meta.form_classname)
+        self.assertIn("pbk-form", LinkBlock().meta.form_classname)

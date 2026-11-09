@@ -103,7 +103,7 @@ class LinkBlock(blocks.StructBlock):
     class Meta:
         icon = "link"
         value_class = LinkValue
-        form_classname = "pbk-link-block"
+        form_classname = "pbk-form pbk-link-block"
 
     def clean(self, value):
         value = super().clean(value)
@@ -191,3 +191,5 @@ class SectionBlock(BuilderSettingsMixin, blocks.StructBlock):
     class Meta:
         group = "Built-in"
         builder_settings = ["background", "anchor_id"]
+        # Marks the form as a built-in block's: laid out in two columns (form-columns.js).
+        form_classname = "pbk-form"

@@ -59,3 +59,29 @@ def register_block_library_menu_item():
         icon_name="grip",
         order=100,
     )
+
+
+# Two-column block forms (PRBLM_BUILDER_FORM_COLUMNS): loaded on every admin page — the
+# script only acts on block forms (built-in ones, or all with "all").
+@hooks.register("insert_global_admin_css")
+def form_columns_css():
+    from django.templatetags.static import static
+    from django.utils.html import format_html
+
+    from . import settings as cfg
+    if not cfg.form_columns():
+        return ""
+    return format_html('<link rel="stylesheet" href="{}">', static("prblm_builder/form-columns.css"))
+
+
+@hooks.register("insert_global_admin_js")
+def form_columns_js():
+    from django.templatetags.static import static
+    from django.utils.html import format_html
+
+    from . import settings as cfg
+    mode = cfg.form_columns()
+    if not mode:
+        return ""
+    return format_html('<script src="{}" data-mode="{}" defer></script>',
+                       static("prblm_builder/form-columns.js"), mode)

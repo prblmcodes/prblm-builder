@@ -109,6 +109,15 @@ def admin_tweaks():
     return bool(_get("PRBLM_BUILDER_ADMIN_TWEAKS", True))
 
 
+def form_columns():
+    """Two-column block forms in the admin: ``"builtin"`` (default — built-in blocks and the
+    plugin's own forms), ``"all"`` (also the site's own blocks) or ``False`` (off)."""
+    value = _get("PRBLM_BUILDER_FORM_COLUMNS", "builtin")
+    if value in (False, None, "off", ""):
+        return ""
+    return "all" if value == "all" else "builtin"
+
+
 def page_parents():
     """Page types (``"app_label.Model"``) under which editors may add a Builder page."""
     return list(_get("PRBLM_BUILDER_PAGE_PARENTS", []))

@@ -1,0 +1,23 @@
+/* prblm-builder — two-column block forms (see form-columns.js). */
+.pb-cols{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:24px;align-items:end}
+.pb-cols > *{grid-column:1 / -1;min-width:0}
+.pb-cols > .pb-col-half{grid-column:auto}
+.pb-cols > .pb-col-full{grid-column:1 / -1}
+/* Fields fill their column: Wagtail's field box shrinks to its content by default. */
+.pb-cols > [data-contentpath] .w-field{display:block;width:100%}
+/* Choosers (image / page / document): a full-width box like the other fields. */
+.pb-cols > [data-contentpath] .chooser{display:block;width:100%;box-sizing:border-box;padding:8px 12px;
+  border:1px solid var(--w-color-border-field-default, #c8c8d0);border-radius:.3125rem}
+.pb-cols > [data-contentpath] .chooser.blank{border-style:dashed}
+/* Fields fill their column: dropdowns, inputs and choosers. */
+.pb-cols > [data-contentpath] select,
+.pb-cols > [data-contentpath] input[type="text"],
+.pb-cols > [data-contentpath] input[type="email"],
+.pb-cols > [data-contentpath] input[type="url"],
+.pb-cols > [data-contentpath] input[type="number"],
+.pb-cols > [data-contentpath] input[type="date"],
+.pb-cols > [data-contentpath] .w-field__input,
+.pb-cols > [data-contentpath] .chooser{width:100%;max-width:none}
+/* The block's settings area: a divider underneath while it's open. */
+[data-block-settings]:not([hidden]){padding-bottom:18px;margin-bottom:18px;
+  border-bottom:1px solid var(--w-color-border-furniture, #e6e6e6)}

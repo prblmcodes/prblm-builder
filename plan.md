@@ -87,7 +87,7 @@ Previous plans: `docs/plans/` (v0.3.0 built-in blocks, v0.4.0 feedback round, v0
 - [x] **Phase 2 — Tabs in sync**: settings both ways, reload into the Content tab after
       structure changes, canvas refresh after Content edits, new-page + auto-save-off
       fallbacks. Tests + browser checks (existing page, new page, auto-save off).
-- [ ] **Phase 3 — Two-column block forms**: `form-columns.js` + CSS, `pbk-form` on built-in
+- [x] **Phase 3 — Two-column block forms**: `form-columns.js` + CSS, `pbk-form` on built-in
       blocks, settings-area divider, re-layout on changes, setting. Tests + browser checks
       (Hero, FAQ list items, link type switch, settings open/closed, narrow window).
 - [ ] **Phase 4 — Plugin admin forms** (Theme page) + opt-in for site blocks ("all").
@@ -118,3 +118,11 @@ Previous plans: `docs/plans/` (v0.3.0 built-in blocks, v0.4.0 feedback round, v0
   write its hidden fields on load → a pointless auto-saved draft on every open; it now writes
   them only after a real change; (3) the panel script runs before the rest of the form (the
   Content tab) is parsed → it waits for DOMContentLoaded.
+- Phase 3 done (158 tests; browser-checked on Hero, FAQ items, Header menu items with
+  dropdown links, settings area open, narrow window → one column). Findings: a block's
+  `form_classname` *replaces* Wagtail's `struct-block` class on its field container (so
+  built-in forms are found via `.pbk-form`, nested ones as `.pbk-form .struct-block`);
+  Wagtail's `.w-field` is inline-block and shrinks to its content — it must be stretched for
+  selects to fill the column; an empty ListBlock has no `[data-contentpath]` children, so
+  lists are recognised by `[data-streamfield-list-container]`; paired fields are aligned to
+  their bottom edge so inputs line up when only one has help text.
