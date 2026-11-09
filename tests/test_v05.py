@@ -263,11 +263,35 @@ class PageOptionsTests(TestCase):
         header = [o for o in r.context["page_options"] if o["name"] == "header"][0]
         self.assertIn("site", [c["value"] for c in header["choices"]])
 
-    def test_own_page_types_have_no_page_tab(self):
-        page = Page.objects.get(depth=1).add_child(instance=StandardPage(title="S", slug="s-" + uuid.uuid4().hex[:5]))
-        r = self.builder(page)
-        self.assertEqual(r.context["page_options"], [])
-        self.assertNotContains(r, 'role="tab"')
+    def own_page(self):
+        return Page.objects.get(depth=1).add_child(
+            instance=StandardPage(title="S", slug="s-" + uuid.uuid4().hex[:5]))
+
+    def test_own_page_types_get_information_only(self):
+        r = self.builder(self.own_page())
+        opts = {o["name"]: o for o in r.context["page_options"]}
+        self.assertEqual(set(opts), {"header", "footer"})
+        self.assertNotIn("choices", opts["header"])                       # nothing to choose
+        self.assertIn("Main header", opts["header"]["info"])              # the site default
+        self.assertIn("{% prblm_header %}", opts["header"]["info"])
+        self.assertFalse(r.context["page_options_editable"])
+        self.assertContains(r, 'role="tab"')
+        self.assertContains(r, "pb-opt-info")
+        self.assertNotContains(r, 'class="pb-opt-select"')
+        self.assertNotContains(r, "Saved with the page (Save draft")
+
+    @override_settings(PRBLM_BUILDER_HEADER_TEMPLATE="testapp/header.html")
+    def test_information_names_the_template_setting(self):
+        r = self.builder(self.own_page())
+        header = [o for o in r.context["page_options"] if o["name"] == "header"][0]
+        self.assertIn("testapp/header.html", header["info"])
+
+    def test_information_without_any_header(self):
+        from prblm_builder.blocks.models import SiteFooter, SiteHeader
+        SiteHeader.objects.all().delete(); SiteFooter.objects.all().delete()
+        r = self.builder(self.own_page())
+        header = [o for o in r.context["page_options"] if o["name"] == "header"][0]
+        self.assertIn("PRBLM_BUILDER_HEADER_TEMPLATE", header["info"])
 
     def test_fields_moved_from_content_tab_to_hidden_layout_panel(self):
         page = self.builder_page()

@@ -54,15 +54,21 @@
         <div class="pb-tabpanel" id="pb-tab-page" role="tabpanel" aria-labelledby="pb-tabbtn-page" hidden>
           {% for opt in page_options %}
             <div class="pb-opt">
+              {% if opt.choices %}
               <label class="pb-opt-label" for="pb-opt-{{ opt.name }}">{{ opt.label }}</label>
               <select id="pb-opt-{{ opt.name }}" class="pb-opt-select" data-option="{{ opt.name }}" data-chrome="{{ opt.chrome|default:'' }}">
                 {% for c in opt.choices %}<option value="{{ c.value }}" data-set="{{ c.set_json }}"{% if c.value == opt.value %} selected{% endif %}>{{ c.label }}</option>{% endfor %}
               </select>
+              {% else %}
+              <p class="pb-opt-label">{{ opt.label }}</p>
+              <p class="pb-opt-info">{{ opt.info }}</p>
+              {% if opt.hint %}<p class="pb-opt-help">{{ opt.hint }}</p>{% endif %}
+              {% endif %}
               {% if opt.help %}<p class="pb-opt-help">{{ opt.help }}</p>{% endif %}
               {% if opt.manage_url %}<a class="pb-opt-link" href="{{ opt.manage_url }}" target="_blank" rel="noopener">{{ opt.manage_label|default:"Manage" }} ↗</a>{% endif %}
             </div>
           {% endfor %}
-          <p class="pb-opt-note">Saved with the page (Save draft / Publish).</p>
+          {% if page_options_editable %}<p class="pb-opt-note">Saved with the page (Save draft / Publish).</p>{% endif %}
         </div>
       {% endif %}
       <div class="pb-tabpanel" id="pb-tab-sections"{% if page_options %} role="tabpanel" aria-labelledby="pb-tabbtn-sections"{% endif %}>

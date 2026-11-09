@@ -113,8 +113,10 @@ To upgrade later, change the tag (e.g. `@v0.5.0` → `@v0.6.0`) and reinstall. S
   or press Ctrl/⌘+V to paste below the selected one — within the same page. The
   right-click menu also has Duplicate, Settings, Move and Delete; the Duplicate button
   copies a section right below in one click.
-- **Page tab:** on page types that have page-level options (the built-in **Builder page**:
-  its header and footer), the Layout sidebar shows **Sections | Page** tabs.
+- **Page tab:** the Layout sidebar has **Sections | Page** tabs. On **Builder pages** the
+  Page tab chooses the header and footer. On your own page types it explains where they
+  come from — your site's template for that page type — since they're not chosen per page
+  there.
 - **Fold groups:** in the Layout sidebar and the Block library, click the arrow next to a
   group (or *Built-in blocks* / *Your site's blocks*) to fold it. In the Block library,
   folding in the sidebar also hides those previews. Your browser remembers what's folded.

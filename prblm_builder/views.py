@@ -187,10 +187,30 @@ def _page_options(request, page=None, model=None):
             out.extend(fn(request, page, model) or [])
         except Exception:
             continue
+    # Header / footer that nothing lets the editor choose (the site's own page types):
+    # explain where they come from instead of leaving editors looking for an option.
+    taken = {opt.get("name") for opt in out}
+    for kind in ("header", "footer"):
+        if kind not in taken:
+            out.append(_chrome_info(kind))
     for opt in out:
         for choice in opt.get("choices", []):
             choice["set_json"] = json.dumps(choice.get("set", {}))
     return out
+
+
+def _chrome_info(kind):
+    """An information-only "Page" tab entry: where this page type's header/footer come from."""
+    noun = kind
+    tmpl = chrome.template_name(kind)
+    if tmpl:
+        text = (f"Comes from your site's template for this page type. The canvas shows "
+                f"{tmpl}.")
+    else:
+        text = (f"Comes from your site's template for this page type. To show it on the "
+                f"canvas too, set PRBLM_BUILDER_{kind.upper()}_TEMPLATE.")
+    return {"name": kind, "label": noun.capitalize(), "info": text,
+            "hint": f"{noun.capitalize()}s can be chosen per page on Builder pages."}
 
 
 # ----------------------------------------------------------------- site header / footer
@@ -215,7 +235,8 @@ def builder(request, page_id):
         "sections": _sections(page, field_name),
         "palette": _palette(stream_block),
         "settings_schema": _settings_schema(stream_block),
-        "page_options": _page_options(request, page=page) if request.GET.get("embed") else [],
+        "page_options": (page_options := _page_options(request, page=page) if request.GET.get("embed") else []),
+        "page_options_editable": any(o.get("choices") for o in page_options),
         "chrome_base": reverse("prblm_builder:preview") + f"?page={page.id}",
         "show_kinds": len(_palette(stream_block)) > 1,
         "preview_url": reverse("prblm_builder:preview"),
@@ -258,7 +279,8 @@ def builder_new(request):
         "sections": [],
         "palette": _palette(stream_block),
         "settings_schema": _settings_schema(stream_block),
-        "page_options": _page_options(request, model=model),
+        "page_options": (page_options := _page_options(request, model=model)),
+        "page_options_editable": any(o.get("choices") for o in page_options),
         "chrome_base": reverse("prblm_builder:preview") + f"?model={label}",
         "show_kinds": len(_palette(stream_block)) > 1,
         "preview_url": reverse("prblm_builder:preview"),

@@ -232,3 +232,5 @@ body.pb-preview-mode .pb-exit-preview{display:inline-block;margin-left:12px}
   font:500 12px/1.35 system-ui,-apple-system,"Segoe UI",sans-serif;pointer-events:none;box-shadow:0 6px 18px rgba(0,0,0,.2);
   white-space:nowrap}
 .pb-tip[hidden]{display:none}
+.pb-opt-info{margin:0;padding:9px 11px;border:1px solid var(--pb-line);border-radius:8px;background:#fafafb;
+  font-size:12.5px;line-height:1.45;color:var(--pb-ink);overflow-wrap:anywhere}

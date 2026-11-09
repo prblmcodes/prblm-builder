@@ -82,6 +82,9 @@ def builder_page_options(request, page, model):
     """The Layout sidebar's "Page" tab for Builder pages: Header and Footer dropdowns."""
     from .models import BuilderPage
     cls = type(page) if page is not None else model
-    if cls is None or not isinstance(cls, type) or not issubclass(cls, BuilderPage):
+    if cls is None or not isinstance(cls, type):
         return []
-    return [chrome.page_option("header", page), chrome.page_option("footer", page)]
+    if issubclass(cls, BuilderPage):
+        return [chrome.page_option("header", page), chrome.page_option("footer", page)]
+    # The site's own page types: information only (their template decides).
+    return [info for info in (chrome.page_info("header"), chrome.page_info("footer")) if info]

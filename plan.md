@@ -155,3 +155,7 @@ as **one** dropdown each; the two stored fields stay (so no data migration).
 - Phase 6 docs + upgrade test done; 146 tests. Waiting for the owner's test.
 - Owner request while testing: clear tooltips on the section toolbar buttons (were slow,
   faint browser `title` tooltips) — instant `[data-tip]` tooltips, also on keyboard focus.
+- More owner feedback: chevron + bigger line icons in the toolbar; the toolbar Paste button
+  removed (paste via right-click / Ctrl+V); Page tab on the site's own page types is
+  **information only** (where the header/footer come from). Per-page header choice for site
+  pages was discussed (plugin-owned table + wrapping tag, or a model mixin) and postponed.

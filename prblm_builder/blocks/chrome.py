@@ -79,6 +79,32 @@ def for_page(kind, request=None, page=None, model=None):
     return _render(default(kind), request, page)
 
 
+def page_info(kind):
+    """Information-only "Page" tab entry for the site's own page types when a plugin
+    site-default header/footer is what the canvas shows (``None`` otherwise — the core
+    then explains the template setting)."""
+    from django.urls import reverse
+
+    from prblm_builder.chrome import template_name
+    if template_name(kind):
+        return None
+    current = default(kind)
+    if current is None:
+        return None
+    models, _ = _models()
+    Model = models[kind]
+    noun = kind
+    return {
+        "name": kind, "label": noun.capitalize(),
+        "info": (f"The canvas shows the site default {noun}, \u201c{current.name}\u201d. On the live "
+                 f"site, your template for this page type decides (add {{% prblm_{kind} %}} to "
+                 f"show it there)."),
+        "hint": f"{noun.capitalize()}s can be chosen per page on Builder pages.",
+        "manage_url": reverse(f"wagtailsnippets_{Model._meta.app_label}_{Model._meta.model_name}:list"),
+        "manage_label": f"Manage {noun}s",
+    }
+
+
 def page_option(kind, page=None):
     """The "Page" tab dropdown for a Builder page's header or footer."""
     from django.urls import reverse

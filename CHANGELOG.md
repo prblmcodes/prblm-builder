@@ -12,7 +12,8 @@
   **right-click menu** (Paste above / below — it also has Duplicate, Settings, Move, Delete)
   or Ctrl/⌘+V.
 - **Page tab** in the Layout sidebar (Sections | Page). Builder pages choose their header
-  and footer there — one dropdown each — instead of four fields in the Content tab.
+  and footer there — one dropdown each — instead of four fields in the Content tab. On the
+  site's own page types it explains where the header and footer come from.
 - Wagtail block **`preview_value`** is used first for previews and new sections;
   **`description`** shows in the Block library and sidebar. All built-ins have descriptions.
 - **Simpler links** in built-in blocks: Label → *Link to* (page, web address, section on this
