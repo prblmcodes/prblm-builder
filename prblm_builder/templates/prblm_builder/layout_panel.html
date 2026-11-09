@@ -67,6 +67,18 @@ opened again (the builder updates these same inputs when it is).{% endcomment %}
   var banner = document.querySelector(".prblm-save-banner");
   if (!banner || banner.dataset.pbBound) return;
   banner.dataset.pbBound = "1";
+  // Layout is the first tab, so after a failed save open the tab holding the first error
+  // (e.g. an empty title in the Content tab) — as Wagtail would if that tab came first.
+  function openErrorTab() {
+    var bad = document.querySelector('form [aria-invalid="true"]');
+    var panel = bad && bad.closest('[role="tabpanel"]');
+    if (!panel || !panel.id || !panel.hidden) return;   // no error, or its tab is already open
+    var tab = document.getElementById(panel.id.replace(/^tab-/, "tab-label-"));
+    if (tab) tab.click();
+  }
+  // After Wagtail's tabs have initialised.
+  if (document.readyState === "complete") setTimeout(openErrorTab, 0);
+  else window.addEventListener("load", function () { setTimeout(openErrorTab, 0); });
   // The builder iframe fires this on the editor document after any layout change.
   document.addEventListener("prblm-builder:dirty", function () { banner.hidden = false; });
   function slugify(s) {

@@ -1,6 +1,6 @@
 # Plan — v0.6.0: Layout first, tabs in sync, two-column forms, examples
 
-Branch: `feature/v0.6.0` · Status: **planned — not started** · Written 2026-11-09
+Branch: `feature/v0.6.0` · Status: **in progress** · Written 2026-11-09
 Previous plans: `docs/plans/` (v0.3.0 built-in blocks, v0.4.0 feedback round, v0.5.0 Layout editing).
 
 ---
@@ -82,7 +82,7 @@ Previous plans: `docs/plans/` (v0.3.0 built-in blocks, v0.4.0 feedback round, v0
 
 ## 3. Phases (checklist)
 
-- [ ] **Phase 1 — Layout tab first.** Tests (tab order for generated + custom edit
+- [x] **Phase 1 — Layout tab first.** Tests (tab order for generated + custom edit
       handlers) + browser check (create, edit, validation error).
 - [ ] **Phase 2 — Tabs in sync**: settings both ways, reload into the Content tab after
       structure changes, canvas refresh after Content edits, new-page + auto-save-off
@@ -104,3 +104,6 @@ Previous plans: `docs/plans/` (v0.3.0 built-in blocks, v0.4.0 feedback round, v0
   `[data-contentpath]` in `.struct-block`; settings: `[data-block-settings][hidden]`).
 - 2026-11-09 — Added: tabs-in-sync phase (settings both ways; reload into Content after
   structure changes on existing pages; new pages stay manual) and an examples guide.
+- Phase 1 done (152 tests; browser: Layout opens first on new + existing pages of every
+  builder type). Found: after a failed save the title error was hidden behind the Layout tab →
+  the panel script now opens the tab holding the first invalid field.

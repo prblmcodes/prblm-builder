@@ -1,7 +1,7 @@
 """Auto-attach the Layout tab + save wiring to every builder-enabled page model.
 
 Called from the app's ``ready()``. For each page model with a buildable StreamField
-that doesn't already have a Layout tab, this inserts a **Layout** tab into its editor
+that doesn't already have a Layout tab, this inserts a **Layout** tab as the first tab of its editor
 and composes :class:`~prblm_builder.forms.LayoutBuilderForm` onto its base form, so a
 host site gets the builder on all its block-based page types with no per-model code.
 
@@ -37,12 +37,12 @@ def enable_model(model):
     layout = ObjectList([LayoutBuilderPanel(), *extra], heading="Layout")
     if existing is not None and getattr(existing, "children", None):
         children = list(existing.children)
-        children.insert(1, layout)  # right after the Content tab
+        children.insert(0, layout)  # first tab: Wagtail opens it by default
         model.edit_handler = TabbedInterface(children)
     else:
         model.edit_handler = TabbedInterface([
-            ObjectList(model.content_panels, heading="Content"),
             layout,
+            ObjectList(model.content_panels, heading="Content"),
             ObjectList(model.promote_panels, heading="Promote"),
             ObjectList(model.settings_panels, heading="Settings"),
         ])
