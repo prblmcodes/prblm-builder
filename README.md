@@ -21,6 +21,7 @@ for every feature (each one is checked by the test suite).
 - [Requirements](#requirements)
 - [Install](#install)
 - [Quick setup](#quick-setup)
+- [Adding it to an existing site — checklist](#adding-it-to-an-existing-site--checklist)
 - [Use](#use)
 - [Built-in blocks (optional)](#built-in-blocks-optional)
 - [Settings reference](#settings-reference)
@@ -46,22 +47,34 @@ previews simply load your site's compiled CSS.
 
 ## Install
 
-Install from a GitHub release tag:
+Install from a GitHub release tag, inside your project's virtual environment:
 
 ```bash
 # public repo
-pip install "prblm-builder @ git+https://github.com/prblmcodes/prblm-builder.git@v0.5.0"
+pip install "prblm-builder @ git+https://github.com/prblmcodes/prblm-builder.git@v0.6.0"
 
 # private repo (uses your GitHub SSH key)
-pip install "prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@v0.5.0"
+pip install "prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@v0.6.0"
 ```
 
-Or put the same `prblm-builder @ git+…@v0.5.0` line in `requirements.txt`. You can also
+Or put the same `prblm-builder @ git+…@v0.6.0` line in `requirements.txt`. You can also
 download the wheel attached to a GitHub release and
-`pip install prblm_builder-0.5.0-py3-none-any.whl`.
+`pip install prblm_builder-0.6.0-py3-none-any.whl`.
 
-To upgrade later, change the tag (e.g. `@v0.5.0` → `@v0.6.0`) and reinstall. See
-[CHANGELOG.md](CHANGELOG.md) for what changed in each version.
+Check it worked: `pip show prblm-builder` shows the version.
+
+**Upgrading** to a new release: change the tag (e.g. `@v0.5.0` → `@v0.6.0`), reinstall,
+run `python manage.py migrate`, and restart the server. If pip says the version is
+*already installed* (e.g. you installed the same version from a wheel or a branch before),
+force it:
+
+```bash
+pip install --force-reinstall --no-deps "prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@v0.6.0"
+```
+
+The plugin's CSS/JS are version-stamped, so browsers load the new files without a hard
+refresh. See [Upgrading](#upgrading) for per-version notes and
+[CHANGELOG.md](CHANGELOG.md) for what changed.
 
 ## Quick setup
 
@@ -95,6 +108,59 @@ To upgrade later, change the tag (e.g. `@v0.5.0` → `@v0.6.0`) and reinstall. S
 4. In production, run `python manage.py collectstatic` as usual so the builder's
    CSS/JS are served.
 
+## Adding it to an existing site — checklist
+
+What a typical site with its own blocks, header/footer and CSS needs. Each step is
+optional unless you use that feature.
+
+```python
+# settings (the file with INSTALLED_APPS)
+INSTALLED_APPS = [
+    "prblm_builder",
+    "prblm_builder.blocks",          # 1. built-in blocks, Builder page, Theme, Headers/Footers
+    "wagtail.contrib.settings",      #    … needed by the built-in blocks (Theme)
+    # … your apps, wagtail apps …
+]
+
+PRBLM_BUILDER_PREVIEW_CSS = ["css/main.css"]          # 2. your compiled CSS (static path)
+PRBLM_BUILDER_PREVIEW_JS = ["js/core.js"]             #    scripts your blocks/header need
+# PRBLM_BUILDER_PREVIEW_BODY_CLASS = "…"              #    only if your <body> has classes
+
+PRBLM_BUILDER_HEADER_TEMPLATE = "components/header.html"   # 3. your header/footer on the canvas
+PRBLM_BUILDER_FOOTER_TEMPLATE = "components/footer.html"   #    (+ "My site's own" on Builder pages)
+
+PRBLM_BUILDER_PAGE_PARENTS = ["home.HomePage"]        # 4. allow Builder pages under Home
+PRBLM_BUILDER_PAGE_EXTRA_BLOCKS = [                   # 5. your blocks on the Builder page
+    ("hero_home", "home.blocks.HeroSectionHome"),
+]
+# PRBLM_BUILDER_SITE_BLOCK_COLUMNS = True             # 6. two-column forms for your blocks too
+```
+
+Then:
+
+1. `python manage.py migrate` (creates the Builder page, Theme, Headers and Footers tables).
+2. **Built-in blocks in your own page types** (optional): add `builder_blocks()` to their
+   StreamField, run `makemigrations` + `migrate`, and add `{% prblm_assets %}` to your
+   `base.html` so they're styled on the live site — see
+   [Built-in blocks → Enable](#enable), way 2.
+3. Restart the server, open a page in the editor: the **Layout** tab opens first.
+4. Open **Page builder → Block library** to check every block previews correctly. Blocks
+   that can't be previewed are listed at the bottom with the reason.
+
+Good to know:
+
+- Paths in `PRBLM_BUILDER_PREVIEW_CSS` / `_JS` are what you'd write in `{% static '…' %}`.
+  They're linked as `/static/…`, so they load in the canvas, Wagtail's preview panel and on
+  Builder pages whatever host name your Wagtail **Site** record has.
+- **Your blocks need a `template`** to appear in the Layout palette and Block library.
+- **Demo content** for a new section comes from, in order: the block's `preview_value`, a
+  real use of the block elsewhere on your site (with its images, snippets and pages), or
+  generated text. Set `preview_value` if you want the same demo everywhere — see
+  [Block previews and descriptions](#block-previews-and-descriptions).
+- **Third-party blocks work too** (e.g. [wagtail-link-block](https://pypi.org/project/wagtail-link-block/)):
+  generated demo content is checked against each block's own validation, so new sections
+  always save.
+
 ## Use
 
 - **Any page:** open it in the editor — the **Layout** tab opens first. Drag sections from the left,
@@ -108,6 +174,11 @@ To upgrade later, change the tag (e.g. `@v0.5.0` → `@v0.6.0`) and reinstall. S
   changes…") and reloads the editor on the Content tab with the new sections in it. Edits
   made in the Content tab show on the canvas when you switch back to Layout. ⚙ settings
   update the Content tab at once, and the other way round.
+- **Wagtail's preview panel** follows the Layout tab as you work. A new section appears
+  where you dropped it — on a long page that may be below what the preview shows, so
+  scroll the preview to see it.
+- **Demo text:** the Block library and sidebar thumbnails shorten long text; a section on
+  the canvas shows its full text, exactly as it will be saved.
 - **New page (not saved yet):** the Layout tab works before the first save. Sections you
   add show in the Content tab **after you save** — a banner says so, with a **Save draft
   now** button; without a title it fills in **"Untitled page 23"** (rename it later). With
@@ -194,8 +265,27 @@ PRBLM_BUILDER_PAGE_EXTRA_BLOCKS = [
 
 Names must not clash with the built-in ones (`hero`, `faq`, …) — you'll get a clear error
 at startup if they do, or if a path can't be imported. The name can differ from the one
-your other page types use: the plugin recognises the same block by its class, so it reuses
-the same real demo content and the Block library lists it once.
+your other page types use (`hero_home` here, `hero_section_home` on your HomePage): the
+plugin recognises the same block by its **class**, so it uses the same real content for
+its demo and thumbnail, and the Block library lists it once.
+
+To offer **all** your blocks, point the setting at a function:
+
+```python
+# settings
+PRBLM_BUILDER_PAGE_EXTRA_BLOCKS = "home.blocks.builder_page_blocks"
+
+# home/blocks.py (after your block classes)
+def builder_page_blocks():
+    return [
+        ("hero_home", HeroSectionHome()),
+        ("level_icons", LevelIconsSection()),
+        # …
+    ]
+```
+
+A Builder page that contains your own blocks (or shows your site's own header/footer)
+loads your `PRBLM_BUILDER_PREVIEW_CSS` / `_JS`, so they look as on the rest of your site.
 
 **2. In your own page models**, next to your own blocks:
 
@@ -209,11 +299,35 @@ class LandingPage(Page):
     )
 ```
 
+Already have a list of blocks? Add the built-in ones to it:
+
+```python
+all_blocks = [
+    ("hero_section_home", HeroSectionHome()),
+    ("description_section", DescriptionSection()),
+] + builder_blocks(only=["faq", "pricing"])          # or builder_blocks() for all 21
+
+class HomePage(Page):
+    body = StreamField(all_blocks, blank=True)
+```
+
 then run `python manage.py makemigrations` and `migrate` (Wagtail records the allowed
 blocks in your app's migrations — that's why this step can't be automatic).
 `builder_blocks(exclude=["hero"])` leaves blocks out (e.g. if you already have your own
 `hero`); `builder_blocks(only=["faq", "pricing"])` picks just some. An unknown name
-raises an error listing the available ones.
+raises an error listing the available ones. It needs `"prblm_builder.blocks"` in
+`INSTALLED_APPS`.
+
+**Style them on your live pages:** your own page templates don't load the built-in blocks'
+CSS by themselves. Add it once to your `base.html`, after your own CSS:
+
+```django
+{% load static prblm_blocks %}
+<link rel="stylesheet" href="{% static 'css/main.css' %}">
+{% prblm_assets %}
+```
+
+(The canvas and the Builder page do this automatically.)
 
 ### The blocks
 
@@ -365,7 +479,6 @@ A block can also hide itself — see [Hiding a block](#hiding-a-block).
 | Setting | Default | What it does |
 |---|---|---|
 | `PRBLM_BUILDER_ADMIN_TWEAKS` | `True` | Two extras in the **page editor** that rely on Wagtail admin internals. Set `False` if a Wagtail upgrade breaks them — the Layout tab and saving keep working. See the table below. |
-
 | `PRBLM_BUILDER_SITE_BLOCK_COLUMNS` | `False` | `True` = your **own** blocks' fields use the two-column layout too (short fields side by side, long ones full width; one column on narrow screens). The built-in blocks and the Theme page always use it. |
 
 What `PRBLM_BUILDER_ADMIN_TWEAKS` changes (in the page editor only — not the Block library page or the canvas itself):
@@ -518,6 +631,12 @@ them too:
 - **`description`** shows under the block's name in the Block library and as a tooltip in
   the Layout sidebar (and is searchable). The built-in blocks have descriptions.
 
+Without a `preview_value`, the plugin uses the fullest real use of the block on your site
+(the same block class, whatever it's called on each page type), else generated content:
+text from realistic sample copy, link / URL fields get `https://example.com`, choosers get
+the first page, document, image or snippet there is, and the result is checked against the
+block's own validation (anything it rejects is left empty).
+
 ## How it works
 
 - **Edits the draft.** Like Wagtail's own editor, the Layout tab shows and builds on the
@@ -555,11 +674,14 @@ prblm_builder/                  the installable Django app
   views.py                      builder, builder_new, preview, demo (Block library), save
   wagtail_hooks.py              admin URLs + the "Page builder" sidebar section
   settings.py                   reads every PRBLM_BUILDER_* setting (with defaults)
+  assets.py                     the installed version (stamped on the plugin's CSS/JS URLs)
   checks.py                     startup warnings (e.g. removed settings)
   mixins.py                     BuilderSettingsMixin (⚙ settings → Wagtail's settings area)
   chrome.py                     header/footer around the canvas (template setting / hooks)
   templates/prblm_builder/      builder.html (canvas), layout_panel.html (tab), demo.html (library)
-  static/prblm_builder/         builder.js, builder.css, fold.js, vendor/sortable.min.js
+  templatetags/prblm_builder_tags.py   {% prblm_static %} — static URL + ?v=<version>
+  static/prblm_builder/         builder.js, builder.css, fold.js, vendor/sortable.min.js,
+                                form-columns.js/.css (two-column forms), form-columns-site.css
   tests/test_builder.py         generic tests — also runnable inside a host project
   blocks/                       optional app "prblm_builder.blocks" (built-in blocks)
     __init__.py                 builder_blocks() helper
@@ -581,9 +703,13 @@ tests/                          test project for this repo (not shipped)
   test_blocks*.py, test_site_chrome.py, test_builder_page.py   built-in blocks
   test_save_flow.py, test_page_options.py   save banner, folding, page placement, extra blocks
   test_v05.py                   preview values, links, ⚙ settings, copy/paste, Page tab, drafts
+  test_v06.py, test_v06_fixes.py   tab order/sync, forms, site assets, demo content matching
+  examples/, test_examples.py   the code from docs/EXAMPLES.md, checked
 runtests.py                     runs all tests against tests/
 .github/workflows/test.yml      CI: tests on Python 3.12–3.14 + wheel build check
+docs/EXAMPLES.md                copy-paste models and blocks for every feature
 docs/DEVELOPMENT_HISTORY.md     architecture, design decisions, bugs + lessons, roadmap
+docs/plans/                     the plan behind each release
 CHANGELOG.md                    what changed in each release
 ```
 
@@ -611,7 +737,8 @@ from the tag (attach the wheel from `python -m build`).
 ## Upgrading
 
 **0.5 → 0.6**
-- No migrations, no setting changes needed — just install the new version.
+- No migrations, no setting changes needed — just install the new version (with
+  `--force-reinstall` if you tested a 0.6.0 wheel or branch before) and restart.
 - The **Layout** tab is now the first tab in the page editor.
 - The built-in blocks' forms use two columns. Want it for your own blocks too?
   `PRBLM_BUILDER_SITE_BLOCK_COLUMNS = True`.
@@ -620,6 +747,8 @@ from the tag (attach the wheel from `python -m build`).
 - Built-in blocks are now shielded from your site's global CSS. If you relied on a site rule
   changing a built-in block (other than fonts, which they still inherit), use the Theme or
   your own block instead.
+- Your blocks in `PRBLM_BUILDER_PAGE_EXTRA_BLOCKS` no longer need the same names as on your
+  other page types to share demo content.
 
 **0.4 → 0.5**
 - Run `python manage.py migrate` (migration `0003_link_types` only updates the built-in
@@ -680,6 +809,14 @@ from the tag (attach the wheel from `python -m build`).
 | Paste is greyed out in the right-click menu | Copy a section first — copy & paste work within the same page. |
 | `makemigrations` wants to alter my page's `body` after upgrading to 0.5 | Expected if you use `builder_blocks()`: the built-in link fields changed. Run it; no data changes. |
 | Warning `prblm_builder.W001` | Remove `PRBLM_BUILDER_SEED_NEW_BLOCKS` from your settings. |
+| Error importing `builder_blocks` / `No installed app with label 'prblm_builder_blocks'` | Add `"prblm_builder.blocks"` and `"wagtail.contrib.settings"` to `INSTALLED_APPS`, then `migrate`. |
+| Built-in blocks look unstyled on my own live pages | Add `{% load prblm_blocks %}` and `{% prblm_assets %}` to your `base.html` `<head>`, after your own CSS. |
+| My header / own blocks unstyled in Wagtail's **preview panel** but fine on the canvas | Fixed in 0.6.0 (the site's CSS was linked with the Wagtail Site's host name). Upgrade. |
+| Wagtail's preview doesn't seem to show a new section | It was added where you dropped it — scroll the preview. On a long page it's often below the visible part. |
+| The same block appears twice in the Block library, or looks different on the Builder page | Fixed in 0.6.0 (blocks are now matched by class, not name). Upgrade. |
+| The page won't save after adding a section with a third-party block (e.g. wagtail-link-block), no error visible | Fixed in 0.6.0 (demo content now passes the block's own validation). Upgrade; remove the section added before and add it again. |
+| A gap between the header and the first section on the canvas | Fixed in 0.6.0. Upgrade. |
+| `pip install` leaves the old version | Same version number already installed → add `--force-reinstall --no-deps`. |
 
 ## License
 

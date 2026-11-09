@@ -242,12 +242,28 @@ class LandingPage(Page):
     content_panels = Page.content_panels + [FieldPanel("body")]
 ```
 
+Already have a list of blocks? Add them to it:
+
+```python
+all_blocks = [
+    ("heading", HeadingBlock()),
+    ("promo", PromoBlock()),
+] + builder_blocks(only=["faq", "pricing"])
+
+class HomePage(Page):
+    body = StreamField(all_blocks, blank=True)
+```
+
+- Needs `"prblm_builder.blocks"` and `"wagtail.contrib.settings"` in `INSTALLED_APPS`.
 - `exclude=[…]` leaves built-in blocks out (e.g. one whose name clashes with yours);
   `only=[…]` keeps just some. An unknown name raises an error listing the valid ones.
 - Run `python manage.py makemigrations` after adding `builder_blocks()` — Wagtail records a
   page's allowed blocks in your app's migrations. (Plugin upgrades that change the built-in
   blocks may add another small "Alter field" migration; it never changes your content.)
 - The Layout sidebar lists **Built-in blocks** and **Your site's blocks** separately.
+- On your live pages, the built-in blocks need their CSS: add `{% prblm_assets %}` to your
+  `base.html` (see [8](#8-header-and-footer-in-your-base-template)). The canvas and Wagtail's
+  preview panel use the same page template, so they need it too.
 
 ## 7. Your blocks on the ready-made Builder page
 
@@ -263,7 +279,8 @@ PRBLM_BUILDER_PAGE_EXTRA_BLOCKS = [
 # PRBLM_BUILDER_PAGE_EXTRA_BLOCKS = "myapp.blocks.builder_page_blocks"
 
 # The name may differ from the one your other pages use ("promo" vs "site_promo"): blocks
-# are matched by class, so demos and the Block library treat them as one block.
+# are matched by class, so they share the same real demo content and thumbnail, and the
+# Block library lists them once. Each block needs a `template` to appear in the palette.
 
 # Let editors add Builder pages under your home page (if it limits its child page types):
 PRBLM_BUILDER_PAGE_PARENTS = ["home.HomePage"]
@@ -328,3 +345,8 @@ PRBLM_BUILDER_PAGE_MODELS = ["myapp.ArticlePage", "myapp.LandingPage"]   # None 
 
 If a block appears but its preview is empty or broken, the Block library lists it under
 **"Couldn't preview"** with the reason.
+
+Demo content looks different from what you expect? A new section takes, in order: the
+block's `preview_value` (set it for a fixed demo), the fullest real use of the same block
+class on your site, or generated content (choosers get the first page / image / document /
+snippet; anything the block's own validation rejects is left empty).

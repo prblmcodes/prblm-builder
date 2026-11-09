@@ -284,6 +284,21 @@ of the code only calls these (never `django.conf.settings` directly). See §6.
     before. SVG is excluded because `revert` drops presentation attributes. Builder pages
     load the site's CSS/JS only when needed (`chrome.needs_site_assets`). Canvas assets got
     `?v=<version>` (`{% prblm_static %}`).
+    **Fixes from testing on a real site** (plan `docs/plans/v0.6.0-fixes.md`): the site's
+    CSS/JS were linked with `build_absolute_uri`, and Wagtail's preview request carries the
+    Site record's host (`localhost:80`) → unstyled header/blocks in the preview panel; now
+    root-relative (`previews.asset_urls`). The canvas trimmed a new section's text while the
+    full text was saved → trim only with `&trim=1` (library, thumbnails). Header frames were
+    sized from `body.firstElementChild` = the built-in header's `<link>` (0px → 150px
+    default) → `chromeHeight()`. Blocks were keyed by **name** everywhere (real-content
+    index, library dedupe) — a site block added to the Builder page as `hero1` (vs
+    `hero_section_home` on HomePage) got generated demos, empty snippets, no thumbnail and a
+    duplicate library entry → `registry.block_key` (class path; Wagtail's generic classes
+    fall back to the name). Generated demos failed third-party validation
+    (wagtail-link-block's hidden `custom_url` has a URL validator: no visible error, page
+    didn't save) → `synth_demo` validates and empties failing fields; URL/phone/anchor
+    fields and snippet choosers get sensible values. Reproduced on a sandbox copy of the
+    host site's DB (never the real one).
 
 ---
 
