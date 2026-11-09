@@ -35,17 +35,56 @@
     i.value = val;
     if (dirtied) { try { i.dispatchEvent(new Event("change", { bubbles: true })); } catch (e) {} }
   }
+  // The order/membership of sections, to notice structure changes (vs settings changes).
+  var lastSig = null;
+  function structureSig(items) { return items.map(function (s) { return s.type + ":" + s.id; }).join("|"); }
   function syncLayout() {
     if (!EMBED) return;
     var form = parentForm(); if (!form) return;
+    var items = collect();
+    if (lastSig === null) lastSig = structureSig(items);
+    // Only write the hidden fields once the editor actually changed something: Wagtail
+    // auto-saves whenever the form differs from how it loaded, so writing them on load
+    // would create a pointless draft each time a page is opened.
+    if (!dirtied) return;
     try {
-      setHidden(form, "_pb_layout", JSON.stringify(collect()));
+      setHidden(form, "_pb_layout", JSON.stringify(items));
       setHidden(form, "_pb_initial", JSON.stringify(INITIAL_IDS));
     } catch (e) {}
-    // Tell the editor page (it shows a "Save to edit these sections" banner).
-    if (dirtied) {
-      try { window.parent.document.dispatchEvent(new CustomEvent("prblm-builder:dirty")); } catch (e) {}
+    try {
+      // Tell the editor page (save banner; tab sync after structure changes).
+      window.parent.document.dispatchEvent(new CustomEvent("prblm-builder:dirty"));
+      var sig = structureSig(items);
+      if (sig !== lastSig) {
+        lastSig = sig;
+        window.parent.document.dispatchEvent(new CustomEvent("prblm-builder:structure"));
+      }
+    } catch (e) {}
+  }
+
+  // The Content tab's own input for a setting of a section that's already in the form
+  // (``<field>-N-value-<name>``, found through the hidden ``<field>-N-id``), or null.
+  function contentInput(id, name) {
+    var form = parentForm(), field = wrap.dataset.fieldName;
+    if (!form || !field) return null;
+    var ids = form.querySelectorAll('input[name^="' + field + '-"][name$="-id"]');
+    for (var i = 0; i < ids.length; i++) {
+      if (ids[i].value !== String(id)) continue;
+      var m = ids[i].name.match(new RegExp("^" + field + "-(\\d+)-id$"));
+      if (!m) continue;
+      var deleted = form.querySelector('[name="' + field + "-" + m[1] + '-deleted"]');
+      if (deleted && deleted.value) continue;
+      return form.querySelector('[name="' + field + "-" + m[1] + "-value-" + name + '"]');
     }
+    return null;
+  }
+  function writeContentInput(input, value) {
+    if (input.type === "checkbox") input.checked = !!value;
+    else input.value = value == null ? "" : value;
+    try {
+      window.parent.__prblmSyncing = true;   // don't echo this back to the canvas
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    } finally { window.parent.__prblmSyncing = false; }
   }
 
   function uuid() {
@@ -491,7 +530,35 @@
     dirtied = true; refresh(); pushHistory();
     var frame = sec.querySelector(".pb-frame");
     frame.src = previewSrc(sectionState(sec));   // live update on the canvas
+    // Same field in the Content tab (sections already saved there): update it too.
+    var input = contentInput(sec.dataset.id, name);
+    if (input) writeContentInput(input, value);
   }
+
+  // Called by the editor page when a settings field is changed in the Content tab.
+  function applySetting(id, name, value) {
+    var sec = canvas.querySelector('.pb-sec[data-id="' + id + '"]');
+    var sch = sec && SCHEMA[sec.dataset.type];
+    if (!sch || !sch.fields.some(function (f) { return f.name === name; })) return;
+    var st = sectionState(sec);
+    if (st.settings[name] === value) return;
+    st.settings[name] = value;
+    if (st.changed.indexOf(name) < 0) st.changed.push(name);
+    sec.dataset.settings = JSON.stringify(st.settings);
+    sec.dataset.changed = JSON.stringify(st.changed);
+    sec.querySelector(".pb-frame").src = previewSrc(sectionState(sec));
+    if (pop && popBtn && popBtn.closest(".pb-sec") === sec) closeSettings();   // reopen shows the new value
+    dirtied = true; refresh();
+  }
+  // Reload every preview (after Content-tab edits were auto-saved to the draft).
+  function refreshPreviews() {
+    document.querySelectorAll(".pb-frame, .pb-chrome-frame").forEach(function (f) {
+      if (!f.getAttribute("src")) return;
+      var src = f.getAttribute("src").replace(/([?&])_r=\d+/, "");
+      f.src = src + (src.indexOf("?") < 0 ? "?" : "&") + "_r=" + Date.now();
+    });
+  }
+  window.prblmBuilder = { applySetting: applySetting, refreshPreviews: refreshPreviews };
   function field(sec, f, value) {
     var row = document.createElement("div"); row.className = "pb-pop-field";
     var id = "pb-set-" + f.name;

@@ -37,3 +37,28 @@ class LayoutFirstTests(TestCase):
                 html = self.client.get(url).content.decode()
                 # Wagtail opens the first tab; Layout must come before Content.
                 self.assertLess(html.index('id="tab-label-layout"'), html.index('id="tab-label-content"'))
+
+
+@override_settings(STORAGES=STORAGES)
+class TabSyncWiringTests(TestCase):
+    """The sync itself runs in the browser (checked with Playwright); these guard the wiring."""
+
+    def setUp(self):
+        self.client.force_login(get_user_model().objects.create_superuser("ts", "ts@example.com", "pw"))
+        self.page = Page.objects.get(depth=2).add_child(
+            instance=StandardPage(title="TS", slug="ts-" + uuid.uuid4().hex[:5]))
+
+    def test_panel_and_builder_know_the_stream_field(self):
+        html = self.client.get(reverse("wagtailadmin_pages:edit", args=[self.page.id])).content.decode()
+        self.assertIn('class="prblm-layout-panel" style="width:100%" data-field-name="body"', html)
+        self.assertIn("w-autosave:success", html)                 # waits for Wagtail's auto-save
+        self.assertIn('url.hash = "tab-content"', html)           # reloads onto the Content tab
+        r = self.client.get(reverse("prblm_builder:builder", args=[self.page.id]) + "?embed=1")
+        self.assertContains(r, 'data-field-name="body"')
+
+    def test_builder_js_only_writes_layout_fields_after_a_change(self):
+        from django.contrib.staticfiles import finders
+        js = open(finders.find("prblm_builder/builder.js")).read()
+        self.assertIn("if (!dirtied) return;", js)
+        for needle in ("prblm-builder:structure", "window.prblmBuilder", "writeContentInput"):
+            self.assertIn(needle, js)

@@ -41,7 +41,8 @@
        data-context="{{ context_param }}"
        data-edit-url="{{ edit_url }}"
        data-csrf="{{ csrf_token }}"
-       data-canvas-width="{{ canvas_width }}">
+       data-canvas-width="{{ canvas_width }}"
+       data-field-name="{{ field_name }}">
     {{ sections|json_script:"pb-sections" }}
     {{ settings_schema|json_script:"pb-settings-schema" }}
 

@@ -84,7 +84,7 @@ Previous plans: `docs/plans/` (v0.3.0 built-in blocks, v0.4.0 feedback round, v0
 
 - [x] **Phase 1 — Layout tab first.** Tests (tab order for generated + custom edit
       handlers) + browser check (create, edit, validation error).
-- [ ] **Phase 2 — Tabs in sync**: settings both ways, reload into the Content tab after
+- [x] **Phase 2 — Tabs in sync**: settings both ways, reload into the Content tab after
       structure changes, canvas refresh after Content edits, new-page + auto-save-off
       fallbacks. Tests + browser checks (existing page, new page, auto-save off).
 - [ ] **Phase 3 — Two-column block forms**: `form-columns.js` + CSS, `pbk-form` on built-in
@@ -107,3 +107,14 @@ Previous plans: `docs/plans/` (v0.3.0 built-in blocks, v0.4.0 feedback round, v0
 - Phase 1 done (152 tests; browser: Layout opens first on new + existing pages of every
   builder type). Found: after a failed save the title error was hidden behind the Layout tab →
   the panel script now opens the tab holding the first invalid field.
+- Phase 2 done (154 tests; browser-checked: opening a page no longer auto-saves; ⚙ change
+  shows in the Content tab; Content-tab setting change updates the canvas; add a section →
+  open Content → auto-save + reload onto the Content tab with the new section; edit content
+  → open Layout → canvas refreshed; new pages don't reload and keep the banner). Findings:
+  (1) Wagtail 8.1 auto-save = `w-unsaved` (snapshot 2 s after load, compares FormData every
+  500 ms) → `w-autosave` (posts the form, events `w-autosave:save|success|error`, clears the
+  unsaved flag on success; on a create view it also turns the page into an edit view);
+  (2) because the Layout tab is now first, the builder iframe loads immediately and used to
+  write its hidden fields on load → a pointless auto-saved draft on every open; it now writes
+  them only after a real change; (3) the panel script runs before the rest of the form (the
+  Content tab) is parsed → it waits for DOMContentLoaded.

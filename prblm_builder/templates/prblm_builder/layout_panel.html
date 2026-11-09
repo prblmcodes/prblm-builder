@@ -35,7 +35,7 @@ top-right strip, next to the preview / checks / comments toggles.{% endcomment %
 opened again (the builder updates these same inputs when it is).{% endcomment %}
 <input type="hidden" name="_pb_layout" value="{{ restore.layout }}">
 <input type="hidden" name="_pb_initial" value="{{ restore.initial }}">{% endif %}
-<div class="prblm-layout-panel" style="width:100%">
+<div class="prblm-layout-panel" style="width:100%" data-field-name="{{ field_name }}">
   {% comment %}Shown after any layout change: new sections can only be edited in the
   Content tab once the page is saved (the Content tab is Wagtail's own editor).{% endcomment %}
   <div class="prblm-save-banner" role="status" {% if not restore %}hidden{% endif %}
@@ -102,4 +102,114 @@ opened again (the builder updates these same inputs when it is).{% endcomment %}
     else form.submit();
   });
 })();
+</script>
+<script>
+(function (run) {
+  // The Layout tab comes first, so the rest of the edit form (incl. the Content tab) isn't
+  // in the page yet when this runs — wait for it.
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", run);
+  else run();
+})(function () {
+  /* Keep the Layout and Content tabs in step.
+     - A settings field changed in the Content tab updates that section on the canvas.
+     - Existing pages (Wagtail auto-saves them): after sections were added / removed /
+       moved, opening the Content tab waits for the auto-save, then reloads the editor on
+       the Content tab so the new sections are there to edit. After Content-tab edits,
+       opening the Layout tab refreshes the canvas from the auto-saved draft.
+     - New pages and sites with auto-save off: nothing automatic (save as usual). */
+  var panel = document.querySelector(".prblm-layout-panel");
+  if (!panel || panel.dataset.pbSyncBound) return;
+  panel.dataset.pbSyncBound = "1";
+  var form = panel.closest("form") || document.querySelector("form[data-edit-form]");
+  if (!form) return;
+  var field = panel.dataset.fieldName;
+  var layoutPanel = panel.closest('[role="tabpanel"]');
+  var contentPanel = document.getElementById("tab-content");
+  function builder() {
+    var f = panel.querySelector("iframe");
+    try { return f && f.contentWindow && f.contentWindow.prblmBuilder; } catch (e) { return null; }
+  }
+
+  // ---- settings: Content tab -> canvas
+  var settingName = field ? new RegExp("^" + field + "-(\\d+)-value-([A-Za-z0-9_]+)$") : null;
+  form.addEventListener("change", function (e) {
+    var t = e.target;
+    if (!settingName || window.__prblmSyncing || !t.name) return;
+    var m = t.name.match(settingName); if (!m) return;
+    var idInput = form.querySelector('[name="' + field + "-" + m[1] + '-id"]');
+    var api = builder();
+    if (!idInput || !api) return;
+    api.applySetting(idInput.value, m[2], t.type === "checkbox" ? t.checked : t.value);
+  }, true);
+
+  // ---- auto-save aware tab switching (existing pages only)
+  var controllers = (form.getAttribute("data-controller") || "").split(/\s+/);
+  var autosave = controllers.indexOf("w-autosave") !== -1;
+  function isExisting() { return /\/edit\/?$/.test(new URL(form.action, location.href).pathname); }
+  var structureAt = 0, contentAt = 0, savedAt = 0, failed = false;
+  document.addEventListener("prblm-builder:structure", function () { structureAt = Date.now(); });
+  if (contentPanel) {
+    ["input", "change"].forEach(function (type) {
+      contentPanel.addEventListener(type, function () { if (!window.__prblmSyncing) contentAt = Date.now(); }, true);
+    });
+  }
+  document.addEventListener("w-autosave:success", function () { savedAt = Date.now(); failed = false; });
+  document.addEventListener("w-autosave:error", function () { failed = true; });
+
+  // Resolve once everything changed up to now is saved (or give up after a while).
+  function whenSaved(since, timeout) {
+    return new Promise(function (resolve) {
+      var start = Date.now();
+      (function check() {
+        var pending = form.getAttribute("data-w-unsaved-has-edits-value") === "true";
+        if (savedAt > since && !pending) return resolve(true);
+        if (failed || Date.now() - start > timeout) return resolve(false);
+        setTimeout(check, 200);
+      })();
+    });
+  }
+  var note = null;
+  function notice(text) {
+    if (!note) {
+      note = document.createElement("div");
+      note.setAttribute("role", "status");
+      note.style.cssText = "position:fixed;left:50%;bottom:90px;transform:translateX(-50%);z-index:300;" +
+        "padding:10px 16px;border-radius:8px;background:#1f2330;color:#fff;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.25)";
+      document.body.appendChild(note);
+    }
+    note.textContent = text; note.hidden = !text;
+  }
+  function onShown(el, fn) {
+    if (!el) return;
+    new MutationObserver(function () { if (!el.hidden) fn(); }).observe(el, { attributes: true, attributeFilter: ["hidden"] });
+  }
+  var busy = false;
+  onShown(contentPanel, function () {
+    if (busy || !structureAt || !autosave || !isExisting()) return;
+    busy = true;
+    notice("Saving your layout changes…");
+    whenSaved(structureAt, 15000).then(function (ok) {
+      if (!ok) {
+        busy = false;
+        notice("Couldn't save automatically — use Save draft to see the new sections here.");
+        setTimeout(function () { notice(""); }, 6000);
+        return;
+      }
+      notice("Loading the new sections…");
+      form.setAttribute("data-w-unsaved-confirmation-value", "false");   // already saved
+      var url = new URL(form.action, location.href);
+      url.hash = "tab-content";
+      if (url.pathname === location.pathname) { location.hash = "tab-content"; location.reload(); }
+      else location.replace(url.href);
+    });
+  });
+  onShown(layoutPanel, function () {
+    if (!contentAt || !autosave || !isExisting()) return;
+    var since = contentAt; contentAt = 0;
+    whenSaved(since, 15000).then(function (ok) {
+      var api = builder();
+      if (ok && api) api.refreshPreviews();
+    });
+  });
+});
 </script>

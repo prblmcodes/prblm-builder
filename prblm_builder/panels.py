@@ -28,6 +28,8 @@ class LayoutBuilderPanel(Panel):
             ctx = super().get_context_data(parent_context)
             ctx["demo_url"] = reverse("prblm_builder:demo") if cfg.demo_enabled() else ""
             ctx["admin_tweaks"] = cfg.admin_tweaks()
+            from . import registry
+            ctx["field_name"] = registry.target_field_name(type(self.instance)) or ""
             # Title used by "Save draft now" when the editor hasn't typed one yet.
             from wagtail.models import Page
             ctx["placeholder_title"] = f"Untitled page {Page.objects.count() + 1}"
