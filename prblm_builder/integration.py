@@ -30,7 +30,11 @@ def enable_model(model):
     existing = getattr(model, "edit_handler", None)
     if existing is not None and _has_layout(existing):
         return
-    layout = ObjectList([LayoutBuilderPanel()], heading="Layout")
+    # A model may add panels to the Layout tab (``builder_layout_panels``) — fields that the
+    # builder's "Page" sidebar tab edits (e.g. the Builder page's header/footer). They're
+    # rendered hidden; the sidebar writes into them so they save like any other field.
+    extra = list(getattr(model, "builder_layout_panels", None) or [])
+    layout = ObjectList([LayoutBuilderPanel(), *extra], heading="Layout")
     if existing is not None and getattr(existing, "children", None):
         children = list(existing.children)
         children.insert(1, layout)  # right after the Content tab

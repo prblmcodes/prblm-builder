@@ -363,6 +363,63 @@
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeMenu(); });
   window.addEventListener("scroll", closeMenu, true);
 
+  /* ---------- sidebar tabs (Sections | Page) + page options ---------- */
+  var tabBtns = Array.prototype.slice.call(document.querySelectorAll('.pb-tabs [role="tab"]'));
+  function showTab(name) {
+    tabBtns.forEach(function (b) {
+      var on = b.dataset.tab === name;
+      b.setAttribute("aria-selected", on ? "true" : "false"); b.tabIndex = on ? 0 : -1;
+      document.getElementById(b.getAttribute("aria-controls")).hidden = !on;
+    });
+    try { window.sessionStorage.setItem("prblm-builder:tab", name); } catch (e) {}
+  }
+  tabBtns.forEach(function (b, i) {
+    b.addEventListener("click", function () { showTab(b.dataset.tab); });
+    b.addEventListener("keydown", function (e) {
+      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+      var n = tabBtns[(i + (e.key === "ArrowRight" ? 1 : -1) + tabBtns.length) % tabBtns.length];
+      n.focus(); showTab(n.dataset.tab);
+    });
+  });
+  if (tabBtns.length) {
+    try { if (window.sessionStorage.getItem("prblm-builder:tab") === "page") showTab("page"); } catch (e) {}
+  }
+
+  // Each "Page" option writes into real (hidden) fields of the page's edit form, so it
+  // saves — and auto-saves — like any other field.
+  function parentField(name) { var f = parentForm(); return f && f.querySelector('[name="' + name + '"]'); }
+  function optionSet(o) { try { return JSON.parse(o.dataset.set || "{}"); } catch (e) { return {}; } }
+  function refreshChrome(kind, value) {
+    var box = document.querySelector('.pb-chrome[data-chrome="' + kind + '"]');
+    if (!box) return;
+    if (value === "none") { box.hidden = true; return; }
+    var opts = {}; opts[kind] = value;
+    box.hidden = false;
+    box.querySelector(".pb-chrome-frame").src =
+      box.dataset.chromeBase + "&options=" + encodeURIComponent(JSON.stringify(opts));
+  }
+  document.querySelectorAll(".pb-opt-select").forEach(function (sel) {
+    var kind = sel.dataset.chrome;
+    if (EMBED) {
+      // Start from the edit form's current values (they may hold unsaved changes).
+      var match = Array.prototype.find.call(sel.options, function (o) {
+        var set = optionSet(o), keys = Object.keys(set).filter(function (k) { return set[k] !== ""; });
+        return keys.length && keys.every(function (k) { var f = parentField(k); return f && String(f.value) === String(set[k]); });
+      });
+      if (match && match.value !== sel.value) { sel.value = match.value; if (kind) refreshChrome(kind, sel.value); }
+    }
+    sel.addEventListener("change", function () {
+      var set = optionSet(sel.options[sel.selectedIndex]);
+      Object.keys(set).forEach(function (k) {
+        var f = parentField(k); if (!f) return;
+        f.value = set[k];
+        ["input", "change"].forEach(function (t) { try { f.dispatchEvent(new Event(t, { bubbles: true })); } catch (e) {} });
+      });
+      dirtied = true; syncLayout();
+      if (kind) refreshChrome(kind, sel.value);
+    });
+  });
+
   /* ---------- ⚙ section settings popover ---------- */
   var SWATCH = { light: "#ffffff", muted: "#f3f4f6", dark: "#0f172a", brand: "#2563eb" };
   var pop = null, popBtn = null;

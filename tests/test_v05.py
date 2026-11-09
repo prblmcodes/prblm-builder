@@ -225,3 +225,118 @@ class CopyPasteTests(TestCase):
         js = open(finders.find("prblm_builder/builder.js")).read()
         for needle in ('data-act="copy"', '"paste-above"', "contextmenu", "prblm-builder:clip:"):
             self.assertIn(needle, js)
+
+
+@override_settings(STORAGES=STORAGES)
+class PageOptionsTests(TestCase):
+    def setUp(self):
+        self.client.force_login(get_user_model().objects.create_superuser("po5", "po5@example.com", "pw"))
+        from tests.test_site_chrome import set_chrome, header_json
+        from prblm_builder.blocks.models import SiteHeader
+        set_chrome()
+        self.campaign = SiteHeader.objects.create(name="Campaign", content=header_json("Campaign Header"))
+
+    def builder_page(self, **kw):
+        from prblm_builder.blocks.models import BuilderPage
+        return Page.objects.get(depth=2).add_child(
+            instance=BuilderPage(title="BP", slug="bp-" + uuid.uuid4().hex[:5], **kw))
+
+    def builder(self, page):
+        return self.client.get(reverse("prblm_builder:builder", args=[page.id]) + "?embed=1")
+
+    def test_builder_page_gets_header_and_footer_dropdowns(self):
+        page = self.builder_page(header_choice="custom", header=self.campaign)
+        r = self.builder(page)
+        opts = {o["name"]: o for o in r.context["page_options"]}
+        self.assertEqual(set(opts), {"header", "footer"})
+        self.assertEqual(opts["header"]["value"], f"id:{self.campaign.pk}")
+        values = [c["value"] for c in opts["header"]["choices"]]
+        self.assertEqual(values[:2], ["default", "none"])
+        self.assertIn(f"id:{self.campaign.pk}", values)
+        self.assertIn("Site default (Main header)", [c["label"] for c in opts["header"]["choices"]])
+        self.assertContains(r, 'role="tab"')
+        self.assertContains(r, 'data-chrome="header"')
+
+    @override_settings(PRBLM_BUILDER_HEADER_TEMPLATE="testapp/header.html")
+    def test_site_template_choice_only_when_configured(self):
+        r = self.builder(self.builder_page())
+        header = [o for o in r.context["page_options"] if o["name"] == "header"][0]
+        self.assertIn("site", [c["value"] for c in header["choices"]])
+
+    def test_own_page_types_have_no_page_tab(self):
+        page = Page.objects.get(depth=1).add_child(instance=StandardPage(title="S", slug="s-" + uuid.uuid4().hex[:5]))
+        r = self.builder(page)
+        self.assertEqual(r.context["page_options"], [])
+        self.assertNotContains(r, 'role="tab"')
+
+    def test_fields_moved_from_content_tab_to_hidden_layout_panel(self):
+        page = self.builder_page()
+        html = self.client.get(reverse("wagtailadmin_pages:edit", args=[page.id])).content.decode()
+        self.assertEqual(html.count("data-prblm-page-option"), 4 + 1)     # 4 panels + the CSS rule
+        self.assertIn('name="header_choice"', html)
+
+    def test_unsaved_choice_previewed_on_canvas(self):
+        page = self.builder_page()
+        base = reverse("prblm_builder:preview") + f"?page={page.id}&chrome=header"
+        self.assertContains(self.client.get(base), "Acme Header")
+        r = self.client.get(base + "&options=" + json.dumps({"header": f"id:{self.campaign.pk}"}))
+        self.assertContains(r, "Campaign Header")
+        r = self.client.get(base + "&options=" + json.dumps({"header": "none"}))
+        self.assertEqual(r.status_code, 404)
+
+    def test_choice_saves_through_the_edit_form(self):
+        from prblm_builder.blocks.models import BuilderPage
+        page = self.builder_page()
+        url = reverse("wagtailadmin_pages:edit", args=[page.id])
+        r = self.client.post(url, {"title": "BP", "slug": page.slug, "body-count": "0",
+                                   "header_choice": "custom", "header": str(self.campaign.pk),
+                                   "footer_choice": "none", "footer": ""})
+        self.assertEqual(r.status_code, 302)
+        saved = BuilderPage.objects.get(pk=page.pk).get_latest_revision_as_object()
+        self.assertEqual((saved.header_choice, saved.header_id, saved.footer_choice),
+                         ("custom", self.campaign.pk, "none"))
+
+
+@override_settings(STORAGES=STORAGES)
+class DraftNotLiveTests(TestCase):
+    """The Layout tab shows the latest draft (like Wagtail's editor), not the published page."""
+
+    def setUp(self):
+        self.client.force_login(get_user_model().objects.create_superuser("dr", "dr@example.com", "pw"))
+        self.page = StandardPage(title="D", slug="d-" + uuid.uuid4().hex[:5])
+        self.page.body = json.dumps([{"type": "heading", "value": "Published heading", "id": "p1"}])
+        Page.objects.get(depth=2).add_child(instance=self.page)
+        self.page.save_revision().publish()
+        draft = StandardPage.objects.get(pk=self.page.pk)
+        draft.body = json.dumps([{"type": "heading", "value": "Draft heading", "id": "p1"},
+                                 {"type": "banner", "id": "d2",
+                                  "value": {"title": "Draft only", "tone": "loud", "show_border": False}}])
+        draft.save_revision()                                   # saved, not published
+
+    def test_canvas_lists_draft_sections(self):
+        r = self.client.get(reverse("prblm_builder:builder", args=[self.page.id]) + "?embed=1")
+        self.assertEqual([s["id"] for s in r.context["sections"]], ["p1", "d2"])
+        self.assertEqual(r.context["sections"][1]["settings"]["tone"], "loud")
+
+    def test_section_preview_renders_draft_content(self):
+        base = reverse("prblm_builder:preview") + f"?page={self.page.id}"
+        self.assertContains(self.client.get(base + "&block=heading&section=p1"), "Draft heading")
+        self.assertContains(self.client.get(base + "&block=banner&section=d2"), "Draft only")
+
+    def test_published_page_unchanged(self):
+        self.assertIn("Published heading", self.client.get(self.page.url).content.decode())
+
+
+class UneditedAfterEditorSaveTests(TestCase):
+    def test_editor_normalisation_is_not_an_edit(self):
+        """Saving through Wagtail's form turns empty text into "" and adds data-block-key
+        to rich text — the section is still unedited."""
+        from prblm_builder.blocks.sections.conversion import FAQBlock
+        block = FAQBlock()
+        stored = json.loads(json.dumps(block.get_prep_value(block.get_default())))
+        for item in stored["items"]:
+            item["value"]["answer"] = item["value"]["answer"].replace("<p>", '<p data-block-key="ab12c">', 1)
+        stored["anchor_id"] = ""
+        self.assertTrue(previews.is_unedited(block, "faq", stored))
+        stored["heading"] = "Really edited"
+        self.assertFalse(previews.is_unedited(block, "faq", stored))

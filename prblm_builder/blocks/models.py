@@ -181,24 +181,14 @@ class BuilderPage(Page):
         SiteFooter, null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
         help_text="Used when Footer is \"Choose one\".")
 
-    content_panels = Page.content_panels + [
-        FieldPanel("body"),
-        MultiFieldPanel([FieldPanel("header_choice"), FieldPanel("header"),
-                         FieldPanel("footer_choice"), FieldPanel("footer")],
-                        heading="Header & footer"),
+    content_panels = Page.content_panels + [FieldPanel("body")]
+    # Header / footer are layout, not content: edited from the "Page" tab of the Layout
+    # sidebar (one dropdown each), which writes into these hidden fields.
+    builder_layout_panels = [
+        FieldPanel(name, attrs={"data-prblm-page-option": ""})
+        for name in ("header_choice", "header", "footer_choice", "footer")
     ]
     template = "prblm_builder/blocks/builder_page.html"
 
     class Meta:
         verbose_name = "Builder page"
-
-    def clean(self):
-        super().clean()
-        from django.core.exceptions import ValidationError
-        errors = {}
-        if self.header_choice == "custom" and not self.header_id:
-            errors["header"] = "Choose a header, or pick another Header option."
-        if self.footer_choice == "custom" and not self.footer_id:
-            errors["footer"] = "Choose a footer, or pick another Footer option."
-        if errors:
-            raise ValidationError(errors)

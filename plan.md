@@ -103,7 +103,7 @@ as **one** dropdown each; the two stored fields stay (so no data migration).
 - [x] **Phase 3 — Section settings**: `builder_settings`, collapsed settings area in the Content
       tab, schema, ⚙ popover, live preview, save + validation. Tests + browser check.
 - [x] **Phase 4 — Copy / paste + right-click menu** (same page). Browser check.
-- [ ] **Phase 5 — Sidebar tabs + header/footer dropdowns** (page-options hook). Tests +
+- [x] **Phase 5 — Sidebar tabs + header/footer dropdowns** (page-options hook). Tests +
       browser check.
 - [ ] **Phase 6 — Release**: README (settings, `builder_settings`, preview values, links,
       copy/paste), CHANGELOG, history doc, CLAUDE.md, version 0.5.0, upgrade test from 0.4.1,
@@ -134,3 +134,15 @@ as **one** dropdown each; the two stored fields stay (so no data migration).
 - Phase 4 done (136 tests; browser-checked: Copy in the toolbar → Paste button appears;
   right-click → Paste below; Ctrl+C / Ctrl+V; undo; saved copies keep content + settings
   with unique ids). Toolbar actions, shortcuts and the menu share one `act()` function.
+- Phase 5 done (146 tests; browser-checked: header fields gone from the Content tab; Layout
+  sidebar **Sections | Page** tabs; picking a header shows it on the canvas at once, saves
+  as custom + id, "No header" hides it; the tab is remembered). A Builder page set to
+  "Choose one" whose header was deleted now falls back to the site default (no error on a
+  hidden field). Two older bugs found and fixed while checking:
+  1. **The Layout tab showed the published page, not the latest draft** (the long-open
+     "draft vs live" question — now confirmed and fixed: builder, section previews,
+     header/footer and the standalone save all use `get_latest_revision_as_object()`).
+     No data had been lost (saves merged with the draft), but the canvas was out of date.
+  2. **"Not edited yet" disappeared after the first normal save**: Wagtail's form stores
+     empty text as `""` (default `None`) and adds `data-block-key` to rich text. The
+     comparison now ignores both.

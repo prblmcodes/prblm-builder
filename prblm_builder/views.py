@@ -24,6 +24,16 @@ from . import settings as cfg
 
 
 # ----------------------------------------------------------------- helpers
+def _editing_page(page_id):
+    """The page as the editor sees it: its latest revision (the draft), like Wagtail's own
+    edit view — not the published row, which may be older."""
+    page = _specific_page(page_id)
+    try:
+        return page.get_latest_revision_as_object()
+    except Exception:
+        return page
+
+
 def _specific_page(page_id):
     try:
         page_id = int(page_id)
@@ -162,6 +172,27 @@ def _preview_problem(block_name, block, request):
     return None
 
 
+# ----------------------------------------------------------------- page options (sidebar "Page" tab)
+PAGE_OPTIONS_HOOK = "prblm_builder_page_options"
+
+
+def _page_options(request, page=None, model=None):
+    """Options shown in the builder sidebar's "Page" tab, from ``prblm_builder_page_options``
+    hooks: ``[{name, label, help, value, chrome, manage_url, choices: [{value, label, set}]}]``.
+    ``set`` maps edit-form field names to the values that choice writes into them."""
+    from wagtail import hooks
+    out = []
+    for fn in hooks.get_hooks(PAGE_OPTIONS_HOOK):
+        try:
+            out.extend(fn(request, page, model) or [])
+        except Exception:
+            continue
+    for opt in out:
+        for choice in opt.get("choices", []):
+            choice["set_json"] = json.dumps(choice.get("set", {}))
+    return out
+
+
 # ----------------------------------------------------------------- site header / footer
 def _has_chrome(kind, request, page=None, model=None):
     return bool(chrome.html(kind, request, page, model))
@@ -170,7 +201,7 @@ def _has_chrome(kind, request, page=None, model=None):
 # ----------------------------------------------------------------- per-page builder
 @xframe_options_sameorigin  # so it can be framed by the editor's Layout tab (same origin)
 def builder(request, page_id):
-    page = _specific_page(page_id)
+    page = _editing_page(page_id)
     if not _can_edit(page, request.user):
         raise PermissionDenied
     field_name, stream_block = registry.stream_block_for(type(page))
@@ -184,6 +215,8 @@ def builder(request, page_id):
         "sections": _sections(page, field_name),
         "palette": _palette(stream_block),
         "settings_schema": _settings_schema(stream_block),
+        "page_options": _page_options(request, page=page) if request.GET.get("embed") else [],
+        "chrome_base": reverse("prblm_builder:preview") + f"?page={page.id}",
         "show_kinds": len(_palette(stream_block)) > 1,
         "preview_url": reverse("prblm_builder:preview"),
         "save_url": reverse("prblm_builder:save", args=[page.id]),
@@ -225,6 +258,8 @@ def builder_new(request):
         "sections": [],
         "palette": _palette(stream_block),
         "settings_schema": _settings_schema(stream_block),
+        "page_options": _page_options(request, model=model),
+        "chrome_base": reverse("prblm_builder:preview") + f"?model={label}",
         "show_kinds": len(_palette(stream_block)) > 1,
         "preview_url": reverse("prblm_builder:preview"),
         "save_url": "",
@@ -312,7 +347,7 @@ def preview(request):       # builder frames this from the same origin, so allow
         if request.GET.get("page"):
             # The page being edited, so headers/footers that use ``page`` render as on
             # the site. (A brand-new unsaved page has none.)
-            chrome_page = _specific_page(request.GET["page"])
+            chrome_page = _editing_page(request.GET["page"])
             if not _can_edit(chrome_page, request.user):
                 raise PermissionDenied
         request.is_preview = True
@@ -324,7 +359,7 @@ def preview(request):       # builder frames this from the same origin, so allow
     page = None
     stream_block = field_name = None
     if request.GET.get("page"):
-        page = _specific_page(request.GET["page"])
+        page = _editing_page(request.GET["page"])
         if not _can_edit(page, request.user):
             raise PermissionDenied
         field_name, stream_block = registry.stream_block_for(type(page))
@@ -363,7 +398,7 @@ def preview(request):       # builder frames this from the same origin, so allow
 # ----------------------------------------------------------------- save
 @require_POST
 def save(request, page_id):
-    page = _specific_page(page_id)
+    page = _editing_page(page_id)   # build on the latest draft, not the published row
     if not _can_edit(page, request.user):
         raise PermissionDenied
     field_name, stream_block = registry.stream_block_for(type(page))

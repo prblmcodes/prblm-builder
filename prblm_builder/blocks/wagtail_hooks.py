@@ -75,3 +75,13 @@ def builder_page_chrome(kind, request, page, model):
 def site_default_chrome(kind, request, page):
     """Other pages: the site-default header/footer on the canvas."""
     return chrome.render(kind, request, page)
+
+
+@hooks.register("prblm_builder_page_options")
+def builder_page_options(request, page, model):
+    """The Layout sidebar's "Page" tab for Builder pages: Header and Footer dropdowns."""
+    from .models import BuilderPage
+    cls = type(page) if page is not None else model
+    if cls is None or not isinstance(cls, type) or not issubclass(cls, BuilderPage):
+        return []
+    return [chrome.page_option("header", page), chrome.page_option("footer", page)]

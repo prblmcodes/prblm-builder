@@ -402,9 +402,29 @@ def _strip_ids(data):
     return data
 
 
+_BLOCK_KEY = re.compile(r'\s+data-block-key="[^"]*"')
+
+
+def _canon(data):
+    """Content as compared by "Not edited yet": list/stream item ids dropped, empty text
+    as ``""`` whether stored as ``None`` or ``""``, and rich text without the
+    ``data-block-key`` attributes Wagtail's editor adds on save. (Saving a page through
+    the editor changes these without anyone editing anything.)"""
+    data = _strip_ids(data)
+    if isinstance(data, list):
+        return [_canon(d) for d in data]
+    if isinstance(data, dict):
+        return {k: _canon(v) for k, v in data.items()}
+    if data is None:
+        return ""
+    if isinstance(data, str):
+        return _BLOCK_KEY.sub("", data)
+    return data
+
+
 def _prep(block, value):
     try:
-        return _strip_ids(block.get_prep_value(value))
+        return _canon(block.get_prep_value(value))
     except Exception:
         return None
 
@@ -422,7 +442,7 @@ def is_unedited(block, name, stored_prep, page_id=None, section_id=None):
     skip = set(builder_setting_names(block))
 
     def content(data):
-        data = _strip_ids(data)
+        data = _canon(data)
         if skip and isinstance(data, dict):
             return {k: v for k, v in data.items() if k not in skip}
         return data

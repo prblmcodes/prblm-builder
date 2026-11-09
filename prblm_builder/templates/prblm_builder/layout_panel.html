@@ -2,6 +2,7 @@
 {% comment %}Wagtail caps editor content at .w-form-width (840px); let the Layout tab
 use the full width — but ONLY when no side panel (preview / comments / checks) is open,
 so an open preview panel shrinks the canvas to sit beside it instead of being overlaid.{% endcomment %}
+<style>[data-prblm-page-option]{display:none !important}</style>
 {% if admin_tweaks %}<style>.editor-view:not(.side-panel-open) .w-form-width:has(.prblm-layout-panel){max-width:none}</style>{% endif %}
 
 {% if demo_url and admin_tweaks %}

@@ -210,3 +210,19 @@ body.pb-has-clip .pb-sec-ctrls .pb-paste{display:inline-flex}
 .pb-menu button[disabled]{color:#b3b5bf;cursor:default}
 .pb-menu .pb-menu-danger{color:#b4232c}
 .pb-menu-sep{height:1px;background:var(--pb-line);margin:4px 2px}
+
+/* ---------- sidebar tabs + "Page" options ---------- */
+.pb-tabs{display:flex;gap:4px;margin:0 0 14px;padding:3px;background:#f1f2f6;border-radius:9px}
+.pb-tabs [role="tab"]{flex:1;border:0;background:transparent;padding:7px 8px;border-radius:7px;font:inherit;font-size:12.5px;
+  font-weight:600;color:var(--pb-mute);cursor:pointer}
+.pb-tabs [role="tab"][aria-selected="true"]{background:#fff;color:var(--pb-ink);box-shadow:0 1px 3px rgba(15,23,42,.12)}
+.pb-tabs [role="tab"]:focus-visible{outline:2px solid var(--pb-accent);outline-offset:1px}
+.pb-opt{margin:0 0 18px}
+.pb-opt-label{display:block;font-size:12px;font-weight:700;margin-bottom:6px;color:var(--pb-ink)}
+.pb-opt-select{width:100%;padding:8px 10px;border:1px solid var(--pb-line);border-radius:8px;font:inherit;font-size:13px;background:#fff}
+.pb-opt-select:focus{outline:2px solid var(--pb-accent);outline-offset:0}
+.pb-opt-help{margin:5px 0 0;font-size:12px;color:var(--pb-mute)}
+.pb-opt-link{display:inline-block;margin-top:5px;font-size:12px;color:var(--pb-accent);text-decoration:none}
+.pb-opt-link:hover{text-decoration:underline}
+.pb-opt-note{margin:4px 0 0;padding-top:10px;border-top:1px solid var(--pb-line);font-size:11.5px;color:var(--pb-mute)}
+.pb-chrome[hidden]{display:none}

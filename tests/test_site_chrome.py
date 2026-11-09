@@ -130,11 +130,12 @@ class HeadersFootersTests(TestCase):
         self.assertEqual(self.builder(page).context["header_src"], "")
         self.assertNotIn("Acme Header", self.client.get(page.url).content.decode())
 
-    def test_custom_choice_requires_a_header(self):
-        from django.core.exceptions import ValidationError
-        page = BuilderPage(title="X", slug="x", header_choice="custom")
-        with self.assertRaises(ValidationError):
-            page.clean()
+    def test_custom_choice_without_a_header_falls_back_to_default(self):
+        # The fields are hidden (edited via the Layout sidebar), so no hidden-field error:
+        # a chosen header that was deleted simply falls back to the site default.
+        set_chrome()
+        page = self.make_builder(header_choice="custom")
+        self.assertIn("Acme Header", self.chrome_html(page))
 
     # --- template tags ---------------------------------------------------------------------
     def test_template_tags(self):
