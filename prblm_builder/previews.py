@@ -84,7 +84,10 @@ RICH_TEXT_SHORT = (
     "<a href=\"https://example.com\">a link</a> to set the scene.</p>"
 )
 
-IDENTIFIER_FIELDS = {"anchor_id", "slug", "id", "css_class", "classname", "class_name"}
+IDENTIFIER_FIELDS = {"anchor", "anchor_id", "slug", "id", "css_class", "classname", "class_name"}
+# Text fields that hold a link (often with a URL validator): demo content gets a valid URL.
+URL_FIELDS = {"url", "link", "href", "website", "link_url", "custom_url", "external_url"}
+PHONE_FIELDS = {"phone", "tel", "telephone", "phone_number"}
 
 
 def _text_for(name, label, seed, max_length=None):
@@ -225,6 +228,12 @@ def synth_value(block, name="", depth=0, seed=""):
     if isinstance(block, DocumentChooserBlock):
         from wagtail.documents import get_document_model
         return get_document_model().objects.first()
+    if isinstance(block, blocks.ChooserBlock):
+        # Snippets and other model choosers: the first one there is (like pages above).
+        try:
+            return block.model_class.objects.first()
+        except Exception:
+            return None
     if isinstance(block, blocks.ChoiceBlock):
         choices = [c[0] for c in (block.field.choices or []) if c[0]]
         return choices[0] if choices else None
@@ -254,6 +263,10 @@ def synth_value(block, name="", depth=0, seed=""):
         key = (name or "").lower()
         if key in IDENTIFIER_FIELDS:
             return ""
+        if key in URL_FIELDS or key.endswith("_url"):
+            return "https://example.com"
+        if key in PHONE_FIELDS:
+            return "+1 555 0100"
         if "button" in key or "label" in key:
             return _button_label(block)
         max_length = getattr(getattr(block, "field", None), "max_length", None)
@@ -262,6 +275,60 @@ def synth_value(block, name="", depth=0, seed=""):
         return block.get_default()
     except Exception:
         return None
+
+
+def _first_error(err):
+    """A child's error as one ``ValidationError`` (Wagtail may hand over an ErrorList)."""
+    if isinstance(err, (list, tuple)):
+        data = err.as_data() if hasattr(err, "as_data") else list(err)
+        return data[0] if data else None
+    return err
+
+
+def _repair(block, value, error, hard=False):
+    """``value`` with the parts that failed validation reset to their empty default. Struct
+    and list errors are followed down to the failing field, so the rest of the demo content
+    stays. ``hard`` also resets a failing struct's dropdowns: in blocks like a "link to:
+    page / URL / email" chooser, the dropdown decides which field is required."""
+    errs = getattr(_first_error(error), "block_errors", None)
+    try:
+        if isinstance(block, blocks.StructBlock) and isinstance(errs, dict) and errs:
+            out = dict(value)
+            for cname, cerr in errs.items():
+                child = block.child_blocks.get(cname)
+                if child is not None:
+                    out[cname] = _repair(child, out.get(cname), cerr, hard)
+            if hard:
+                for cname, child in block.child_blocks.items():
+                    if isinstance(child, blocks.ChoiceBlock):
+                        out[cname] = child.normalize(child.get_default())
+            return block.normalize(out)
+        if isinstance(block, blocks.ListBlock) and isinstance(errs, dict) and errs:
+            items = list(value)
+            for i, cerr in errs.items():
+                if isinstance(i, int) and 0 <= i < len(items):
+                    items[i] = _repair(block.child_block, items[i], cerr, hard)
+            return block.normalize(items)
+    except Exception:
+        pass
+    return block.normalize(block.get_default())
+
+
+def synth_demo(block, name=""):
+    """Synthesised demo content that passes the block's own validation, so a new section
+    can always be saved — also for third-party blocks with rules we can't know (e.g. a URL
+    validator on a field their own script hides). Failing parts are reset to empty."""
+    value = block.normalize(synth_value(block, name, seed=name))
+    from django.core.exceptions import ValidationError
+    for attempt in range(4):
+        try:
+            block.clean(value)
+            return value
+        except ValidationError as exc:
+            value = _repair(block, value, exc, hard=attempt >= 1)
+        except Exception:
+            return value
+    return value
 
 
 # ---------------------------------------------------------------- real-instance index
@@ -280,10 +347,11 @@ def _build_instance_index():
     from wagtail.fields import StreamField
     from wagtail.models import Page
 
-    from .registry import is_builtin
+    from .registry import block_key
 
-    # (name, is_builtin) -> (score, value, page, block id). Keyed by kind too, so a site
-    # block and a built-in block that share a name never lend each other content.
+    # block_key -> (score, value, page, block id). Keyed by the block's class, so the same
+    # block shares content across page types whatever each calls it, and a site block and
+    # a built-in one that share a name never lend each other content.
     best = {}
     for model in apps.get_models():
         if not (issubclass(model, Page) and model is not Page):
@@ -307,7 +375,7 @@ def _build_instance_index():
                         score = len(str(child.block.get_prep_value(child.value)))
                     except Exception:
                         score = 0
-                    key = (child.block_type, is_builtin(child.block))
+                    key = block_key(child.block_type, child.block)
                     cur = best.get(key)
                     if cur is None or score > cur[0]:
                         best[key] = (score, child.value, page, str(child.id))
@@ -325,17 +393,19 @@ def instance_index(max_age=60):
     return _INDEX["data"]
 
 
-def real_instance_for(name):
-    """``(value, page)`` of the most-filled real instance of block ``name``, or
-    ``(None, None)``. The page is the context for blocks that read page fields."""
-    if not name:
+def real_instance_for(name, block):
+    """``(value, page)`` of the most-filled real instance of ``block`` (called ``name`` here)
+    on the site, or ``(None, None)``. The page is the context for blocks that read page
+    fields. Built-in blocks never borrow content (they show their own examples)."""
+    from .registry import block_key, is_builtin
+    if not name or block is None or is_builtin(block):
         return None, None
-    value, page, _bid = instance_index().get((name, False), (None, None, None))
+    value, page, _bid = instance_index().get(block_key(name, block), (None, None, None))
     return value, page
 
 
-def real_value_for(name):
-    return real_instance_for(name)[0]
+def real_value_for(name, block):
+    return real_instance_for(name, block)[0]
 
 
 DEMO_RICHTEXT_WORDS = 80   # rich text shown in previews, trimmed to this many words
@@ -452,11 +522,11 @@ def is_unedited(block, name, stored_prep, page_id=None, section_id=None):
     if preview is not None:
         candidates.append(_prep(block, preview))
     try:
-        candidates.append(_prep(block, block.normalize(synth_value(block, name, seed=name))))
+        candidates.append(_prep(block, synth_demo(block, name)))
     except Exception:
         pass
-    from .registry import is_builtin
-    value, src_page, src_id = instance_index().get((name, is_builtin(block)), (None, None, None))
+    from .registry import block_key
+    value, src_page, src_id = instance_index().get(block_key(name, block), (None, None, None))
     is_source = (src_page is not None and str(getattr(src_page, "pk", "")) == str(page_id)
                  and src_id == str(section_id))
     if value is not None and not is_source:
@@ -491,18 +561,19 @@ def demo_value(block, name="", prefer_real=True):
     if is_builtin(block):
         return block.get_default()
     if prefer_real:
-        real = real_value_for(name)
+        real = real_value_for(name, block)
         if real is not None:
             return real
-    return block.normalize(synth_value(block, name, seed=name))
+    return synth_demo(block, name)
 
 
 # ---------------------------------------------------------------- iframe frame
-def _urls(request, items):
-    out = []
-    for it in items:
-        out.append(it if it.startswith(("http://", "https://", "//")) else request.build_absolute_uri(static(it)))
-    return out
+def asset_urls(items):
+    """URLs for ``PRBLM_BUILDER_PREVIEW_CSS`` / ``_JS`` entries: full URLs as given, static
+    paths as root-relative ``/static/…``. Never absolute with the request's host: Wagtail's
+    preview renders with a fake request using the Site's hostname / port, which isn't
+    necessarily the address the editor is browsing (the files would fail to load)."""
+    return [it if it.startswith(("http://", "https://", "//")) else static(it) for it in items]
 
 
 def frame(block_html, request):
@@ -510,7 +581,7 @@ def frame(block_html, request):
         '<!doctype html><html><head><meta charset="utf-8">',
         '<meta name="viewport" content="width=device-width, initial-scale=1">',
     ]
-    for url in _urls(request, cfg.preview_css()):
+    for url in asset_urls(cfg.preview_css()):
         parts.append(f'<link rel="stylesheet" href="{url}">')
     # No body padding: on the builder canvas sections stack flush, like a real page.
     parts.append("<style>html,body{margin:0;background:#fff}</style>")
@@ -520,7 +591,7 @@ def frame(block_html, request):
     # thin stripe). Strip loading="lazy" so every image loads eagerly: the iframe's load
     # event waits for them, so the height is correct in a single measure.
     parts.append(re.sub(r'\sloading=(["\'])lazy\1', " ", str(block_html)))
-    for url in _urls(request, cfg.preview_js()):
+    for url in asset_urls(cfg.preview_js()):
         parts.append(f'<script src="{url}"></script>')
     parts.append("</body></html>")
     return "".join(parts)

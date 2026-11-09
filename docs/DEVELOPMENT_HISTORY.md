@@ -105,16 +105,21 @@ Pure introspection, no site-specific code.
 
 ### Demo content engine — `previews.py`
 Three layers, best-first:
-1. **Real instance** — `real_instance_for(name)` returns the most-filled real instance of a
-   block used anywhere on the site, plus the page it lives on (so hero-style blocks that
-   read page fields render fully). Built once into a cached index
+1. **Real instance** — `real_instance_for(name, block)` returns the most-filled real
+   instance of a block used anywhere on the site, plus the page it lives on (so hero-style
+   blocks that read page fields render fully). Built once into a cached index
    (`instance_index`, ~60s), capped at `PRBLM_BUILDER_INDEX_SCAN_LIMIT` pages/model.
-2. **Synthesis** — `synth_value(block, …)` builds a deterministic value from the block's
-   structure using realistic copy pools; links fill exactly one destination so
-   `LinkBlock.clean()` passes.
+   Keyed by `registry.block_key`: the block's **class** (Wagtail's generic classes fall
+   back to the name), so the same block under two names shares content — and the Block
+   library dedupes by the same key (0.6.0 fixes).
+2. **Synthesis** — `synth_demo(block, name)` = `synth_value` (a deterministic value from
+   the block's structure, realistic copy pools; links fill exactly one destination; URL /
+   phone / anchor fields get valid values; snippet choosers the first snippet) then checked
+   with the block's own `clean()`: failing fields are reset to empty (and, on a second
+   failure, the struct's dropdowns), so third-party blocks always get a saveable value.
 3. **Trim for display** — `trim_for_demo()` shortens long rich-text (~80 words) and long
-   text (~360 chars) with an ellipsis so the Block library / canvas stay elegant. Display
-   only — never alters stored/seeded content.
+   text (~360 chars) for the Block library and palette thumbnails (`&trim=1`). The canvas
+   shows a new section untrimmed — exactly what's saved.
 
 ### Block library (demo page) — `views.demo` + `demo.html`
 An admin-only page (`/admin/page-builder/demo/`) listing every previewable block grouped,
@@ -343,8 +348,22 @@ of the code only calls these (never `django.conf.settings` directly). See §6.
   2. The iframe *element* kept the browser default **150px** height and clipped everything
      below it → set `frame.style.height` to the content height before scaling.
   3. `documentElement.scrollHeight` is inflated by decorative/absolute elements overflowing
-     `<html>` (e.g. 1597 vs 1087 real) → measure `body.scrollHeight` for sections (chrome
-     keeps measuring its single element to avoid its hidden mobile menu inflating height).
+     `<html>` (e.g. 1597 vs 1087 real) → measure `body.scrollHeight` for sections.
+  4. Header/footer frames: measuring `body.firstElementChild` hit the built-in headers'
+     leading `<link>` (height 0) and fell back to the 150px default — a gap under the
+     header. `chromeHeight()` takes the bottom of the visible, in-flow children (skipping
+     `link`/`style`/`script` and absolute/fixed elements such as a mobile-menu panel).
+- **Wagtail's preview uses a fake request** with the Site record's hostname / port
+  (`make_preview_request`), not the browser's address. Anything built with
+  `request.build_absolute_uri` (we did for the site's CSS / JS) points at the wrong server
+  there → link static files root-relative (`previews.asset_urls`).
+- **Blocks are identified by class, not name** — sites reuse one block under several names
+  (HomePage `hero_section_home`, Builder page `hero1`); keying demo content and the Block
+  library by name gave different demos, empty snippets, missing thumbnails and duplicates.
+- **Third-party blocks validate things we can't see** (wagtail-link-block's hidden
+  `custom_url` has a URL validator) → synthesised demo values go through the block's own
+  `clean()` and failing fields are emptied; otherwise the page silently fails to save on a
+  field that block's own JS hides.
 - **Placeholder image generation** — a custom Wagtail image model has `width` NOT NULL; set
   `img.width/height/file_size` after `file.save(…, save=False)`.
 - **LinkBlock over-fill** — synth filled every destination (page + url + document +

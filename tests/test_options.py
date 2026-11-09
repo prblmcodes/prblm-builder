@@ -51,7 +51,8 @@ class OptionsTests(TestCase):
         for model in registry.enabled_page_models():
             _f, sb = registry.stream_block_for(model)
             palettes |= {n for _g, items in registry.grouped_blocks(sb) for (n, _b, _l) in items}
-        self.assertEqual(shown | set(skipped), palettes)
+        # The same block under two names is listed once (Builder page "site_card" = "card").
+        self.assertEqual(shown | set(skipped), palettes - {"site_card"})
         self.assertNotIn("footer_link", shown | set(skipped))  # non-page StreamField
 
     @override_settings(PRBLM_BUILDER_LIBRARY_SCOPE="all")

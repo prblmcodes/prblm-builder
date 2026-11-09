@@ -140,10 +140,8 @@ def _page(context):
 
 
 def _site_urls(request, paths):
-    from prblm_builder.previews import _urls
-    if request is not None:
-        return _urls(request, paths)
-    return [x if x.startswith(("http://", "https://", "//")) else static(x) for x in paths]
+    from prblm_builder.previews import asset_urls
+    return asset_urls(paths)
 
 
 @register.simple_tag(takes_context=True)

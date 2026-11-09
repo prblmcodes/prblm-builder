@@ -93,7 +93,7 @@
             <article class="bl-card" id="bl-{% if b.builtin %}builtin-{% endif %}{{ b.name }}" data-search="{{ b.label|lower }} {{ b.name }}">
               <div class="bl-card-head"><h3>{{ b.label }}</h3><code>{{ b.name }}</code>{% if b.description %}<p class="bl-card-desc">{{ b.description }}</p>{% endif %}</div>
               <div class="bl-frame-wrap"><iframe class="bl-frame" scrolling="no" loading="lazy" title="{{ b.label }}"
-                   data-src="{{ preview_url }}?block={{ b.name }}&demo=1{% if b.builtin %}&builtin=1{% endif %}"></iframe></div>
+                   data-src="{{ preview_url }}?block={{ b.name }}&demo=1&trim=1{% if b.builtin %}&builtin=1{% endif %}"></iframe></div>
             </article>
           {% endfor %}
           </div>

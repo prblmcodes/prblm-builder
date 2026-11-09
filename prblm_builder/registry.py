@@ -110,6 +110,18 @@ def is_builtin(block):
     return module == BUILTIN_MODULE or module.startswith(BUILTIN_MODULE + ".")
 
 
+def block_key(name, block):
+    """What makes two StreamField entries "the same block", across pages: the block's own
+    class (``("class", "home.blocks.HeroBlock")``), whatever name each page gives it. Wagtail's
+    generic classes (``RichTextBlock``, ``CharBlock``, a plain ``StructBlock`` …) say nothing
+    about the content, so those fall back to the name (``("name", "paragraph")``)."""
+    cls = type(block)
+    module = cls.__module__ or ""
+    if module == "wagtail" or module.startswith("wagtail."):
+        return ("name", name)
+    return ("class", f"{module}.{cls.__qualname__}")
+
+
 def _group(blocks_iter):
     """``[(group, [(name, block, label), …]), …]`` from an iterable of (name, block)."""
     groups = {}
@@ -201,7 +213,11 @@ def _library_stream_blocks():
     # "builder": exactly what the Layout palettes offer — top-level blocks of the
     # builder-enabled page fields. Blocks only used nested inside others (links,
     # buttons, …) or in non-page StreamFields never show up.
-    for model in enabled_page_models():
+    # The site's own page types first, the Builder page last: a site block added to the
+    # Builder page under another name is listed under the site's name.
+    models = sorted(enabled_page_models(),
+                    key=lambda m: m.__module__.startswith(BUILTIN_MODULE))
+    for model in models:
         _name, stream_block = stream_block_for(model)
         if stream_block is not None:
             yield stream_block
@@ -210,12 +226,17 @@ def _library_stream_blocks():
 def library_blocks():
     """``{(name, is_builtin): block}`` for every previewable block the Block library
     lists. Keyed by name *and* kind, so a site block called ``hero`` and the built-in
-    ``hero`` (used on different page types) both appear."""
-    found = {}
+    ``hero`` (used on different page types) both appear. The same block used on several
+    page types under different names (see ``block_key``) is listed once, under the first
+    name found."""
+    found, seen = {}, set()
     for stream_block in _library_stream_blocks():
         for name, block in stream_block.child_blocks.items():
-            if previewable(name, block):
-                found.setdefault((name, is_builtin(block)), block)
+            key = block_key(name, block)
+            if key in seen or not previewable(name, block):
+                continue
+            seen.add(key)
+            found.setdefault((name, is_builtin(block)), block)
     return found
 
 

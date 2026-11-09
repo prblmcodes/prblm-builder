@@ -193,7 +193,9 @@ PRBLM_BUILDER_PAGE_EXTRA_BLOCKS = [
 ```
 
 Names must not clash with the built-in ones (`hero`, `faq`, …) — you'll get a clear error
-at startup if they do, or if a path can't be imported.
+at startup if they do, or if a path can't be imported. The name can differ from the one
+your other page types use: the plugin recognises the same block by its class, so it reuses
+the same real demo content and the Block library lists it once.
 
 **2. In your own page models**, next to your own blocks:
 
@@ -531,7 +533,10 @@ them too:
   their source. Blocks added or deleted in the Content tab are respected.
 - **Real demo content.** Previews prefer a real instance of each block used elsewhere on
   the site (real images + copy, with its page as context), falling back to generated
-  content. Long text is shortened in previews only — never in saved content.
+  content. Blocks are matched by class, so a block reused under another name shares its
+  demo content. Generated content is checked against the block's own validation. Long text
+  is shortened in the Block library and sidebar thumbnails only — the canvas shows what
+  will be saved.
 - **Scaled previews.** Each section renders in its own iframe at desktop width
   (`PRBLM_BUILDER_CANVAS_WIDTH`) and is scaled down to fit, so you see the desktop layout
   even in a narrow editor column.

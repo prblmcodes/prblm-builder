@@ -105,12 +105,11 @@
       if (!host || !d || !d.body) return;
       var avail = host.clientWidth || CANVAS_W;
       var s = avail / CANVAS_W;
-      var el = d.body.firstElementChild;
       // For a section use body.scrollHeight (the real content height) — documentElement
       // .scrollHeight can be inflated by decorative/absolute elements overflowing <html>,
-      // which left empty space at the bottom of the section. Chrome keeps measuring its
-      // one element (the header/footer) to avoid its hidden mobile menu inflating things.
-      var h = isChrome ? ((el && el.offsetHeight) || d.documentElement.scrollHeight)
+      // which left empty space at the bottom of the section. Chrome measures its visible
+      // elements only (see chromeHeight).
+      var h = isChrome ? chromeHeight(d)
                        : (d.body.scrollHeight || d.documentElement.scrollHeight);
       frame.style.width = CANVAS_W + "px";
       // Give the iframe its full content height BEFORE scaling — otherwise it keeps the
@@ -119,6 +118,21 @@
       frame.style.transform = "scale(" + s + ")";
       host.style.height = Math.round(h * s) + "px";
     } catch (e) {}
+  }
+  // Height of a header/footer frame: the bottom of its visible elements. Skips <link> /
+  // <style> / <script> (the built-in headers start with their stylesheet, which measured as
+  // 0 and fell back to the frame's default 150px — a gap under the header) and absolutely
+  // positioned / fixed ones (a hidden mobile-menu panel would inflate the height).
+  function chromeHeight(d) {
+    var bottom = 0;
+    Array.prototype.forEach.call(d.body.children, function (c) {
+      if (/^(LINK|STYLE|SCRIPT|META|NOSCRIPT|TEMPLATE)$/.test(c.tagName)) return;
+      var cs = d.defaultView.getComputedStyle(c);
+      if (cs.display === "none" || cs.position === "absolute" || cs.position === "fixed") return;
+      var r = c.getBoundingClientRect();
+      if (r.height) bottom = Math.max(bottom, r.bottom + (parseFloat(cs.marginBottom) || 0));
+    });
+    return Math.ceil(bottom) || d.body.scrollHeight || d.documentElement.scrollHeight;
   }
   function fit(frame) {
     if (EMBED) return scaleFit(frame, false);
@@ -690,8 +704,7 @@
       // Measure the header/footer ELEMENT, not documentElement.scrollHeight — the
       // header's hidden mobile-menu panel is absolutely positioned and would
       // otherwise inflate the height, leaving a big gap below the header.
-      var el = doc.body.firstElementChild;
-      f.style.height = ((el && el.offsetHeight) || doc.documentElement.scrollHeight) + "px";
+      f.style.height = chromeHeight(doc) + "px";
     } catch (e) {}
   }
   document.querySelectorAll(".pb-chrome-frame").forEach(function (f) {

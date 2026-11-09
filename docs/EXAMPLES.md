@@ -262,6 +262,9 @@ PRBLM_BUILDER_PAGE_EXTRA_BLOCKS = [
 # or a function returning [(name, block), …]:
 # PRBLM_BUILDER_PAGE_EXTRA_BLOCKS = "myapp.blocks.builder_page_blocks"
 
+# The name may differ from the one your other pages use ("promo" vs "site_promo"): blocks
+# are matched by class, so demos and the Block library treat them as one block.
+
 # Let editors add Builder pages under your home page (if it limits its child page types):
 PRBLM_BUILDER_PAGE_PARENTS = ["home.HomePage"]
 ```

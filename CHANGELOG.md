@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.6.0 — 2026-11-09
+## 0.6.0 — 2026-11-10
 
 **Added**
 - The **Layout** tab is the **first tab** in the page editor, for new and existing pages.
@@ -35,6 +35,22 @@
 - On a Builder page using the site's own header / footer, it showed unstyled.
 - The canvas and Block library files are version-stamped, so browsers load the new ones
   after an upgrade (no hard refresh needed).
+- **Wagtail's preview** of a Builder page showed the site's header / footer and own blocks
+  unstyled: the site's CSS / JS were linked with the Site's hostname, which Wagtail's
+  preview uses but the browser may not. They're now linked as `/static/…`.
+- A **new section on the canvas** showed shortened text while the full text was saved (and
+  shown by Wagtail's preview). The canvas now shows exactly what's saved; only the Block
+  library and sidebar thumbnails shorten long text.
+- A **gap under the header** on the canvas when the header is a plugin header.
+- **The same block under different names** (e.g. `hero_section_home` on your HomePage and
+  `hero1` in `PRBLM_BUILDER_PAGE_EXTRA_BLOCKS`) is now one block: it borrows the same real
+  content for demos (with its snippets and pages), gets a sidebar thumbnail, and is listed
+  once in the Block library. Blocks are matched by class.
+- **Third-party blocks** (e.g. `wagtail-link-block`) could get demo content their own
+  validation rejects, so the page didn't save — with the error on a field that block hides.
+  Generated demo content is now checked against the block's validation (and link / phone
+  fields get valid values).
+- Generated demo content fills snippet choosers with an existing snippet.
 
 **Upgrade notes**
 - No migrations.

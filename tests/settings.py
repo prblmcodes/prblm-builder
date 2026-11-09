@@ -67,4 +67,8 @@ WAGTAILADMIN_BASE_URL = "http://testserver"
 
 # v0.4: Builder page placement + the site's own blocks on the Builder page.
 PRBLM_BUILDER_PAGE_PARENTS = ["testapp.RestrictedHome"]
-PRBLM_BUILDER_PAGE_EXTRA_BLOCKS = [("note", "tests.testapp.blocks.NoteBlock")]
+PRBLM_BUILDER_PAGE_EXTRA_BLOCKS = [
+    ("note", "tests.testapp.blocks.NoteBlock"),
+    # The same block as LandingPage's "card", under another name (matched by class).
+    ("site_card", "tests.examples.blocks.CardBlock"),
+]

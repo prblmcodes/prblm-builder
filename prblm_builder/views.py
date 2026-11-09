@@ -170,20 +170,24 @@ def _is_blank(html):
     return not strip_tags(html).strip() and not _VISIBLE_TAGS.search(html)
 
 
-def _demo_value(block_name, block):
+def _demo_value(block_name, block, trim=True):
     """``(value, page)`` to preview a block with: a real instance used on the site
-    (with its page, so hero-style blocks render fully), else synthesised content —
-    trimmed for display. The block's own Wagtail ``preview_value`` comes first."""
+    (with its page, so hero-style blocks render fully), else synthesised content. The
+    block's own Wagtail ``preview_value`` comes first. ``trim`` shortens long text for the
+    Block library and thumbnails; a new section on the canvas isn't trimmed, so it shows
+    exactly what will be saved (``layout.new_block_value``)."""
+    def done(value):
+        return previews.trim_for_demo(block, value) if trim else value
     preview = previews.explicit_preview_value(block)
     if preview is not None:
-        return previews.trim_for_demo(block, preview), None
+        return done(preview), None
     if registry.is_builtin(block):
         # Built-ins always show their own explanatory example content.
         return block.get_default(), None
-    value, src_page = previews.real_instance_for(block_name)
+    value, src_page = previews.real_instance_for(block_name, block)
     if value is None:
         value = previews.demo_value(block, block_name, prefer_real=False)
-    return previews.trim_for_demo(block, value), src_page
+    return done(value), src_page
 
 
 def _preview_problem(block_name, block, request):
@@ -437,8 +441,9 @@ def preview(request):       # builder frames this from the same origin, so allow
     # Demo content: prefer a real instance of this block used on the site — real images
     # and copy, and its page as context so hero-style blocks (which read the page's
     # title / header_image / excerpt) render fully instead of an empty band. Long text
-    # is trimmed for an elegant demo (display only).
-    value, src_page = _demo_value(block_name, block)
+    # is trimmed (``&trim=1``) in the Block library and thumbnails; a new section on the
+    # canvas shows it in full, as it will be saved.
+    value, src_page = _demo_value(block_name, block, trim=request.GET.get("trim") == "1")
     value = _apply_settings_preview(block, value, request)
     html = _render_block_safe(block, value, request, src_page or page)
     return HttpResponse(previews.frame(html, request))

@@ -79,7 +79,7 @@ site content where a block is used, else synthesis).
 Target stack: **Wagtail 8.1+ (<9), Django 6.1+, Python 3.12+** (latest stable as of v0.6.0).
 
 ## Current state
-Latest release **v0.6.0** (plan archived in `docs/plans/v0.6.0.md`). Copy-paste usage examples:
+Latest release **v0.6.0** (plans archived in `docs/plans/v0.6.0.md` + `v0.6.0-fixes.md`). Copy-paste usage examples:
 `docs/EXAMPLES.md` — its code lives in `tests/examples/` (keep them identical). Install in another project
 with `pip install "prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@<tag or branch>"`.
 Tests: `prblm_builder/tests/` (generic, shipped) + `tests/test_options.py` (needs the

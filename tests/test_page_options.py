@@ -43,10 +43,10 @@ class ExtraBlocksTests(TestCase):
     def test_builder_page_has_site_block(self):
         _f, sb = registry.stream_block_for(BuilderPage)
         self.assertIn("note", sb.child_blocks)
-        self.assertEqual(len(sb.child_blocks), len(builder_blocks()) + 1)
+        self.assertEqual(len(sb.child_blocks), len(builder_blocks()) + 2)   # note + site_card
         kinds = {k: [n for _g, items in groups for (n, _b, _l) in items]
                  for k, groups in registry.palette_sections(sb)}
-        self.assertEqual(kinds[registry.KIND_SITE], ["note"])        # shown as a site block
+        self.assertIn("note", kinds[registry.KIND_SITE])             # shown as a site block
 
     def test_no_migration_inside_the_plugin(self):
         out = StringIO()
