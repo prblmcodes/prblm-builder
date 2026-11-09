@@ -138,7 +138,9 @@ body.pb-embed .pb-expand{display:inline-flex}
   box-shadow:0 1px 3px rgba(0,0,0,.12)}
 body.pb-preview-mode .pb-unedited{display:none}
 .pb-sec-ctrls{display:flex;gap:2px}
-.pb-sec-ctrls button{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border:0;background:rgba(255,255,255,.12);color:#fff;border-radius:6px;cursor:pointer;font-size:13px;line-height:1}
+/* Buttons keep their 26px size; no inner padding, so the icons can be bigger (17px). */
+.pb-sec-ctrls button{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;border:0;background:rgba(255,255,255,.12);color:#fff;border-radius:6px;cursor:pointer;font-size:13px;line-height:1}
+.pb-sec-ctrls button svg{width:17px;height:17px;flex:none}
 .pb-sec-ctrls button:hover{background:rgba(255,255,255,.26)}
 .pb-sec-ctrls button:disabled{opacity:.3;cursor:default}
 .pb-sec-ctrls .pb-grab{cursor:grab}

@@ -147,6 +147,25 @@
              changed: JSON.parse(c.dataset.changed || "[]") };
   }
 
+  // Section toolbar icons: one line-icon style, 17px inside 26px buttons.
+  function svgIcon(inner) {
+    return '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" ' +
+           'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + inner + '</svg>';
+  }
+  var ICON = {
+    edit: svgIcon('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>'),
+    grab: svgIcon('<circle cx="9" cy="6" r="1.2"/><circle cx="15" cy="6" r="1.2"/><circle cx="9" cy="12" r="1.2"/>' +
+                  '<circle cx="15" cy="12" r="1.2"/><circle cx="9" cy="18" r="1.2"/><circle cx="15" cy="18" r="1.2"/>'),
+    up: svgIcon('<path d="M6 15l6-6 6 6"/>'),
+    down: svgIcon('<path d="M6 9l6 6 6-6"/>'),
+    settings: svgIcon('<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7"/>' +
+                      '<path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>'),
+    copy: svgIcon('<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>'),
+    paste: svgIcon('<rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3h6v1M12 10v7M9 14l3 3 3-3"/>'),
+    dup: svgIcon('<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M4 16V6a2 2 0 0 1 2-2h10"/><path d="M14 11v6M11 14h6"/>'),
+    del: svgIcon('<path d="M6 6l12 12M18 6L6 18"/>'),
+  };
+
   function makeSection(s) {
     var el = document.createElement("section");
     el.className = "pb-sec pb-sec-loading"; el.dataset.id = s.id; el.dataset.type = s.type;
@@ -166,15 +185,15 @@
         '<span class="pb-sec-name"></span>' +
         '<span class="pb-sec-ctrls">' +
           // In the Layout tab, content is edited in the Content tab — so no pencil.
-          (EMBED ? '' : '<button data-act="edit" aria-label="Edit content" data-tip="Edit this section\'s words and images">&#9998;</button>') +
-          '<button class="pb-grab" data-act="grab" aria-label="Drag to move" data-tip="Drag to move this section">&#8942;&#8942;</button>' +
-          '<button data-act="up" aria-label="Move up" data-tip="Move up">&#8593;</button>' +
-          '<button data-act="down" aria-label="Move down" data-tip="Move down">&#8595;</button>' +
-          (sch ? '<button data-act="settings" aria-haspopup="dialog" aria-label="Section settings" data-tip="Settings (background, anchor ID…)">&#9881;</button>' : '') +
-          '<button data-act="copy" aria-label="Copy section" data-tip="Copy section (Ctrl/⌘+C)"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>' +
-          '<button data-act="paste" class="pb-paste" aria-label="Paste below" data-tip="Paste the copied section below (Ctrl/⌘+V)"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3h6v1M12 10v7M9 14l3 3 3-3"/></svg></button>' +
-          '<button data-act="dup" aria-label="Duplicate" data-tip="Duplicate (adds a copy right below)">&#10697;</button>' +
-          '<button class="pb-del" data-act="del" aria-label="Remove section" data-tip="Remove this section">&#10005;</button>' +
+          (EMBED ? '' : '<button data-act="edit" aria-label="Edit content" data-tip="Edit this section\'s words and images">' + ICON.edit + '</button>') +
+          '<button class="pb-grab" data-act="grab" aria-label="Drag to move" data-tip="Drag to move this section">' + ICON.grab + '</button>' +
+          '<button data-act="up" aria-label="Move up" data-tip="Move up">' + ICON.up + '</button>' +
+          '<button data-act="down" aria-label="Move down" data-tip="Move down">' + ICON.down + '</button>' +
+          (sch ? '<button data-act="settings" aria-haspopup="dialog" aria-label="Section settings" data-tip="Settings (background, anchor ID…)">' + ICON.settings + '</button>' : '') +
+          '<button data-act="copy" aria-label="Copy section" data-tip="Copy section (Ctrl/⌘+C)">' + ICON.copy + '</button>' +
+          '<button data-act="paste" class="pb-paste" aria-label="Paste below" data-tip="Paste the copied section below (Ctrl/⌘+V)">' + ICON.paste + '</button>' +
+          '<button data-act="dup" aria-label="Duplicate" data-tip="Duplicate (adds a copy right below)">' + ICON.dup + '</button>' +
+          '<button class="pb-del" data-act="del" aria-label="Remove section" data-tip="Remove this section">' + ICON.del + '</button>' +
         '</span>' +
       '</div>';
     el.querySelector(".pb-sec-name").textContent = s.label || s.type;

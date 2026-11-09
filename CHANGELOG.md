@@ -17,6 +17,8 @@
 - **Simpler links** in built-in blocks: Label → *Link to* (page, web address, section on this
   page, document, email, phone) → only that field. Old links keep working.
 - **Tooltips** on the section toolbar buttons (instant, on hover or keyboard focus).
+- Section toolbar: one set of line icons (chevrons for move up/down, a distinct duplicate
+  icon), 17px icons in the same 26px buttons.
 - Developers: hooks `prblm_builder_page_options`; model attribute `builder_layout_panels`.
 
 **Fixed**
