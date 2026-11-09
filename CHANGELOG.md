@@ -8,6 +8,8 @@
   backgrounds, on/off, short text); the canvas updates live; saved with the page.
   `prblm_builder.mixins.BuilderSettingsMixin` moves those fields into Wagtail's collapsed
   settings area in the Content tab. Built-in blocks use it for background + anchor ID.
+- The ⚙ background swatches of built-in blocks show the **site's Theme colours** (own blocks
+  show the names only); the "Muted (soft grey)" option is now just "Muted".
 - **Copy & paste** sections within a page: Copy from the toolbar or Ctrl/⌘+C; paste with the
   **right-click menu** (Paste above / below — it also has Duplicate, Settings, Move, Delete)
   or Ctrl/⌘+V.

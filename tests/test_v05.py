@@ -364,3 +364,41 @@ class UneditedAfterEditorSaveTests(TestCase):
         self.assertTrue(previews.is_unedited(block, "faq", stored))
         stored["heading"] = "Really edited"
         self.assertFalse(previews.is_unedited(block, "faq", stored))
+
+
+@override_settings(STORAGES=STORAGES)
+class SwatchColorTests(TestCase):
+    def setUp(self):
+        self.client.force_login(get_user_model().objects.create_superuser("sw", "sw@example.com", "pw"))
+
+    def schema_for(self, page):
+        r = self.client.get(reverse("prblm_builder:builder", args=[page.id]) + "?embed=1")
+        return r.context["settings_schema"]
+
+    def test_builtin_swatches_follow_the_theme(self):
+        from wagtail.models import Site
+        from prblm_builder.blocks.models import BuilderPage, ThemeSettings
+        ThemeSettings.objects.update_or_create(site=Site.objects.get(is_default_site=True),
+                                               defaults={"brand_color": "#e91e8c", "dark_background_color": "#2a0f1f"})
+        page = Page.objects.get(depth=2).add_child(instance=BuilderPage(title="T", slug="t-sw"))
+        bg = [f for f in self.schema_for(page)["hero"]["fields"] if f["name"] == "background"][0]
+        self.assertEqual(bg["colors"]["brand"], "#e91e8c")
+        self.assertEqual(bg["colors"]["dark"], "#2a0f1f")
+        self.assertEqual(bg["colors"]["light"], "#ffffff")
+
+    def test_site_block_swatches_have_no_theme_colours(self):
+        from wagtail import blocks as wb
+        from prblm_builder.views import _settings_schema
+        from prblm_builder.mixins import BuilderSettingsMixin
+
+        class Own(BuilderSettingsMixin, wb.StructBlock):
+            background = wb.ChoiceBlock(choices=[("light", "Light"), ("dark", "Dark")], default="light")
+
+            class Meta:
+                template = "testapp/blocks/banner.html"
+                builder_settings = ["background"]
+
+        sb = wb.StreamBlock([("own", Own())])
+        field = _settings_schema(sb)["own"]["fields"][0]
+        self.assertTrue(field["swatches"])
+        self.assertNotIn("colors", field)

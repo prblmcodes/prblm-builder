@@ -134,7 +134,7 @@ class BackgroundBlock(blocks.ChoiceBlock):
 
     choices = [
         ("light", "Light"),
-        ("muted", "Muted (soft grey)"),
+        ("muted", "Muted"),
         ("dark", "Dark"),
         ("brand", "Brand colour"),
     ]

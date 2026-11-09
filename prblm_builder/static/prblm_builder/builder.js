@@ -470,7 +470,6 @@
   });
 
   /* ---------- ⚙ section settings popover ---------- */
-  var SWATCH = { light: "#ffffff", muted: "#f3f4f6", dark: "#0f172a", brand: "#2563eb" };
   var pop = null, popBtn = null;
   function closeSettings() {
     if (!pop) return;
@@ -503,7 +502,10 @@
       f.choices.forEach(function (c) {
         var b = document.createElement("button"); b.type = "button"; b.className = "pb-swatch";
         b.setAttribute("role", "radio"); b.setAttribute("aria-checked", c[0] === value ? "true" : "false");
-        b.innerHTML = '<span class="pb-swatch-chip" style="background:' + (SWATCH[c[0]] || "#ccc") + '"></span><span>' + c[1] + "</span>";
+        // Colours come from the site's Theme (built-in blocks); otherwise names only.
+        var color = f.colors && f.colors[c[0]];
+        b.innerHTML = (color ? '<span class="pb-swatch-chip" style="background:' + color + '"></span>' : '') +
+                      '<span>' + c[1] + "</span>";
         b.addEventListener("click", function () {
           box.querySelectorAll(".pb-swatch").forEach(function (x) { x.setAttribute("aria-checked", x === b ? "true" : "false"); });
           setSetting(sec, f.name, c[0]);

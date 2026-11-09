@@ -65,14 +65,41 @@ def _sections(page, field_name):
     return out
 
 
-def _settings_schema(stream_block):
+SWATCH_HOOK = "prblm_builder_swatch_colors"
+
+
+def _swatch_colors(request):
+    """Colours for the background swatches of built-in blocks — ``{"light": "#fff", …}``
+    from ``prblm_builder_swatch_colors`` hooks (the blocks app answers with the current
+    site's Theme). Empty when nothing provides them: swatches then show names only."""
+    from wagtail import hooks
+    colors = {}
+    for fn in hooks.get_hooks(SWATCH_HOOK):
+        try:
+            colors.update(fn(request) or {})
+        except Exception:
+            continue
+    return colors
+
+
+def _settings_schema(stream_block, request=None):
     """``{block type: {"fields": [...], "defaults": {...}}}`` for blocks with ⚙ settings —
-    the popover's form, and the starting values for a newly added section."""
+    the popover's form, and the starting values for a newly added section. Background
+    swatches of built-in blocks carry the Theme's real colours; a site block's swatches
+    don't (its own CSS decides what "dark" means)."""
     out = {}
+    theme = None
     for name, block in stream_block.child_blocks.items():
         fields = registry.settings_schema(block)
         if not fields:
             continue
+        for field in fields:
+            if field.get("swatches") and registry.is_builtin(block):
+                if theme is None:
+                    theme = _swatch_colors(request)
+                colors = {k: theme[k] for k, _l in field["choices"] if k in theme}
+                if colors:
+                    field["colors"] = colors
         try:
             start = block.get_prep_value(previews.demo_value(block, name, prefer_real=False))
         except Exception:
@@ -234,7 +261,7 @@ def builder(request, page_id):
         "field_name": field_name,
         "sections": _sections(page, field_name),
         "palette": _palette(stream_block),
-        "settings_schema": _settings_schema(stream_block),
+        "settings_schema": _settings_schema(stream_block, request),
         "page_options": (page_options := _page_options(request, page=page) if request.GET.get("embed") else []),
         "page_options_editable": any(o.get("choices") for o in page_options),
         "chrome_base": reverse("prblm_builder:preview") + f"?page={page.id}",
@@ -278,7 +305,7 @@ def builder_new(request):
         "field_name": field_name,
         "sections": [],
         "palette": _palette(stream_block),
-        "settings_schema": _settings_schema(stream_block),
+        "settings_schema": _settings_schema(stream_block, request),
         "page_options": (page_options := _page_options(request, model=model)),
         "page_options_editable": any(o.get("choices") for o in page_options),
         "chrome_base": reverse("prblm_builder:preview") + f"?model={label}",

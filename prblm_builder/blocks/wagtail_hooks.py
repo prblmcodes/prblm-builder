@@ -88,3 +88,16 @@ def builder_page_options(request, page, model):
         return [chrome.page_option("header", page), chrome.page_option("footer", page)]
     # The site's own page types: information only (their template decides).
     return [info for info in (chrome.page_info("header"), chrome.page_info("footer")) if info]
+
+
+@hooks.register("prblm_builder_swatch_colors")
+def theme_swatch_colors(request):
+    """The ⚙ background swatches show this site's Theme colours."""
+    from . import theme
+    values = theme.values_for(request)
+    return {
+        "light": values["background_color"],
+        "muted": values["muted_background_color"],
+        "dark": values["dark_background_color"],
+        "brand": values["brand_color"],
+    }
