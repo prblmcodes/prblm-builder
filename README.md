@@ -116,7 +116,10 @@ To upgrade later, change the tag (e.g. `@v0.5.0` → `@v0.6.0`) and reinstall. S
   editor opens the tab with the error.
 - **Two-column forms:** the built-in blocks' forms (Content tab, Headers, Footers, Theme)
   show short fields two per row — text, dropdowns, choosers — and long text, rich text and
-  lists full width. Turn it on for your own blocks with `PRBLM_BUILDER_FORM_COLUMNS = "all"`.
+  lists full width. Turn it on for your own blocks with
+  `PRBLM_BUILDER_SITE_BLOCK_COLUMNS = True`.
+- **Sidebar:** the Layout sidebar always opens on **Sections**; **Page** shows only when
+  you click it.
 - **Section settings (⚙):** sections with settings (e.g. background, anchor ID) have a ⚙
   button in their toolbar. It opens a small panel; the canvas updates as you change
   things, and the change saves with the page. See [Section settings](#section-settings-).
@@ -249,6 +252,21 @@ Image fields left empty show a neutral placeholder labelled with its purpose and
 ("Hero image · 1200×900") — nothing is added to your image library. Icons come from a
 built-in set of ~50 line icons, picked from a dropdown.
 
+### Reusing the link block
+
+Your own blocks can use the built-in link block (Label → *Link to* → the one field that
+type needs): `from prblm_builder.blocks import LinkBlock`, then `link = LinkBlock()` in
+your StructBlock and `{{ value.link.href }}` in its template. Full example:
+[docs/EXAMPLES.md — Reuse the built-in link block](docs/EXAMPLES.md#5-reuse-the-built-in-link-block).
+
+### Styles stay separate
+
+The built-in blocks' CSS only styles the blocks, and the blocks are shielded from your
+site's global CSS (Tailwind's reset, `p`/`ul`/`a`/`header` rules…), so they look the same on
+any site. Builder pages load your site's CSS/JS only when they show your site's header or
+footer or contain your own blocks. Details:
+[docs/EXAMPLES.md — Header and footer](docs/EXAMPLES.md#8-header-and-footer-in-your-base-template).
+
 ### Theme
 
 **Page builder → Theme** sets, per site: brand colour (and text on it), text colours,
@@ -346,7 +364,7 @@ A block can also hide itself — see [Hiding a block](#hiding-a-block).
 |---|---|---|
 | `PRBLM_BUILDER_ADMIN_TWEAKS` | `True` | Two extras in the **page editor** that rely on Wagtail admin internals. Set `False` if a Wagtail upgrade breaks them — the Layout tab and saving keep working. See the table below. |
 
-| `PRBLM_BUILDER_FORM_COLUMNS` | `"builtin"` | Two-column block forms in the admin (short fields side by side, long ones full width; one column on narrow screens). `"builtin"` = the built-in blocks and the Theme page; `"all"` = also your own blocks; `False` = off. |
+| `PRBLM_BUILDER_SITE_BLOCK_COLUMNS` | `False` | `True` = your **own** blocks' fields use the two-column layout too (short fields side by side, long ones full width; one column on narrow screens). The built-in blocks and the Theme page always use it. |
 
 What `PRBLM_BUILDER_ADMIN_TWEAKS` changes (in the page editor only — not the Block library page or the canvas itself):
 
@@ -590,8 +608,13 @@ from the tag (attach the wheel from `python -m build`).
 **0.5 → 0.6**
 - No migrations, no setting changes needed — just install the new version.
 - The **Layout** tab is now the first tab in the page editor.
-- The built-in blocks' forms use two columns. Don't want it? `PRBLM_BUILDER_FORM_COLUMNS =
-  False`. Want it for your own blocks too? `PRBLM_BUILDER_FORM_COLUMNS = "all"`.
+- The built-in blocks' forms use two columns. Want it for your own blocks too?
+  `PRBLM_BUILDER_SITE_BLOCK_COLUMNS = True`.
+- Builder pages that show your site's header/footer, or contain your own blocks, now load
+  your site's CSS/JS (`PRBLM_BUILDER_PREVIEW_CSS` / `_JS`) — so make sure those are set.
+- Built-in blocks are now shielded from your site's global CSS. If you relied on a site rule
+  changing a built-in block (other than fonts, which they still inherit), use the Theme or
+  your own block instead.
 
 **0.4 → 0.5**
 - Run `python manage.py migrate` (migration `0003_link_types` only updates the built-in
@@ -638,6 +661,8 @@ from the tag (attach the wheel from `python -m build`).
 | Full-width tab / header link broke after a Wagtail upgrade | Set `PRBLM_BUILDER_ADMIN_TWEAKS = False` and open an issue. |
 | Error `prblm_builder_blocks.E001` on startup | Add `"wagtail.contrib.settings"` to `INSTALLED_APPS`. |
 | Built-in blocks not in a page's palette | They must be in that page's StreamField: use the **Builder page**, or add `builder_blocks()` to your model and run `makemigrations` + `migrate`. |
+| Your site's header looks unstyled on a Builder page | Set `PRBLM_BUILDER_PREVIEW_CSS` (and `_JS`) to your site's files — Builder pages load them when they show your site's header/footer. |
+| `PRBLM_BUILDER_SITE_BLOCK_COLUMNS = True` changes nothing | Hard-refresh the admin (Ctrl+Shift+R). Two columns apply to StructBlock forms; a plain text/rich-text block has a single field. |
 | No "Builder page" in *Add page* | `prblm_builder.blocks` not installed / not migrated, or `PRBLM_BUILDER_PAGE_TYPE = False`. |
 | Theme changes don't affect my own blocks | Expected — the Theme only styles the built-in blocks. |
 | Site-wide header not on my live pages | Add `{% load prblm_blocks %}{% prblm_header %}` to your base template (the Builder page shows it automatically). |

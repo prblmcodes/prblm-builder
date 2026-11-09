@@ -1,0 +1,9 @@
+<div class="card">
+  <h3>{{ value.title }}</h3>
+  {% if value.text %}<p>{{ value.text }}</p>{% endif %}
+  {% with link=value.link %}
+    {% if link.label and link.href %}
+      <a class="card__button" href="{{ link.href }}"{% if link.is_external %} target="_blank" rel="noopener"{% endif %}>{{ link.label }}</a>
+    {% endif %}
+  {% endwith %}
+</div>

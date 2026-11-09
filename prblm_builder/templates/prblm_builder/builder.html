@@ -1,14 +1,14 @@
-{% load static %}<!doctype html>
+{% load prblm_builder_tags %}<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Edit layout — {{ page.title }}</title>
   <meta name="robots" content="noindex, nofollow">
-  <link rel="stylesheet" href="{% static 'prblm_builder/builder.css' %}">
-  <script src="{% static 'prblm_builder/vendor/sortable.min.js' %}"></script>
-  <script src="{% static 'prblm_builder/builder.js' %}" defer></script>
-  <script src="{% static 'prblm_builder/fold.js' %}" defer></script>
+  <link rel="stylesheet" href="{% prblm_static 'prblm_builder/builder.css' %}">
+  <script src="{% prblm_static 'prblm_builder/vendor/sortable.min.js' %}"></script>
+  <script src="{% prblm_static 'prblm_builder/builder.js' %}" defer></script>
+  <script src="{% prblm_static 'prblm_builder/fold.js' %}" defer></script>
 </head>
 <body class="pb{% if embed %} pb-embed{% endif %}" data-fold-store="palette">
   {% if not embed %}

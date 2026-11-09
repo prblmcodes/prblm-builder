@@ -1,25 +1,63 @@
-/* prblm-builder — two-column block forms (see form-columns.js). */
-.pb-cols{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:24px;align-items:end}
-.pb-cols > *{grid-column:1 / -1;min-width:0}
-.pb-cols > .pb-col-half{grid-column:auto}
-.pb-cols > .pb-col-full{grid-column:1 / -1}
+/* prblm-builder — two-column block forms in the Wagtail admin.
+
+   Pure CSS, so the layout is there the moment a form (or a new block / list item) appears:
+   short fields (text, email, URL, number, dropdown, checkbox, date, choosers) two per row;
+   long text, rich text, lists and nested blocks full width; hidden fields take no space.
+   form-columns.js only adds one touch-up: a short field left without a partner gets
+   `pb-col-full`. Forms marked `pbk-form` (the built-in blocks, the Theme page) always;
+   the site's own blocks too with PRBLM_BUILDER_SITE_BLOCK_COLUMNS (form-columns-site.css).
+   If Wagtail's markup changes, nothing matches and forms keep their normal look. */
+
+.pbk-form,
+.pbk-form .struct-block,
+.pbk-form [data-block-settings]:not([hidden]),
+.w-panel.pbk-form > .w-panel__content{
+  display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:24px;
+  align-items:end;container-type:inline-size;
+}
+
+/* Everything spans the full width by default (headings, help, the settings area…). */
+.pbk-form > *,
+.pbk-form .struct-block > *,
+.pbk-form [data-block-settings] > *,
+.w-panel.pbk-form > .w-panel__content > *{grid-column:1 / -1;min-width:0}
+
+/* Short fields take one column. */
+.pbk-form > [data-contentpath],
+.pbk-form .struct-block > [data-contentpath],
+.pbk-form [data-block-settings] > [data-contentpath],
+.w-panel.pbk-form > .w-panel__content > .w-panel__wrapper{grid-column:auto}
+
+/* …except long or grouped ones: textarea, rich text, lists, streams, nested blocks. */
+.pbk-form > [data-contentpath]:has(textarea, .Draftail-Editor, [data-draftail-input], [data-streamfield-list-container], [data-streamfield-list-count], [data-streamfield-stream-container], [data-contentpath]),
+.pbk-form .struct-block > [data-contentpath]:has(textarea, .Draftail-Editor, [data-draftail-input], [data-streamfield-list-container], [data-streamfield-list-count], [data-streamfield-stream-container], [data-contentpath]),
+.pbk-form [data-block-settings] > [data-contentpath]:has(textarea, .Draftail-Editor, [data-draftail-input], [data-streamfield-list-container], [data-streamfield-list-count], [data-streamfield-stream-container], [data-contentpath]),
+.w-panel.pbk-form > .w-panel__content > .w-panel__wrapper:has(textarea, .Draftail-Editor, [data-draftail-input], [data-streamfield-list-container], [data-streamfield-stream-container]),
+/* …and a short field without a partner (set by form-columns.js). */
+.pbk-form .pb-col-full{grid-column:1 / -1}
+.pbk-form .pb-col-full, .w-panel.pbk-form .pb-col-full{grid-column:1 / -1 !important}
+
+/* Narrow forms: one column. */
+@container (max-width: 559px){
+  .pbk-form > *, .pbk-form .struct-block > *, .pbk-form [data-block-settings] > *,
+  .w-panel.pbk-form > .w-panel__content > *{grid-column:1 / -1 !important}
+}
+
 /* Fields fill their column: Wagtail's field box shrinks to its content by default. */
-.pb-cols > * .w-field{display:block;width:100%}
+.pbk-form .w-field,
+.w-panel.pbk-form .w-field{display:block;width:100%}
+.pbk-form select,
+.pbk-form input[type="text"], .pbk-form input[type="email"], .pbk-form input[type="url"],
+.pbk-form input[type="number"], .pbk-form input[type="date"], .pbk-form input[type="color"],
+.pbk-form .w-field__input,
+.w-panel.pbk-form select, .w-panel.pbk-form input[type="text"], .w-panel.pbk-form input[type="color"],
+.w-panel.pbk-form .w-field__input{width:100%;max-width:none}
+.pbk-form input[type="color"], .w-panel.pbk-form input[type="color"]{height:42px;padding:4px;cursor:pointer}
 /* Choosers (image / page / document): a full-width box like the other fields. */
-.pb-cols > * .chooser{display:block;width:100%;box-sizing:border-box;padding:8px 12px;
+.pbk-form .chooser{display:block;width:100%;box-sizing:border-box;padding:8px 12px;
   border:1px solid var(--w-color-border-field-default, #c8c8d0);border-radius:.3125rem}
-.pb-cols > * .chooser.blank{border-style:dashed}
-/* Fields fill their column: dropdowns, inputs and choosers. */
-.pb-cols > * select,
-.pb-cols > * input[type="text"],
-.pb-cols > * input[type="email"],
-.pb-cols > * input[type="url"],
-.pb-cols > * input[type="number"],
-.pb-cols > * input[type="date"],
-.pb-cols > * input[type="color"],
-.pb-cols > * .w-field__input,
-.pb-cols > * .chooser{width:100%;max-width:none}
+.pbk-form .chooser.blank{border-style:dashed}
+
 /* The block's settings area: a divider underneath while it's open. */
-[data-block-settings]:not([hidden]){padding-bottom:18px;margin-bottom:18px;
+.pbk-form [data-block-settings]:not([hidden]){padding-bottom:18px;margin-bottom:18px;
   border-bottom:1px solid var(--w-color-border-furniture, #e6e6e6)}
-.pb-cols > * input[type="color"]{height:42px;padding:4px;cursor:pointer}

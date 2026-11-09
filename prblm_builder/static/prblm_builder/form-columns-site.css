@@ -1,0 +1,31 @@
+/* prblm-builder — two-column forms for the site's own blocks too
+   (PRBLM_BUILDER_SITE_BLOCK_COLUMNS = True). Same rules as form-columns.css, for every
+   StructBlock form instead of only the built-in ones. */
+
+.struct-block,
+[data-block-settings]:not([hidden]){
+  display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:24px;
+  align-items:end;container-type:inline-size;
+}
+.struct-block > *,
+[data-block-settings] > *{grid-column:1 / -1;min-width:0}
+.struct-block > [data-contentpath],
+[data-block-settings] > [data-contentpath]{grid-column:auto}
+.struct-block > [data-contentpath]:has(textarea, .Draftail-Editor, [data-draftail-input], [data-streamfield-list-container], [data-streamfield-list-count], [data-streamfield-stream-container], [data-contentpath]),
+[data-block-settings] > [data-contentpath]:has(textarea, .Draftail-Editor, [data-draftail-input], [data-streamfield-list-container], [data-streamfield-list-count], [data-streamfield-stream-container], [data-contentpath]),
+.struct-block > .pb-col-full,
+[data-block-settings] > .pb-col-full{grid-column:1 / -1 !important}
+@container (max-width: 559px){
+  .struct-block > *, [data-block-settings] > *{grid-column:1 / -1 !important}
+}
+
+.struct-block .w-field{display:block;width:100%}
+.struct-block select,
+.struct-block input[type="text"], .struct-block input[type="email"], .struct-block input[type="url"],
+.struct-block input[type="number"], .struct-block input[type="date"],
+.struct-block .w-field__input{width:100%;max-width:none}
+.struct-block .chooser{display:block;width:100%;box-sizing:border-box;padding:8px 12px;
+  border:1px solid var(--w-color-border-field-default, #c8c8d0);border-radius:.3125rem}
+.struct-block .chooser.blank{border-style:dashed}
+[data-block-settings]:not([hidden]){padding-bottom:18px;margin-bottom:18px;
+  border-bottom:1px solid var(--w-color-border-furniture, #e6e6e6)}

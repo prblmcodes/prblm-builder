@@ -18,6 +18,9 @@
 :where(html){font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
 
 /* ---------- section + backgrounds ---------- */
+/* The block's own element is shielded too (see the shield below); the rule after it then
+   sets what it needs. */
+.pbk:where(*){all:revert}
 .pbk{
   --pbk-bg:var(--pbk-c-bg); --pbk-fg:var(--pbk-c-text); --pbk-fg-muted:var(--pbk-c-muted-text);
   --pbk-accent:var(--pbk-c-brand); --pbk-line:rgba(15,23,42,.12); --pbk-surface:#ffffff;
@@ -26,6 +29,14 @@
   font-family:var(--pbk-font,inherit); font-size:17px; line-height:1.6; text-align:left;
   -webkit-font-smoothing:antialiased;
 }
+/* Shield: the site's own CSS (loaded on the same page) can't restyle the blocks. Inside a
+   block every element starts from the browser's defaults — so global rules like
+   `p{line-height:2}`, `ul{list-style:none}`, `a{text-decoration:none}` or
+   `header{position:sticky}` don't leak in — and the rules below then style it. Only one
+   class of specificity, so every block rule below wins. SVG icons keep their attributes. */
+.pbk :where(*:not(svg, svg *)),
+.pbk :where(*:not(svg, svg *))::before,
+.pbk :where(*:not(svg, svg *))::after{all:revert}
 .pbk *,.pbk *::before,.pbk *::after{box-sizing:border-box}
 .pbk--muted{--pbk-bg:var(--pbk-c-muted-bg)}
 .pbk--dark{

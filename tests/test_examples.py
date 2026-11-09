@@ -82,3 +82,39 @@ class ExamplesTests(TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertIn("promo", r.context["settings_schema"])
         self.assertEqual(r.context["sections"][0]["settings"]["background"], "light")
+
+
+class ReuseLinkBlockTests(TestCase):
+    def test_short_import_is_the_builtin_link_block(self):
+        from prblm_builder.blocks import LinkBlock
+        from prblm_builder.blocks.sections.base import LinkBlock as Original
+        self.assertIs(LinkBlock, Original)
+
+    def test_card_renders_each_link_type(self):
+        from wagtail.models import Page as WPage
+        from tests.examples.blocks import CardBlock
+        block = CardBlock()
+        page = WPage.objects.get(depth=2)
+        cases = [
+            ({"label": "Go", "link_type": "anchor", "anchor": "services"}, 'href="#services"'),
+            ({"label": "Go", "link_type": "url", "url": "https://example.com"}, 'href="https://example.com" target="_blank"'),
+            ({"label": "Go", "link_type": "email", "email": "a@b.co"}, 'href="mailto:a@b.co"'),
+            ({"label": "Go", "link_type": "page", "page": page.pk}, f'href="{page.url}"'),
+            ({"label": "", "link_type": "url", "url": "/x/"}, None),
+        ]
+        for link, expected in cases:
+            html = block.render(block.to_python({"title": "T", "link": link}))
+            if expected:
+                self.assertIn(expected, html)
+            else:
+                self.assertNotIn("card__button", html)
+
+    def test_card_form_gets_the_link_type_switch(self):
+        from tests.examples.blocks import CardBlock
+        from wagtail.admin.telepath import JSContext
+        ctx = JSContext()
+        ctx.pack(CardBlock())
+        self.assertIn("prblm_builder/blocks/link-block.js", str(ctx.media))
+
+    def test_card_on_the_landing_page_palette(self):
+        self.assertIn("card", palette(LandingPage))

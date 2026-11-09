@@ -12,9 +12,17 @@
 - **Two-column block forms:** short fields side by side, long text / rich text / lists /
   grouped fields full width, an unpaired field full width, everything filling its column;
   the block settings area in two columns with a divider while open; one column on narrow
-  screens. On for the built-in blocks and the Theme page.
-- Setting **`PRBLM_BUILDER_FORM_COLUMNS`**: `"builtin"` (default), `"all"` (also your own
-  blocks) or `False`.
+  forms. Done in CSS, so it shows instantly (no flicker when a block or list item is added).
+  Always on for the built-in blocks and the Theme page.
+- Setting **`PRBLM_BUILDER_SITE_BLOCK_COLUMNS`** (default `False`): `True` uses the same
+  layout for your own blocks.
+- **Built-in blocks are shielded from the site's CSS:** inside a block every element starts
+  from the browser defaults, so global site rules (Tailwind's reset, `p`, `ul`, `a`,
+  `header` rules…) no longer change how built-in blocks look.
+- **Builder pages load the site's CSS / JS** (`PRBLM_BUILDER_PREVIEW_CSS` / `_JS`, body
+  class) when they show the site's own header / footer or contain the site's own blocks.
+- `from prblm_builder.blocks import LinkBlock` — reuse the built-in link block in your own
+  blocks (example in docs/EXAMPLES.md).
 - **[docs/EXAMPLES.md](docs/EXAMPLES.md):** copy-paste page models and blocks for every
   feature, checked by the test suite (`tests/examples/`).
 
@@ -22,6 +30,11 @@
 - Opening a page no longer creates an auto-saved draft when nothing changed.
 - After a failed save, the editor opens the tab holding the first error (it could be hidden
   behind the Layout tab).
+- The Layout sidebar always opens on **Sections** (it remembered **Page** for the rest of
+  the browser session).
+- On a Builder page using the site's own header / footer, it showed unstyled.
+- The canvas and Block library files are version-stamped, so browsers load the new ones
+  after an upgrade (no hard refresh needed).
 
 **Upgrade notes**
 - No migrations.

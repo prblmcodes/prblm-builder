@@ -459,7 +459,6 @@
       b.setAttribute("aria-selected", on ? "true" : "false"); b.tabIndex = on ? 0 : -1;
       document.getElementById(b.getAttribute("aria-controls")).hidden = !on;
     });
-    try { window.sessionStorage.setItem("prblm-builder:tab", name); } catch (e) {}
   }
   tabBtns.forEach(function (b, i) {
     b.addEventListener("click", function () { showTab(b.dataset.tab); });
@@ -469,9 +468,7 @@
       n.focus(); showTab(n.dataset.tab);
     });
   });
-  if (tabBtns.length) {
-    try { if (window.sessionStorage.getItem("prblm-builder:tab") === "page") showTab("page"); } catch (e) {}
-  }
+  // The sidebar always opens on Sections; Page only when the editor clicks it.
 
   // Each "Page" option writes into real (hidden) fields of the page's edit form, so it
   // saves — and auto-saves — like any other field.

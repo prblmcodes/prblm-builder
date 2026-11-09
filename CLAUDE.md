@@ -26,7 +26,9 @@ site content where a block is used, else synthesis).
 - `prblm_builder/views.py` — builder / builder_new / preview / demo / save.
 - `prblm_builder/static/prblm_builder/builder.{js,css}` — the canvas (SortableJS, scaled iframes, undo/redo); `fold.js` — foldable groups.
 - `prblm_builder/static/prblm_builder/form-columns.{js,css}` — two-column block forms
-  (`pbk-form` class; `PRBLM_BUILDER_FORM_COLUMNS`). Tab sync lives in `layout_panel.html`.
+  (CSS does the layout; JS only marks unpaired fields; built-ins = `pbk-form` class, site
+  blocks via `PRBLM_BUILDER_SITE_BLOCK_COLUMNS` + `form-columns-site.css`). Tab sync lives
+  in `layout_panel.html`.
 - `prblm_builder/chrome.py` — header/footer around the canvas (hooks → template setting → default).
 - `prblm_builder/mixins.py` — `BuilderSettingsMixin` (⚙ settings → Wagtail's settings area).
 - `prblm_builder/settings.py` — one reader per `PRBLM_BUILDER_*` setting (all optional).
@@ -63,6 +65,9 @@ site content where a block is used, else synthesis).
   the migration description; Wagtail 8.1 **auto-saves drafts** on form changes.
 - **Always work on the draft:** load pages for the builder with `views._editing_page`
   (latest revision), never the published row.
+- **Built-in block CSS:** every rule scoped to `.pbk…`; the shield at the top of
+  `blocks.css` (`all:revert`, one class of specificity) must stay *before* the block rules.
+  After CSS changes, compare all 21 blocks with/without a hostile site stylesheet.
 - **Check CSS / JS in a real browser** — screenshot blocks with headless Chrome, and drive
   admin flows with Playwright (`channel="chrome"`) against a throwaway dev server (see the
   history doc); Django tests can't run the JS or see layout.

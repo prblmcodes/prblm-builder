@@ -1,82 +1,70 @@
-/* prblm-builder — two-column block forms in the Wagtail admin.
+/* prblm-builder — two-column block forms: the one rule CSS can't express.
 
-   Short fields (text, email, URL, number, dropdown, checkbox, date, choosers) share a row,
-   two per row; long ones (textarea, rich text) and grouped ones (lists, nested blocks) take
-   the full width, and so does a short field left without a partner. Built-in blocks
-   (``.pbk-form``) always; with PRBLM_BUILDER_FORM_COLUMNS = "all" every block form.
-   If Wagtail's form markup ever changes, nothing matches and forms keep their normal look. */
+   form-columns.css lays the fields out instantly (short ones two per row, long / grouped
+   ones full width). This script only finds a short field left *without a partner* — the
+   last of an odd run before a full-width field, or at the end — and gives it
+   `pb-col-full`, so it doesn't sit at half width next to an empty space. It runs straight
+   from a MutationObserver (before the browser paints), so new blocks don't flicker. */
 (function () {
   "use strict";
   var script = document.currentScript;
-  var MODE = (script && script.getAttribute("data-mode")) || "builtin";
-  var MIN_WIDTH = 560;   // narrower than this: one column
-  // Block forms (StreamField) and the plugin's own panel groups (e.g. the Theme page:
-  // a MultiFieldPanel with classname "pbk-form").
-  var PANEL = ".w-panel.pbk-form > .w-panel__content";
-  var CONTAINERS = MODE === "all"
-    ? ".struct-block, .pbk-form, [data-block-settings], " + PANEL
-    : ".pbk-form, .pbk-form .struct-block, .pbk-form [data-block-settings], " + PANEL;
+  var SITE = script && script.getAttribute("data-site-blocks") === "1";
+  var CONTAINERS = ".pbk-form, .pbk-form .struct-block, .pbk-form [data-block-settings], " +
+    ".w-panel.pbk-form > .w-panel__content" + (SITE ? ", .struct-block, [data-block-settings]" : "");
 
-  // A field: a block field (data-contentpath) or a model-form field panel.
   function isField(el) {
-    return el.hasAttribute && (el.hasAttribute("data-contentpath") || el.classList.contains("w-panel__wrapper"));
-  }
-  function visible(el) { return !el.hidden && el.offsetParent !== null; }
-  function isWide(el) {
-    // Long text, rich text, or a group of fields (a list, a nested block, a stream).
-    // (Lists and streams are recognised by their containers, so an empty list counts too.
-    // A model-form field panel holds its own [data-contentpath] element, so for those only
-    // the content counts.)
-    var long = 'textarea, .Draftail-Editor, [data-draftail-input], [data-streamfield-list-container], ' +
-               '[data-streamfield-list-count], [data-streamfield-stream-container]';
-    if (el.classList.contains("w-panel__wrapper")) return !!el.querySelector(long);
-    return !!el.querySelector(long + ", [data-contentpath]");
+    return el.hasAttribute("data-contentpath") || el.classList.contains("w-panel__wrapper");
   }
 
   function layout(container) {
-    var children = Array.prototype.filter.call(container.children, function (c) { return c.nodeType === 1; });
-    var fields = children.filter(isField);
-    if (!fields.length) return;
-    var single = container.clientWidth > 0 && container.clientWidth < MIN_WIDTH;
-    container.classList.toggle("pb-cols", !single);
-    children.forEach(function (c) { c.classList.remove("pb-col-half", "pb-col-full"); });
-    if (single) return;
-    // Anything that isn't a field (e.g. the settings area) spans the full width (CSS default).
-    var pending = null;
-    fields.forEach(function (f) {
-      if (!visible(f)) return;
-      if (isWide(f)) {
-        if (pending) { pending.classList.add("pb-col-full"); pending = null; }
-        f.classList.add("pb-col-full");
-      } else if (pending) {
-        pending.classList.add("pb-col-half"); f.classList.add("pb-col-half"); pending = null;
-      } else {
-        pending = f;
-      }
+    var style = getComputedStyle(container);
+    if (style.display !== "grid") return;
+    var pending = null, lastTop = null;
+    Array.prototype.forEach.call(container.children, function (c) {
+      if (!isField(c)) return;
+      c.classList.remove("pb-col-full");
+    });
+    var cols = style.gridTemplateColumns.split(" ").length;
+    Array.prototype.forEach.call(container.children, function (c) {
+      if (!isField(c) || c.hidden || c.offsetParent === null) return;
+      var span = getComputedStyle(c).gridColumnStart === "auto" && cols > 1 &&
+                 getComputedStyle(c).gridColumnEnd === "auto";
+      if (!span) { if (pending) pending.classList.add("pb-col-full"); pending = null; return; }
+      pending = pending ? null : c;
     });
     if (pending) pending.classList.add("pb-col-full");
   }
 
-  var queued = false;
+  // Re-check a form when its own width changes (window resize, sidebar opening / closing,
+  // which animates — so the window's resize event alone fires too early).
+  var watched = typeof WeakSet !== "undefined" ? new WeakSet() : null;
+  var sizes = typeof ResizeObserver !== "undefined"
+    ? new ResizeObserver(function (entries) { entries.forEach(function (e) { layout(e.target); }); })
+    : null;
+
   function layoutAll() {
-    queued = false;
-    document.querySelectorAll(CONTAINERS).forEach(layout);
+    document.querySelectorAll(CONTAINERS).forEach(function (c) {
+      if (sizes && watched && !watched.has(c)) { watched.add(c); sizes.observe(c); }
+      layout(c);
+    });
   }
-  function schedule() { if (!queued) { queued = true; requestAnimationFrame(layoutAll); } }
 
   function start() {
-    var root = document.querySelector("form[data-edit-form]") || document.querySelector("main form") || document.body;
     layoutAll();
-    // Re-run when blocks / list items are added, fields hide or show, or panels open.
+    var busy = false;
     new MutationObserver(function (records) {
-      for (var i = 0; i < records.length; i++) {
-        var t = records[i].target;
-        if (t.closest && t.closest(".pb-tip, .w-autosave-indicator")) continue;
-        schedule(); return;
-      }
-    }).observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ["hidden", "aria-expanded"] });
-    window.addEventListener("resize", schedule);
-    document.addEventListener("click", function () { setTimeout(schedule, 0); }, true);
+      if (busy) return;
+      // Typing in a rich-text editor changes its DOM on every key: not a layout change.
+      var relevant = records.some(function (r) {
+        var t = r.target.nodeType === 1 ? r.target : r.target.parentElement;
+        return !(t && t.closest && t.closest(".Draftail-Editor, [contenteditable], .pb-tip, .w-autosave-indicator"));
+      });
+      if (!relevant) return;
+      busy = true;
+      try { layoutAll(); } finally { busy = false; }
+    }).observe(document.body, { childList: true, subtree: true, attributes: true,
+                                attributeFilter: ["hidden", "aria-expanded"] });
+    if (!sizes) window.addEventListener("resize", layoutAll);
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
   else start();

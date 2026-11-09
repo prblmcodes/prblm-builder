@@ -79,6 +79,26 @@ def for_page(kind, request=None, page=None, model=None):
     return _render(default(kind), request, page)
 
 
+def needs_site_assets(page, request=None):
+    """Whether a Builder page needs the site's own CSS / JS (``PRBLM_BUILDER_PREVIEW_CSS`` /
+    ``_JS``): it shows the site's own header or footer template, or contains one of the
+    site's own blocks. A page with only built-in blocks and plugin headers / footers stays
+    self-contained, so the site's CSS can't change how it looks."""
+    from prblm_builder.chrome import template_name
+    from prblm_builder.registry import is_builtin
+    for kind in ("header", "footer"):
+        value = _override(kind, request) or option_value(kind, page)
+        if value == "site" and template_name(kind):
+            return True
+    for child in (getattr(page, "body", None) or []):
+        try:
+            if not is_builtin(child.block):
+                return True
+        except Exception:
+            continue
+    return False
+
+
 def page_info(kind):
     """Information-only "Page" tab entry for the site's own page types when a plugin
     site-default header/footer is what the canvas shows (``None`` otherwise — the core

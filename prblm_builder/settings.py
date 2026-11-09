@@ -109,13 +109,11 @@ def admin_tweaks():
     return bool(_get("PRBLM_BUILDER_ADMIN_TWEAKS", True))
 
 
-def form_columns():
-    """Two-column block forms in the admin: ``"builtin"`` (default — built-in blocks and the
-    plugin's own forms), ``"all"`` (also the site's own blocks) or ``False`` (off)."""
-    value = _get("PRBLM_BUILDER_FORM_COLUMNS", "builtin")
-    if value in (False, None, "off", ""):
-        return ""
-    return "all" if value == "all" else "builtin"
+def site_block_columns():
+    """Two-column field layout for the site's **own** blocks too (``True``), or only for the
+    built-in blocks and the plugin's own forms (``False``, default). The built-in blocks
+    always use two columns, whatever this is."""
+    return bool(_get("PRBLM_BUILDER_SITE_BLOCK_COLUMNS", False))
 
 
 def page_parents():

@@ -5,10 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% firstof page.seo_title page.title %}</title>
   {% if page.search_description %}<meta name="description" content="{{ page.search_description }}">{% endif %}
+  {% comment %}The site's own CSS only when this page shows the site's header / footer
+  or contains the site's own blocks — before the blocks' CSS, so built-in styles win ties.{% endcomment %}
+  {% prblm_site_css %}
   {% prblm_assets %}
   <style>body{margin:0}</style>
 </head>
-<body class="pbk-page">
+<body class="pbk-page {% prblm_site_body_class %}">
   {% comment %}A standalone page: the site-wide header, the page's sections, the site-wide
   footer. Override this template (same path, in your own templates folder) to render
   Builder pages inside your site's base layout instead.{% endcomment %}
@@ -17,5 +20,6 @@
     {% for block in page.body %}{% include_block block %}{% endfor %}
   </main>
   {% prblm_footer %}
+  {% prblm_site_js %}
 </body>
 </html>

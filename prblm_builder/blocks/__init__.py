@@ -29,3 +29,12 @@ def builder_blocks(exclude=(), only=None):
             % (sorted(unknown - known), ", ".join(sorted(known))))
     return [(name, block) for name, block in all_blocks()
             if name not in exclude and (only is None or name in only)]
+
+
+def __getattr__(name):
+    """Reusable pieces for your own blocks, imported on first use (so this package stays
+    import-light): ``from prblm_builder.blocks import LinkBlock``."""
+    if name == "LinkBlock":
+        from .sections.base import LinkBlock
+        return LinkBlock
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

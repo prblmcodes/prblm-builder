@@ -10,11 +10,12 @@ For installation and the full settings list, see the [README](../README.md).
 - [2. A simple block: template, description, preview value](#2-a-simple-block-template-description-preview-value)
 - [3. A block that isn't a section (hidden from the palette)](#3-a-block-that-isnt-a-section-hidden-from-the-palette)
 - [4. A section with layout settings (⚙)](#4-a-section-with-layout-settings-)
-- [5. Built-in blocks next to your own](#5-built-in-blocks-next-to-your-own)
-- [6. Your blocks on the ready-made Builder page](#6-your-blocks-on-the-ready-made-builder-page)
-- [7. Header and footer in your base template](#7-header-and-footer-in-your-base-template)
-- [8. A different field name, or only some page types](#8-a-different-field-name-or-only-some-page-types)
-- [9. Checklist: why isn't my block in the palette?](#9-checklist-why-isnt-my-block-in-the-palette)
+- [5. Reuse the built-in link block](#5-reuse-the-built-in-link-block)
+- [6. Built-in blocks next to your own](#6-built-in-blocks-next-to-your-own)
+- [7. Your blocks on the ready-made Builder page](#7-your-blocks-on-the-ready-made-builder-page)
+- [8. Header and footer in your base template](#8-header-and-footer-in-your-base-template)
+- [9. A different field name, or only some page types](#9-a-different-field-name-or-only-some-page-types)
+- [10. Checklist: why isn't my block in the palette?](#10-checklist-why-isnt-my-block-in-the-palette)
 
 ---
 
@@ -169,10 +170,61 @@ Good to know:
 - Colour **swatches**: the four background names `light / muted / dark / brand` show as
   swatches; for the built-in blocks they use your Theme's colours, for your own blocks just
   the names (your CSS decides what "dark" means).
-- **Two-column fields** in the Content tab are on for the built-in blocks; turn them on for
-  your own with `PRBLM_BUILDER_FORM_COLUMNS = "all"`.
+- **Two-column fields** in the Content tab are always on for the built-in blocks; turn them
+  on for your own blocks with `PRBLM_BUILDER_SITE_BLOCK_COLUMNS = True`.
 
-## 5. Built-in blocks next to your own
+## 5. Reuse the built-in link block
+
+With `prblm_builder.blocks` installed, use its link block inside your own blocks. Editors get
+a **Label**, a **Link to** choice (page on this site, web address, section on this page,
+document, email, phone) and only the one field that choice needs.
+
+```python
+from wagtail import blocks
+
+from prblm_builder.blocks import LinkBlock
+
+
+class CardBlock(blocks.StructBlock):
+    title = blocks.CharBlock()
+    text = blocks.TextBlock(required=False)
+    link = LinkBlock(label="Button")
+
+    class Meta:
+        template = "myapp/blocks/card.html"
+        icon = "doc-full"
+        preview_value = {
+            "title": "Our services",
+            "text": "What we do, in one or two sentences.",
+            "link": {"label": "Read more", "link_type": "anchor", "anchor": "services"},
+        }
+```
+
+In the template, `href` gives the right address for whichever type was chosen
+(`/about/`, `https://…`, `#services`, `mailto:…`, `tel:…`, a document URL), and
+`is_external` tells you if it leaves the site:
+
+```django
+{# myapp/templates/myapp/blocks/card.html #}
+<div class="card">
+  <h3>{{ value.title }}</h3>
+  {% if value.text %}<p>{{ value.text }}</p>{% endif %}
+  {% with link=value.link %}
+    {% if link.label and link.href %}
+      <a class="card__button" href="{{ link.href }}"{% if link.is_external %} target="_blank" rel="noopener"{% endif %}>{{ link.label }}</a>
+    {% endif %}
+  {% endwith %}
+</div>
+```
+
+- A link with an **empty label** is treated as "no link" — editors can leave it empty to
+  hide the button. With a label, the field for the chosen type must be filled in.
+- More than one: `buttons = blocks.ListBlock(LinkBlock())`, then `{% for link in
+  value.buttons %}…{% endfor %}`.
+- The import path `prblm_builder.blocks.LinkBlock` stays stable (it ends up in your
+  migrations).
+
+## 6. Built-in blocks next to your own
 
 With the optional `prblm_builder.blocks` app installed, add the 21 built-in sections to any
 page model:
@@ -183,7 +235,7 @@ from prblm_builder.blocks import builder_blocks
 
 class LandingPage(Page):
     body = StreamField(
-        builder_blocks(exclude=["text"]) + [("promo", PromoBlock())],
+        builder_blocks(exclude=["text"]) + [("promo", PromoBlock()), ("card", CardBlock())],
         blank=True,
     )
 
@@ -197,7 +249,7 @@ class LandingPage(Page):
   blocks may add another small "Alter field" migration; it never changes your content.)
 - The Layout sidebar lists **Built-in blocks** and **Your site's blocks** separately.
 
-## 6. Your blocks on the ready-made Builder page
+## 7. Your blocks on the ready-made Builder page
 
 The Builder page (from `prblm_builder.blocks`) has all built-in blocks. Add your own — no
 migration needed:
@@ -214,14 +266,20 @@ PRBLM_BUILDER_PAGE_EXTRA_BLOCKS = [
 PRBLM_BUILDER_PAGE_PARENTS = ["home.HomePage"]
 ```
 
-## 7. Header and footer in your base template
+## 8. Header and footer in your base template
 
 Headers and Footers are created under **Page builder → Headers / Footers**. To show the
-site-default ones on your own pages too (the Builder page shows them automatically):
+site-default ones (and the built-in blocks' styles) on your own pages too — the Builder page
+does this automatically:
 
 ```django
 {# templates/base.html #}
-{% load prblm_blocks %}
+{% load static prblm_blocks %}
+<head>
+  …
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+  {% prblm_assets %}   {# the built-in blocks' CSS + Theme colours — after your own CSS #}
+</head>
 <body>
   {% prblm_header %}
   {% block content %}{% endblock %}
@@ -230,10 +288,24 @@ site-default ones on your own pages too (the Builder page shows them automatical
 ```
 
 `{% prblm_header "Campaign header" %}` picks one by name. Each tag renders nothing if there
-is no matching header/footer. To show *your own* header on the builder canvas instead, set
+is no matching header/footer.
+
+**Styles stay separate both ways.** The built-in blocks' CSS only styles the blocks (every
+rule is scoped to `.pbk…` classes), so it never touches your header, footer or own
+sections. And inside a built-in block every element is reset to the browser's defaults
+before the block's own styles apply, so your site's global rules (`p { line-height: 2 }`,
+`ul { list-style: none }`, Tailwind's reset, `header { position: sticky }`…) don't change
+how a built-in block looks. Only rules with `!important`, or rules on the blocks' own
+`pbk-` class names, can still reach them.
+
+**Builder pages** are standalone pages. They load your site's CSS / JS
+(`PRBLM_BUILDER_PREVIEW_CSS` / `_JS`, plus `PRBLM_BUILDER_PREVIEW_BODY_CLASS`) only when they
+need it: when the page shows **your site's header or footer**, or contains **your own
+blocks**. A Builder page with only built-in blocks and plugin headers/footers loads none of
+your CSS. To show *your own* header on the builder canvas instead, set
 `PRBLM_BUILDER_HEADER_TEMPLATE = "includes/header.html"` (and `_FOOTER_TEMPLATE`).
 
-## 8. A different field name, or only some page types
+## 9. A different field name, or only some page types
 
 ```python
 # settings.py
@@ -241,7 +313,7 @@ PRBLM_BUILDER_FIELD_NAMES = ["body", "content"]   # first one a model has is use
 PRBLM_BUILDER_PAGE_MODELS = ["myapp.ArticlePage", "myapp.LandingPage"]   # None = all
 ```
 
-## 9. Checklist: why isn't my block in the palette?
+## 10. Checklist: why isn't my block in the palette?
 
 1. It's a **top-level** option of the page's `body` (or the field set in
    `PRBLM_BUILDER_FIELD_NAMES`) — blocks nested inside others aren't offered.

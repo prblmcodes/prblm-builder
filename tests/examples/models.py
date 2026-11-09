@@ -6,7 +6,7 @@ from wagtail.models import Page
 
 from prblm_builder.blocks import builder_blocks
 
-from .blocks import ButtonLinkBlock, HeadingBlock, PromoBlock
+from .blocks import ButtonLinkBlock, CardBlock, HeadingBlock, PromoBlock
 
 
 # A. Your own blocks only. A StreamField named `body` is all the plugin needs.
@@ -24,7 +24,7 @@ class ArticlePage(Page):
 # B. Built-in blocks + your own, side by side.
 class LandingPage(Page):
     body = StreamField(
-        builder_blocks(exclude=["text"]) + [("promo", PromoBlock())],
+        builder_blocks(exclude=["text"]) + [("promo", PromoBlock()), ("card", CardBlock())],
         blank=True,
     )
 

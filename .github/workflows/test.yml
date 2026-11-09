@@ -43,6 +43,8 @@ jobs:
           python -m zipfile -l dist/*.whl | grep -q "blocks/migrations/0003_link_types.py"
           python -m zipfile -l dist/*.whl | grep -q "static/prblm_builder/form-columns.js"
           python -m zipfile -l dist/*.whl | grep -q "static/prblm_builder/form-columns.css"
+          python -m zipfile -l dist/*.whl | grep -q "static/prblm_builder/form-columns-site.css"
+          python -m zipfile -l dist/*.whl | grep -q "prblm_builder/templatetags/prblm_builder_tags.py"
       - uses: actions/upload-artifact@v4
         with:
           name: dist

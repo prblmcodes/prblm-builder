@@ -61,17 +61,22 @@ def register_block_library_menu_item():
     )
 
 
-# Two-column block forms (PRBLM_BUILDER_FORM_COLUMNS): loaded on every admin page — the
-# script only acts on block forms (built-in ones, or all with "all").
+# Two-column block forms: always for the built-in blocks (forms marked ``pbk-form``) and
+# the plugin's own forms; for the site's own blocks too with
+# PRBLM_BUILDER_SITE_BLOCK_COLUMNS. The CSS does the layout (instant); the script only
+# widens a short field left without a partner.
 @hooks.register("insert_global_admin_css")
 def form_columns_css():
     from django.templatetags.static import static
-    from django.utils.html import format_html
+    from django.utils.html import format_html, format_html_join
 
     from . import settings as cfg
-    if not cfg.form_columns():
-        return ""
-    return format_html('<link rel="stylesheet" href="{}">', static("prblm_builder/form-columns.css"))
+    from .assets import version
+    files = ["prblm_builder/form-columns.css"]
+    if cfg.site_block_columns():
+        files.append("prblm_builder/form-columns-site.css")
+    v = version()
+    return format_html_join("", '<link rel="stylesheet" href="{}?v={}">', ((static(f), v) for f in files))
 
 
 @hooks.register("insert_global_admin_js")
@@ -80,8 +85,7 @@ def form_columns_js():
     from django.utils.html import format_html
 
     from . import settings as cfg
-    mode = cfg.form_columns()
-    if not mode:
-        return ""
-    return format_html('<script src="{}" data-mode="{}" defer></script>',
-                       static("prblm_builder/form-columns.js"), mode)
+    from .assets import version
+    return format_html('<script src="{}?v={}" data-site-blocks="{}" defer></script>',
+                       static("prblm_builder/form-columns.js"), version(),
+                       "1" if cfg.site_block_columns() else "0")

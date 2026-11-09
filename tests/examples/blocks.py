@@ -2,6 +2,7 @@
 from wagtail import blocks
 from wagtail.images.blocks import ImageChooserBlock
 
+from prblm_builder.blocks import LinkBlock
 from prblm_builder.mixins import BuilderSettingsMixin
 
 
@@ -48,3 +49,19 @@ class PromoBlock(BuilderSettingsMixin, blocks.StructBlock):
             "background": "dark",
         }
         builder_settings = ["background", "anchor_id"]
+
+
+# 4. Reusing the built-in link block in your own block (needs prblm_builder.blocks installed).
+class CardBlock(blocks.StructBlock):
+    title = blocks.CharBlock()
+    text = blocks.TextBlock(required=False)
+    link = LinkBlock(label="Button")   # Label, "Link to" (page, web address, section, …) + its field
+
+    class Meta:
+        template = "examples/blocks/card.html"
+        icon = "doc-full"
+        preview_value = {
+            "title": "Our services",
+            "text": "What we do, in one or two sentences.",
+            "link": {"label": "Read more", "link_type": "anchor", "anchor": "services"},
+        }

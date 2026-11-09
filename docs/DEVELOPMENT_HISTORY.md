@@ -265,6 +265,20 @@ of the code only calls these (never `django.conf.settings` directly). See §6.
     for DOMContentLoaded); `form_classname` **replaces** `struct-block`; `.w-field` is
     inline-block (stretch it); an empty ListBlock has no `[data-contentpath]` children;
     model-form field panels contain their own `[data-contentpath]`.
+    Feedback round before release: the two-column layout moved to **CSS** (`:has()` for
+    long / grouped fields, container queries for narrow forms) because the JS version
+    flickered (one field per row for ~100 ms on each new block); JS only marks unpaired
+    fields, straight from a MutationObserver + ResizeObserver (a window `resize` fires
+    while Wagtail's sidebar is still animating). The setting became the boolean
+    `PRBLM_BUILDER_SITE_BLOCK_COLUMNS` (`True` used to mean "builtin" — confusing). The
+    sidebar stopped remembering the Page tab. **CSS isolation:** blocks.css was already
+    scoped to `.pbk…`; the other direction is a shield — `.pbk :where(*:not(svg, svg *))
+    {all:revert}` (+ `.pbk:where(*)` for the root) at one class of specificity *before* the
+    block rules — checked by screenshotting all 21 blocks with and without a hostile site
+    stylesheet (Tailwind preflight + global element rules): identical, and identical to
+    before. SVG is excluded because `revert` drops presentation attributes. Builder pages
+    load the site's CSS/JS only when needed (`chrome.needs_site_assets`). Canvas assets got
+    `?v=<version>` (`{% prblm_static %}`).
 
 ---
 
@@ -368,7 +382,7 @@ previews unstyled.
 | `PRBLM_BUILDER_CANVAS_WIDTH` | `1280` | Desktop width sections render at on the canvas (0.2) |
 | `PRBLM_BUILDER_PLACEHOLDER_IMAGES` | `True` | Allow creating placeholder images (0.2) |
 | `PRBLM_BUILDER_ADMIN_TWEAKS` | `True` | Full-width tab + header link (Wagtail internals) (0.2) |
-| `PRBLM_BUILDER_FORM_COLUMNS` | `"builtin"` | Two-column block forms: `"builtin"`, `"all"`, `False` (0.6) |
+| `PRBLM_BUILDER_SITE_BLOCK_COLUMNS` | `False` | Two-column forms for the site's own blocks too (0.6; built-ins always) |
 
 Block-level options (not settings): `Meta.builder = False` (hide), `Meta.builder_settings =
 [...]` (⚙ panel, 0.5), Wagtail's `preview_value` / `description` (0.5). Model attribute:

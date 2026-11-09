@@ -191,3 +191,15 @@ class OptionsTests(TestCase):
                             "Header for Options")
         self.assertContains(self.client.get(f"{base}?model=testapp.StandardPage&chrome=header"),
                             "Header for no page")
+
+
+
+class SiteBlockColumnsSettingTests(TestCase):
+    def test_default_off(self):
+        from prblm_builder import settings as cfg
+        self.assertFalse(cfg.site_block_columns())
+
+    @override_settings(PRBLM_BUILDER_SITE_BLOCK_COLUMNS=True)
+    def test_on(self):
+        from prblm_builder import settings as cfg
+        self.assertTrue(cfg.site_block_columns())
