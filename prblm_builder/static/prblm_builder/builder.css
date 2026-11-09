@@ -201,8 +201,6 @@ body.pb-preview-mode .pb-exit-preview{display:inline-block;margin-left:12px}
 .pb-swatch-chip{width:16px;height:16px;border-radius:5px;border:1px solid rgba(0,0,0,.15);flex:none}
 
 /* ---------- copy / paste + right-click menu ---------- */
-.pb-sec-ctrls .pb-paste{display:none}
-body.pb-has-clip .pb-sec-ctrls .pb-paste{display:inline-flex}
 .pb-sec-ctrls button svg{display:block}
 .pb-menu{position:fixed;z-index:70;min-width:180px;background:#fff;border:1px solid var(--pb-line);border-radius:10px;
   box-shadow:0 16px 40px rgba(15,23,42,.18);padding:5px;font-size:13px}

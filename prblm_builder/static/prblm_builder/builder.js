@@ -161,7 +161,6 @@
     settings: svgIcon('<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7"/>' +
                       '<path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>'),
     copy: svgIcon('<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>'),
-    paste: svgIcon('<rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3h6v1M12 10v7M9 14l3 3 3-3"/>'),
     dup: svgIcon('<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M4 16V6a2 2 0 0 1 2-2h10"/><path d="M14 11v6M11 14h6"/>'),
     del: svgIcon('<path d="M6 6l12 12M18 6L6 18"/>'),
   };
@@ -191,7 +190,6 @@
           '<button data-act="down" aria-label="Move down" data-tip="Move down">' + ICON.down + '</button>' +
           (sch ? '<button data-act="settings" aria-haspopup="dialog" aria-label="Section settings" data-tip="Settings (background, anchor ID…)">' + ICON.settings + '</button>' : '') +
           '<button data-act="copy" aria-label="Copy section" data-tip="Copy section (Ctrl/⌘+C)">' + ICON.copy + '</button>' +
-          '<button data-act="paste" class="pb-paste" aria-label="Paste below" data-tip="Paste the copied section below (Ctrl/⌘+V)">' + ICON.paste + '</button>' +
           '<button data-act="dup" aria-label="Duplicate" data-tip="Duplicate (adds a copy right below)">' + ICON.dup + '</button>' +
           '<button class="pb-del" data-act="del" aria-label="Remove section" data-tip="Remove this section">' + ICON.del + '</button>' +
         '</span>' +
@@ -277,7 +275,8 @@
 
   /* ---------- section actions (toolbar, keyboard, right-click menu) ---------- */
   // Copy & paste work within this page: the pasted section copies the source's saved
-  // content (like Duplicate) plus any settings changed but not yet saved.
+  // content (like Duplicate) plus any settings changed but not yet saved. Copy has a
+  // toolbar button; paste is in the right-click menu (above / below) and Ctrl/⌘+V.
   var CLIP_KEY = "prblm-builder:clip:" + CFG.context;
   var clip = null;
   try { clip = JSON.parse(window.sessionStorage.getItem(CLIP_KEY) || "null"); } catch (e) {}
@@ -291,7 +290,7 @@
     var st = sectionState(sec);
     st.copyFrom = sec.dataset.copyFrom || sec.dataset.id;
     setClip(st);
-    showToast("Copied “" + st.label + "” — paste it anywhere on this page", true);
+    showToast("Copied “" + st.label + "” — right-click a section (or press Ctrl/⌘+V) to paste it", true);
   }
   function pasteSection(ref, where) {
     if (!clip) return null;

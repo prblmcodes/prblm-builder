@@ -8,8 +8,9 @@
   backgrounds, on/off, short text); the canvas updates live; saved with the page.
   `prblm_builder.mixins.BuilderSettingsMixin` moves those fields into Wagtail's collapsed
   settings area in the Content tab. Built-in blocks use it for background + anchor ID.
-- **Copy & paste** sections within a page (toolbar, Ctrl/⌘+C / V) and a **right-click menu**
-  (Copy, Paste above/below, Duplicate, Settings, Move, Delete).
+- **Copy & paste** sections within a page: Copy from the toolbar or Ctrl/⌘+C; paste with the
+  **right-click menu** (Paste above / below — it also has Duplicate, Settings, Move, Delete)
+  or Ctrl/⌘+V.
 - **Page tab** in the Layout sidebar (Sections | Page). Builder pages choose their header
   and footer there — one dropdown each — instead of four fields in the Content tab.
 - Wagtail block **`preview_value`** is used first for previews and new sections;
@@ -18,7 +19,7 @@
   page, document, email, phone) → only that field. Old links keep working.
 - **Tooltips** on the section toolbar buttons (instant, on hover or keyboard focus).
 - Section toolbar: one set of line icons (chevrons for move up/down, a distinct duplicate
-  icon), 17px icons in the same 26px buttons.
+  icon), 17px icons in the same 26px buttons; it always shows the same buttons.
 - Developers: hooks `prblm_builder_page_options`; model attribute `builder_layout_panels`.
 
 **Fixed**

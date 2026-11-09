@@ -108,10 +108,11 @@ To upgrade later, change the tag (e.g. `@v0.5.0` → `@v0.6.0`) and reinstall. S
 - **Section settings (⚙):** sections with settings (e.g. background, anchor ID) have a ⚙
   button in their toolbar. It opens a small panel; the canvas updates as you change
   things, and the change saves with the page. See [Section settings](#section-settings-).
-- **Copy & paste:** copy a section from its toolbar (or select it and press Ctrl/⌘+C), then
-  use **Paste** on any section (or Ctrl/⌘+V) to paste it below — within the same page.
-  **Right-click** a section for Copy, Paste above/below, Duplicate, Settings, Move and
-  Delete. The ⧉ button still duplicates in one click.
+- **Copy & paste:** copy a section with its toolbar's **Copy** button (or select it and
+  press Ctrl/⌘+C). To paste, **right-click** a section → **Paste above** / **Paste below**,
+  or press Ctrl/⌘+V to paste below the selected one — within the same page. The
+  right-click menu also has Duplicate, Settings, Move and Delete; the Duplicate button
+  copies a section right below in one click.
 - **Page tab:** on page types that have page-level options (the built-in **Builder page**:
   its header and footer), the Layout sidebar shows **Sections | Page** tabs.
 - **Fold groups:** in the Layout sidebar and the Block library, click the arrow next to a
@@ -624,7 +625,7 @@ from the tag (attach the wheel from `python -m build`).
 | A "Snippets" menu appeared | Headers and Footers are stored as snippets; Wagtail lists them there too. |
 | No ⚙ button on my block's sections | List the fields in the block's `Meta.builder_settings` (only choice, on/off and short-text fields are shown). |
 | My block's settings still show in the Content tab | Add `BuilderSettingsMixin` to the block to move them into Wagtail's collapsed settings area. |
-| Paste is greyed out | Copy a section first — copy & paste work within the same page. |
+| Paste is greyed out in the right-click menu | Copy a section first — copy & paste work within the same page. |
 | `makemigrations` wants to alter my page's `body` after upgrading to 0.5 | Expected if you use `builder_blocks()`: the built-in link fields changed. Run it; no data changes. |
 | Warning `prblm_builder.W001` | Remove `PRBLM_BUILDER_SEED_NEW_BLOCKS` from your settings. |
 
