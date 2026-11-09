@@ -419,6 +419,9 @@ def is_unedited(block, name, stored_prep, page_id=None, section_id=None):
         return False
     stored_prep = _strip_ids(stored_prep)
     candidates = [_prep(block, block.get_default())]
+    preview = explicit_preview_value(block)
+    if preview is not None:
+        candidates.append(_prep(block, preview))
     try:
         candidates.append(_prep(block, block.normalize(synth_value(block, name, seed=name))))
     except Exception:
@@ -432,15 +435,29 @@ def is_unedited(block, name, stored_prep, page_id=None, section_id=None):
     return any(c is not None and c == stored_prep for c in candidates)
 
 
+def explicit_preview_value(block):
+    """The block's own Wagtail ``preview_value`` (Wagtail 6.4+ block previews), or ``None``
+    when the developer didn't set one. (Wagtail itself falls back to ``default``; we only
+    want the value someone chose on purpose.)"""
+    if not hasattr(block.meta, "preview_value"):
+        return None
+    try:
+        return block.get_preview_value()
+    except Exception:
+        return None
+
+
 def demo_value(block, name="", prefer_real=True):
     """A deterministic demo value for a top-level block.
 
-    Prefers a real instance of the block used somewhere on the site (real images +
-    copy); otherwise synthesises one. Pass ``prefer_real=False`` to force synthesis.
-
-    Built-in blocks (``prblm_builder.blocks``) always use their own defaults — the
-    explanatory example content they ship with.
+    1. The block's own Wagtail ``preview_value``, if the developer set one.
+    2. Built-in blocks (``prblm_builder.blocks``): their explanatory default content.
+    3. A real instance of the block used somewhere on the site (real images + copy).
+    4. Synthesised content. Pass ``prefer_real=False`` to skip step 3.
     """
+    preview = explicit_preview_value(block)
+    if preview is not None:
+        return preview
     from .registry import is_builtin
     if is_builtin(block):
         return block.get_default()

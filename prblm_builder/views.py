@@ -62,7 +62,8 @@ def _palette(stream_block):
         kkey = registry.KIND_KEYS[kind]
         out.append({"kind": kind, "key": kkey, "groups": [
             {"group": g, "key": f"{kkey}:{slugify(g)}",
-             "blocks": [{"type": n, "label": lbl} for (n, _b, lbl) in items]}
+             "blocks": [{"type": n, "label": lbl, "description": registry.block_description(b)}
+                        for (n, b, lbl) in items]}
             for g, items in groups]})
     return out
 
@@ -97,7 +98,10 @@ def _is_blank(html):
 def _demo_value(block_name, block):
     """``(value, page)`` to preview a block with: a real instance used on the site
     (with its page, so hero-style blocks render fully), else synthesised content —
-    trimmed for display."""
+    trimmed for display. The block's own Wagtail ``preview_value`` comes first."""
+    preview = previews.explicit_preview_value(block)
+    if preview is not None:
+        return previews.trim_for_demo(block, preview), None
     if registry.is_builtin(block):
         # Built-ins always show their own explanatory example content.
         return block.get_default(), None
@@ -215,7 +219,8 @@ def demo(request):
                 if problem:
                     unpreviewable.append({"name": name, "label": label, "reason": problem})
                 else:
-                    ok.append({"name": name, "label": label, "builtin": builtin})
+                    ok.append({"name": name, "label": label, "builtin": builtin,
+                               "description": registry.block_description(block)})
             if ok:
                 entry = {"kind": kind, "group": g, "key": f"{kkey}:{slugify(g)}", "blocks": ok}
                 groups.append(entry)

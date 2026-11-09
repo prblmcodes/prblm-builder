@@ -60,6 +60,7 @@ class GalleryBlock(blocks.StructBlock):
         template = T + "gallery.html"
         icon = "image"
         label = "Gallery"
+        description = "A grid of images with optional captions."
         group = "Media & people"
 
 
@@ -75,6 +76,7 @@ class VideoBlock(blocks.StructBlock):
         template = T + "video.html"
         icon = "media"
         label = "Video"
+        description = "A YouTube or Vimeo video, embedded privacy-friendly."
         group = "Media & people"
         value_class = VideoValue
 
@@ -105,4 +107,5 @@ class TeamBlock(blocks.StructBlock):
         template = T + "team.html"
         icon = "group"
         label = "Team"
+        description = "People with photo, name, role and a short bio."
         group = "Media & people"

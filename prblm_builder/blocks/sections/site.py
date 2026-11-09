@@ -37,6 +37,7 @@ class HeaderBlock(blocks.StructBlock):
         template = T + "header.html"
         icon = "list-ul"
         label = "Header"
+        description = "Logo or site name, menu with dropdowns and a button; collapses on mobile."
         group = "Site structure"
 
 
@@ -78,4 +79,5 @@ class FooterBlock(blocks.StructBlock):
         template = T + "footer.html"
         icon = "list-ul"
         label = "Footer"
+        description = "Logo, short description, link columns, social links and copyright."
         group = "Site structure"

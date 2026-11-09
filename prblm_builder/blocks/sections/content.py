@@ -31,6 +31,7 @@ class TextSectionBlock(blocks.StructBlock):
         template = T + "text.html"
         icon = "pilcrow"
         label = "Text"
+        description = "Formatted long text in a readable column."
         group = "Content"
 
 
@@ -51,6 +52,7 @@ class TextImageBlock(blocks.StructBlock):
         template = T + "text_image.html"
         icon = "doc-full"
         label = "Text + image"
+        description = "Text beside an image; the image can sit left or right."
         group = "Content"
 
 
@@ -80,6 +82,7 @@ class FeaturesBlock(blocks.StructBlock):
         template = T + "features.html"
         icon = "grid"
         label = "Features"
+        description = "A grid of benefits, each with an icon, title and short text."
         group = "Content"
 
 
@@ -110,6 +113,7 @@ class CardsBlock(blocks.StructBlock):
         template = T + "cards.html"
         icon = "table"
         label = "Cards"
+        description = "Cards with image, title, text and link — for services, projects or articles."
         group = "Content"
 
 
@@ -134,6 +138,7 @@ class StepsBlock(blocks.StructBlock):
         template = T + "steps.html"
         icon = "list-ol"
         label = "Steps"
+        description = "A numbered process: what happens first, next and last."
         group = "Content"
 
 
@@ -149,4 +154,5 @@ class QuoteBlock(blocks.StructBlock):
         template = T + "quote.html"
         icon = "openquote"
         label = "Quote"
+        description = "One large highlighted quote with its author."
         group = "Content"

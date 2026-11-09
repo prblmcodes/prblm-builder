@@ -35,6 +35,12 @@ class StandardPage(Page):
         # Can't be previewed: errors / shows nothing.
         ("broken", blocks.CharBlock(template="testapp/blocks/broken.html")),
         ("spacer", blocks.CharBlock(template="testapp/blocks/spacer.html", required=False)),
+        # Uses Wagtail's own block-preview options (preview_value + description).
+        ("promo", blocks.StructBlock(
+            [("title", blocks.CharBlock()), ("text", blocks.TextBlock(required=False))],
+            template="testapp/blocks/promo.html",
+            preview_value={"title": "Preview promo title", "text": "From preview_value"},
+            description="A promo band with a title and text.")),
     ], blank=True)
 
     content_panels = Page.content_panels + [FieldPanel("body")]

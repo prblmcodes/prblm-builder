@@ -30,6 +30,7 @@ class HeroBlock(blocks.StructBlock):
         template = T + "hero.html"
         icon = "image"
         label = "Hero"
+        description = "Big page opener: headline, text, two buttons and an image."
         group = "Page openers"
 
 
@@ -48,4 +49,5 @@ class PageBannerBlock(blocks.StructBlock):
         template = T + "page_banner.html"
         icon = "title"
         label = "Page banner"
+        description = "Title strip for inner pages, with optional breadcrumbs."
         group = "Page openers"

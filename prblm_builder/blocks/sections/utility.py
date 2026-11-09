@@ -24,6 +24,7 @@ class ContactInfoBlock(blocks.StructBlock):
         template = T + "contact_info.html"
         icon = "mail"
         label = "Contact info"
+        description = "Address, email, phone, opening hours and a map link."
         group = "Utility"
 
 
@@ -37,4 +38,5 @@ class DividerBlock(blocks.StructBlock):
         template = T + "divider.html"
         icon = "minus"
         label = "Divider"
+        description = "A line or empty space between sections."
         group = "Utility"

@@ -1,6 +1,6 @@
 # Plan — v0.5.0: easier editing in the Layout tab
 
-Branch: `feature/v0.5.0` · Status: **planned — not started** · Written 2026-11-09
+Branch: `feature/v0.5.0` · Status: **in progress** · Written 2026-11-09
 Previous plans: `docs/plans/v0.3.0.md` (built-in blocks), `docs/plans/v0.4.0.md` (feedback round).
 
 ---
@@ -97,7 +97,7 @@ as **one** dropdown each; the two stored fields stay (so no data migration).
 
 ## 3. Phases (checklist)
 
-- [ ] **Phase 1 — Preview values + descriptions** (core). Tests.
+- [x] **Phase 1 — Preview values + descriptions** (core). Tests.
 - [ ] **Phase 2 — Link block**: fields, inferred types, validation, admin JS, new defaults,
       migration check. Tests + browser check of the show/hide.
 - [ ] **Phase 3 — Section settings**: `builder_settings`, collapsed settings area in the Content
@@ -111,4 +111,6 @@ as **one** dropdown each; the two stored fields stay (so no data migration).
 
 ## 4. Progress log
 
-- 2026-11-09 — Discussion + interview done; plan written. Nothing implemented yet.
+- 2026-11-09 — Discussion + interview done; plan written.
+- Phase 1 done (118 tests): explicit `preview_value` first everywhere; descriptions in the
+  library + sidebar tooltips (also searchable); all 21 built-ins got a description (no migration).

@@ -16,6 +16,8 @@
     .bl-card{background:#fff;border:1px solid var(--pb-line);border-radius:12px;margin:14px 0;overflow:hidden;scroll-margin-top:80px}
     .bl-card-head{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--pb-line)}
     .bl-card-head h3{margin:0;font-size:15px;font-weight:600}
+    .bl-card-head{flex-wrap:wrap}
+    .bl-card-desc{flex-basis:100%;margin:2px 0 0;font-size:13px;color:var(--pb-mute)}
     .bl-card-head code{font-size:11px;color:var(--pb-mute);background:#f3f3f6;padding:2px 7px;border-radius:5px}
     .bl-frame-wrap{background:#fff;padding:0}
     .bl-frame{display:block;width:100%;border:0;background:#fff}
@@ -89,7 +91,7 @@
           <div data-fold-body="{{ group.key }}">
           {% for b in group.blocks %}
             <article class="bl-card" id="bl-{% if b.builtin %}builtin-{% endif %}{{ b.name }}" data-search="{{ b.label|lower }} {{ b.name }}">
-              <div class="bl-card-head"><h3>{{ b.label }}</h3><code>{{ b.name }}</code></div>
+              <div class="bl-card-head"><h3>{{ b.label }}</h3><code>{{ b.name }}</code>{% if b.description %}<p class="bl-card-desc">{{ b.description }}</p>{% endif %}</div>
               <div class="bl-frame-wrap"><iframe class="bl-frame" scrolling="no" loading="lazy" title="{{ b.label }}"
                    data-src="{{ preview_url }}?block={{ b.name }}&demo=1{% if b.builtin %}&builtin=1{% endif %}"></iframe></div>
             </article>

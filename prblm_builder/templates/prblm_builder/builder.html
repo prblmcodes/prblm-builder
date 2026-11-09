@@ -58,7 +58,7 @@
             <div class="pb-pgroup-items" data-fold-body="{{ group.key }}">
             {% for b in group.blocks %}
               <div class="pb-pitem" data-type="{{ b.type }}" data-label="{{ b.label }}"
-                   data-search="{{ b.label|lower }} {{ b.type }}" title="Drag onto the page, or click to add">
+                   data-search="{{ b.label|lower }} {{ b.type }} {{ b.description|lower }}" title="{% if b.description %}{{ b.description }} — {% endif %}Drag onto the page, or click to add">
                 <div class="pb-thumb">
                   <iframe class="pb-thumb-frame" tabindex="-1" scrolling="no"
                           data-src="{{ preview_url }}?{{ context_param }}&block={{ b.type }}&demo=1"></iframe>

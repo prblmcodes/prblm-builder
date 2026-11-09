@@ -55,6 +55,15 @@ def block_label(name, block):
     return getattr(block.meta, "label", None) or name.replace("_", " ").title()
 
 
+def block_description(block):
+    """The block's Wagtail ``description`` (Wagtail 6.4+; field blocks fall back to their
+    help text), or ``""``."""
+    try:
+        return str(block.get_description() or "")
+    except Exception:
+        return ""
+
+
 def _excluded_classes():
     """Block classes named in ``PRBLM_BUILDER_EXCLUDE_BLOCKS`` (dotted paths). A path
     that doesn't import is ignored rather than breaking the admin."""

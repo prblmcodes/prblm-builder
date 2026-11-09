@@ -22,6 +22,7 @@ class CallToActionBlock(blocks.StructBlock):
         template = T + "call_to_action.html"
         icon = "pick"
         label = "Call to action"
+        description = "A coloured band with a headline and buttons."
         group = "Trust & conversion"
 
 
@@ -51,6 +52,7 @@ class FAQBlock(blocks.StructBlock):
         template = T + "faq.html"
         icon = "help"
         label = "FAQ"
+        description = "Questions that expand to show their answers."
         group = "Trust & conversion"
 
 
@@ -80,6 +82,7 @@ class TestimonialsBlock(blocks.StructBlock):
         template = T + "testimonials.html"
         icon = "openquote"
         label = "Testimonials"
+        description = "Customer quotes with name, role and optional photo."
         group = "Trust & conversion"
 
 
@@ -104,6 +107,7 @@ class LogoStripBlock(blocks.StructBlock):
         template = T + "logos.html"
         icon = "image"
         label = "Logo strip"
+        description = "A row of client or partner logos (or names)."
         group = "Trust & conversion"
 
 
@@ -128,6 +132,7 @@ class StatsBlock(blocks.StructBlock):
         template = T + "stats.html"
         icon = "order"
         label = "Stats"
+        description = "Big numbers with labels, like “500+ customers”."
         group = "Trust & conversion"
 
 
@@ -166,4 +171,5 @@ class PricingBlock(blocks.StructBlock):
         template = T + "pricing.html"
         icon = "list-ul"
         label = "Pricing"
+        description = "Plan columns with prices, features and a highlighted plan."
         group = "Trust & conversion"
