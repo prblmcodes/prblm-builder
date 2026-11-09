@@ -2,7 +2,7 @@
 from wagtail import blocks
 from wagtail.images.blocks import ImageChooserBlock
 
-from .base import AnchorBlock, BackgroundBlock, IconChoiceBlock, LinkBlock
+from .base import AnchorBlock, BackgroundBlock, IconChoiceBlock, LinkBlock, link
 
 T = "prblm_builder/blocks/"
 
@@ -42,7 +42,7 @@ class TextImageBlock(blocks.StructBlock):
         "<p>Explain one idea here, with the image backing it up. Two or three short "
         "paragraphs work best.</p><p>Change the image, and choose which side it sits on, "
         "in the Content tab.</p>"))
-    button = LinkBlock(default={"label": "Learn more", "url": "#"})
+    button = LinkBlock(default=link("Learn more", "#"))
     image = ImageChooserBlock(required=False)
     image_side = blocks.ChoiceBlock(choices=[("right", "Right"), ("left", "Left")], default="right")
     background = BackgroundBlock()
@@ -100,11 +100,11 @@ class CardsBlock(blocks.StructBlock):
     columns = blocks.ChoiceBlock(choices=COLUMNS, default="3")
     items = blocks.ListBlock(CardItemBlock(), default=[
         {"title": "First card", "text": "A short description of this item.",
-         "link": {"label": "Read more", "url": "#"}},
+         "link": link("Read more", "#")},
         {"title": "Second card", "text": "Cards look best with images of the same shape.",
-         "link": {"label": "Read more", "url": "#"}},
+         "link": link("Read more", "#")},
         {"title": "Third card", "text": "Leave the link label empty to hide the link.",
-         "link": {"label": "Read more", "url": "#"}},
+         "link": link("Read more", "#")},
     ])
     background = BackgroundBlock(default="muted")
     anchor_id = AnchorBlock()

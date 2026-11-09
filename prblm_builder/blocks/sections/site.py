@@ -2,7 +2,7 @@
 from wagtail import blocks
 from wagtail.images.blocks import ImageChooserBlock
 
-from .base import BackgroundBlock, LinkBlock, SocialChoiceBlock
+from .base import BackgroundBlock, LinkBlock, SocialChoiceBlock, link
 
 T = "prblm_builder/blocks/"
 
@@ -19,15 +19,15 @@ class HeaderBlock(blocks.StructBlock):
     logo = ImageChooserBlock(required=False, help_text="Your logo. Leave empty to show the site name as text.")
     site_name = blocks.CharBlock(default="Your site name", help_text="Shown when there's no logo, and read by screen readers.")
     menu = blocks.ListBlock(MenuItemBlock(), label="Menu", default=[
-        {"label": "About", "url": "#about"},
-        {"label": "Services", "url": "#services", "children": [
-            {"label": "First service", "url": "#services"},
-            {"label": "Second service", "url": "#services"},
+        link("About", "#about"),
+        {**link("Services", "#services"), "children": [
+            link("First service", "#services"),
+            link("Second service", "#services"),
         ]},
-        {"label": "Pricing", "url": "#pricing"},
-        {"label": "Contact", "url": "#contact"},
+        link("Pricing", "#pricing"),
+        link("Contact", "#contact"),
     ])
-    button = LinkBlock(default={"label": "Get in touch", "url": "#contact"},
+    button = LinkBlock(default=link("Get in touch", "#contact"),
                        help_text="Optional highlighted button on the right. Clear the label to hide it.")
     sticky = blocks.BooleanBlock(required=False, default=False,
                                  help_text="Keep the header at the top of the screen while scrolling.")
@@ -59,12 +59,12 @@ class FooterBlock(blocks.StructBlock):
         default="One or two sentences about who you are and what you do. "
                 "Replace this text in the Content tab.")
     columns = blocks.ListBlock(FooterColumnBlock(), label="Link columns", default=[
-        {"title": "Company", "links": [{"label": "About us", "url": "#about"},
-                                       {"label": "Careers", "url": "#"}]},
-        {"title": "Help", "links": [{"label": "FAQ", "url": "#faq"},
-                                    {"label": "Contact", "url": "#contact"}]},
-        {"title": "Legal", "links": [{"label": "Privacy policy", "url": "#"},
-                                     {"label": "Terms", "url": "#"}]},
+        {"title": "Company", "links": [link("About us", "#about"),
+                                       link("Careers", "#")]},
+        {"title": "Help", "links": [link("FAQ", "#faq"),
+                                    link("Contact", "#contact")]},
+        {"title": "Legal", "links": [link("Privacy policy", "#"),
+                                     link("Terms", "#")]},
     ])
     social = blocks.ListBlock(SocialLinkBlock(), label="Social links", default=[
         {"network": "linkedin", "url": "https://www.linkedin.com/"},

@@ -98,7 +98,7 @@ as **one** dropdown each; the two stored fields stay (so no data migration).
 ## 3. Phases (checklist)
 
 - [x] **Phase 1 — Preview values + descriptions** (core). Tests.
-- [ ] **Phase 2 — Link block**: fields, inferred types, validation, admin JS, new defaults,
+- [x] **Phase 2 — Link block**: fields, inferred types, validation, admin JS, new defaults,
       migration check. Tests + browser check of the show/hide.
 - [ ] **Phase 3 — Section settings**: `builder_settings`, collapsed settings area in the Content
       tab, schema, ⚙ popover, live preview, save + validation. Tests + browser check.
@@ -114,3 +114,10 @@ as **one** dropdown each; the two stored fields stay (so no data migration).
 - 2026-11-09 — Discussion + interview done; plan written.
 - Phase 1 done (118 tests): explicit `preview_value` first everywhere; descriptions in the
   library + sidebar tooltips (also searchable); all 21 built-ins got a description (no migration).
+- Phase 2 done (124 tests; browser-checked: only the chosen type's field shows, switching
+  works, saves as `mailto:`). Findings: (1) block **default values** are part of the
+  migration description, so the new link defaults need migration `0003_link_types` (no data
+  change) — sites using `builder_blocks()` will see an "Alter field" on `makemigrations`;
+  (2) hide the element marked `data-contentpath="<field>"` (it holds the label too), not the
+  input wrapper; (3) a document link falls back to the file URL if the site doesn't route
+  `wagtail.documents` URLs.

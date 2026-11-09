@@ -2,7 +2,7 @@
 from wagtail import blocks
 from wagtail.images.blocks import ImageChooserBlock
 
-from .base import AnchorBlock, BackgroundBlock, LinkBlock
+from .base import AnchorBlock, BackgroundBlock, LinkBlock, link
 
 T = "prblm_builder/blocks/"
 
@@ -15,8 +15,8 @@ class HeroBlock(blocks.StructBlock):
         required=False,
         default="One or two sentences explaining who this is for and why it matters. "
                 "Edit this text, the buttons and the image in the Content tab.")
-    primary_button = LinkBlock(default={"label": "Main action", "url": "#contact"})
-    secondary_button = LinkBlock(default={"label": "Second action", "url": "#about"})
+    primary_button = LinkBlock(default=link("Main action", "#contact"))
+    secondary_button = LinkBlock(default=link("Second action", "#about"))
     image = ImageChooserBlock(required=False)
     image_position = blocks.ChoiceBlock(
         choices=[("side", "Beside the text"), ("background", "Behind the text"), ("none", "No image")],

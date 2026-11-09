@@ -2,7 +2,7 @@
 from wagtail import blocks
 from wagtail.images.blocks import ImageChooserBlock
 
-from .base import AnchorBlock, BackgroundBlock, LinkBlock
+from .base import AnchorBlock, BackgroundBlock, LinkBlock, link
 
 T = "prblm_builder/blocks/"
 
@@ -12,8 +12,8 @@ class CallToActionBlock(blocks.StructBlock):
     text = blocks.TextBlock(
         required=False,
         default="One sentence that tells people what happens when they click the button.")
-    primary_button = LinkBlock(default={"label": "Main action", "url": "#contact"})
-    secondary_button = LinkBlock(default={"label": "", "url": ""},
+    primary_button = LinkBlock(default=link("Main action", "#contact"))
+    secondary_button = LinkBlock(default=link("", ""),
                                  help_text="Optional second button. Leave the label empty to hide it.")
     background = BackgroundBlock(default="brand")
     anchor_id = AnchorBlock()
@@ -154,15 +154,15 @@ class PricingBlock(blocks.StructBlock):
         {"name": "Basic", "price": "€19", "period": "per month",
          "description": "For people just getting started.",
          "features": ["What's included", "Another feature", "Keep the list short"],
-         "button": {"label": "Choose Basic", "url": "#contact"}, "highlighted": False},
+         "button": link("Choose Basic", "#contact"), "highlighted": False},
         {"name": "Popular", "price": "€49", "period": "per month",
          "description": "The plan most people pick — it's highlighted.",
          "features": ["Everything in Basic", "A bigger feature", "Priority support"],
-         "button": {"label": "Choose Popular", "url": "#contact"}, "highlighted": True},
+         "button": link("Choose Popular", "#contact"), "highlighted": True},
         {"name": "Custom", "price": "On request", "period": "",
          "description": "For larger teams with special needs.",
          "features": ["Everything in Popular", "Tailored setup"],
-         "button": {"label": "Contact us", "url": "#contact"}, "highlighted": False},
+         "button": link("Contact us", "#contact"), "highlighted": False},
     ])
     background = BackgroundBlock()
     anchor_id = AnchorBlock(default="pricing")

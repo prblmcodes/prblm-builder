@@ -60,3 +60,59 @@ class PreviewValueTests(TestCase):
             instance=StandardPage(title="D", slug="d-" + uuid.uuid4().hex[:5]))
         r = self.client.get(reverse("prblm_builder:builder", args=[page.id]) + "?embed=1")
         self.assertContains(r, 'title="A promo band with a title and text. — Drag onto the page')
+
+
+class LinkBlockTests(TestCase):
+    def link(self, **value):
+        from prblm_builder.blocks.sections.base import LinkBlock
+        block = LinkBlock()
+        return block, block.to_python({"label": "Go", **value})
+
+    def test_href_per_type(self):
+        page = Page.objects.get(depth=2)
+        cases = [
+            ({"link_type": "page", "page": page.pk}, page.url),
+            ({"link_type": "url", "url": "https://example.com"}, "https://example.com"),
+            ({"link_type": "anchor", "anchor": "#pricing"}, "#pricing"),
+            ({"link_type": "anchor", "anchor": "pricing"}, "#pricing"),
+            ({"link_type": "email", "email": "a@b.com"}, "mailto:a@b.com"),
+            ({"link_type": "phone", "phone": "+44 20 1234-5678"}, "tel:+442012345678"),
+        ]
+        for value, href in cases:
+            with self.subTest(value=value):
+                self.assertEqual(self.link(**value)[1].href, href)
+
+    def test_document_link(self):
+        from django.core.files.base import ContentFile
+        from wagtail.documents import get_document_model
+        doc = get_document_model()(title="Brochure")
+        doc.file.save("brochure.pdf", ContentFile(b"%PDF-1.4"), save=False)
+        doc.save()
+        self.assertEqual(self.link(link_type="document", document=doc.pk)[1].href, doc.url)
+
+    def test_links_saved_before_05_still_work(self):
+        page = Page.objects.get(depth=2)
+        self.assertEqual(self.link(page=page.pk, url="/x/")[1].href, page.url)       # page wins
+        self.assertEqual(self.link(url="#contact")[1].href, "#contact")
+        self.assertEqual(self.link(url="https://x.org")[1].link_type, "url")
+
+    def test_missing_target_is_an_error_only_with_a_label(self):
+        from django.core.exceptions import ValidationError
+        block, _v = self.link()
+        with self.assertRaises(ValidationError):
+            block.clean(block.to_python({"label": "Go", "link_type": "email"}))
+        block.clean(block.to_python({"label": "", "link_type": "email"}))         # hidden link: fine
+
+    def test_every_builtin_default_is_valid(self):
+        """Editors must be able to save an untouched built-in block."""
+        from prblm_builder.blocks import builder_blocks
+        for name, block in builder_blocks():
+            with self.subTest(block=name):
+                block.clean(block.get_default())
+
+    def test_admin_script_registered(self):
+        from prblm_builder.blocks.sections.base import LinkBlock
+        from wagtail.admin.telepath import JSContext
+        ctx = JSContext()
+        ctx.pack(LinkBlock())
+        self.assertIn("prblm_builder/blocks/link-block.js", str(ctx.media))

@@ -1,7 +1,7 @@
 """Utility sections."""
 from wagtail import blocks
 
-from .base import AnchorBlock, BackgroundBlock, LinkBlock
+from .base import AnchorBlock, BackgroundBlock, LinkBlock, link
 
 T = "prblm_builder/blocks/"
 
@@ -15,7 +15,7 @@ class ContactInfoBlock(blocks.StructBlock):
     email = blocks.EmailBlock(required=False, default="hello@example.com")
     phone = blocks.CharBlock(required=False, default="+00 123 456 789")
     hours = blocks.TextBlock(required=False, default="Monday – Friday: 9:00 – 17:00\nWeekends: closed")
-    map_link = LinkBlock(default={"label": "Get directions", "url": "https://www.openstreetmap.org/"},
+    map_link = LinkBlock(default=link("Get directions", "https://www.openstreetmap.org/"),
                          help_text="Optional link to a map. Leave the label empty to hide it.")
     background = BackgroundBlock(default="muted")
     anchor_id = AnchorBlock(default="contact")
