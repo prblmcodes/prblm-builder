@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.5.0 — unreleased
+## 0.5.0 — 2026-11-09
 
 **Added**
 - **Section settings (⚙):** fields listed in a block's `Meta.builder_settings` get a ⚙ button

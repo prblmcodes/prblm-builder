@@ -1,6 +1,6 @@
 # Plan — v0.5.0: easier editing in the Layout tab
 
-Branch: `feature/v0.5.0` · Status: **in progress** · Written 2026-11-09
+Branch: `feature/v0.5.0` · Status: **released as v0.5.0** · Written 2026-11-09
 Previous plans: `docs/plans/v0.3.0.md` (built-in blocks), `docs/plans/v0.4.0.md` (feedback round).
 
 ---
@@ -105,15 +105,16 @@ as **one** dropdown each; the two stored fields stay (so no data migration).
 - [x] **Phase 4 — Copy / paste + right-click menu** (same page). Browser check.
 - [x] **Phase 5 — Sidebar tabs + header/footer dropdowns** (page-options hook). Tests +
       browser check.
-- [ ] **Phase 6 — Release**
+- [x] **Phase 6 — Release**
   - [x] README (⚙ settings + `BuilderSettingsMixin`, preview values, links, copy/paste, Page
         tab, upgrading 0.4 → 0.5, troubleshooting), CHANGELOG, history doc, CLAUDE.md,
         version 0.5.0, CI wheel checks
   - [x] Upgrade test: fresh site on 0.4.1 (Builder page with a chosen header + a page model
         using `builder_blocks()`) → 0.5.0 wheel → `migrate` + one `makemigrations` (Alter
         field) → old links work, Page tab pre-selects the header, admin pages load
-  - [ ] Owner tests in a real project
-  - [ ] Merge to `main`, tag `v0.5.0`
+  - [x] Owner tested in a real project (tooltips, chevron icons, no toolbar Paste button,
+        info-only Page tab on site pages, Theme-coloured swatches added during testing)
+  - [x] Merge to `main`, tag `v0.5.0`
 
 ## 4. Progress log
 
@@ -159,3 +160,4 @@ as **one** dropdown each; the two stored fields stay (so no data migration).
   removed (paste via right-click / Ctrl+V); Page tab on the site's own page types is
   **information only** (where the header/footer come from). Per-page header choice for site
   pages was discussed (plugin-owned table + wrapping tag, or a model mixin) and postponed.
+- 2026-11-09 — Released as v0.5.0 (merged to `main`, tagged).
