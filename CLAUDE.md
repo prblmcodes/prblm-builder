@@ -25,6 +25,8 @@ site content where a block is used, else synthesis).
 - `prblm_builder/previews.py` — demo content engine (real-instance → synth → trim) + iframe frame.
 - `prblm_builder/views.py` — builder / builder_new / preview / demo / save.
 - `prblm_builder/static/prblm_builder/builder.{js,css}` — the canvas (SortableJS, scaled iframes, undo/redo); `fold.js` — foldable groups.
+- `prblm_builder/static/prblm_builder/form-columns.{js,css}` — two-column block forms
+  (`pbk-form` class; `PRBLM_BUILDER_FORM_COLUMNS`). Tab sync lives in `layout_panel.html`.
 - `prblm_builder/chrome.py` — header/footer around the canvas (hooks → template setting → default).
 - `prblm_builder/mixins.py` — `BuilderSettingsMixin` (⚙ settings → Wagtail's settings area).
 - `prblm_builder/settings.py` — one reader per `PRBLM_BUILDER_*` setting (all optional).
@@ -69,10 +71,11 @@ site content where a block is used, else synthesis).
 `python runtests.py` runs `prblm_builder/tests/` against the bundled test project in
 `tests/` (settings + `tests.testapp.StandardPage` with a `body` StreamField). CI
 (`.github/workflows/test.yml`) runs it on Python 3.12–3.14 and checks the wheel builds.
-Target stack: **Wagtail 8.1+ (<9), Django 6.1+, Python 3.12+** (latest stable as of v0.5.0).
+Target stack: **Wagtail 8.1+ (<9), Django 6.1+, Python 3.12+** (latest stable as of v0.6.0).
 
 ## Current state
-Latest release **v0.5.0**. Next: **v0.6.0** planned on `feature/v0.6.0` — see `plan.md` (older plans in `docs/plans/`). Install in another project
+Latest release **v0.6.0** (plan archived in `docs/plans/v0.6.0.md`). Copy-paste usage examples:
+`docs/EXAMPLES.md` — its code lives in `tests/examples/` (keep them identical). Install in another project
 with `pip install "prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@<tag or branch>"`.
 Tests: `prblm_builder/tests/` (generic, shipped) + `tests/test_options.py` (needs the
 edge-case blocks in `tests/testapp`).

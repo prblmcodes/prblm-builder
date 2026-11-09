@@ -15,6 +15,9 @@ pricing, FAQ, footer, …), a ready-made **Builder page** type, a **Theme** page
 reusable **Headers & Footers** — fully self-contained, nothing extra to install. See
 [Built-in blocks](#built-in-blocks-optional).
 
+**New here?** [docs/EXAMPLES.md](docs/EXAMPLES.md) has copy-paste page models and blocks
+for every feature (each one is checked by the test suite).
+
 - [Requirements](#requirements)
 - [Install](#install)
 - [Quick setup](#quick-setup)
@@ -25,6 +28,7 @@ reusable **Headers & Footers** — fully self-contained, nothing extra to instal
   - [Hiding a block](#hiding-a-block)
 - [Section settings (⚙)](#section-settings-)
 - [Block previews and descriptions](#block-previews-and-descriptions)
+- [Examples](docs/EXAMPLES.md)
 - [How it works](#how-it-works)
 - [Project structure](#project-structure)
 - [Development](#development)
@@ -93,18 +97,26 @@ To upgrade later, change the tag (e.g. `@v0.5.0` → `@v0.6.0`) and reinstall. S
 
 ## Use
 
-- **Any page:** open it in the editor → the **Layout** tab. Drag sections from the left,
+- **Any page:** open it in the editor — the **Layout** tab opens first. Drag sections from the left,
   reorder/duplicate/delete, and **Save draft / Publish** as usual. Undo/redo with
   Ctrl/⌘+Z and Ctrl/⌘+Shift+Z.
 - **Edit content:** each section's words and images are edited in the normal **Content**
   tab. New sections start with demo content; until you change it, the canvas marks the
   section **"Not edited yet"** so placeholder text doesn't get published by accident.
-- **Save to edit new sections:** the Content tab is Wagtail's own editor, so sections
-  added in the Layout tab show up there **after you save**. After any layout change a
-  banner says so, with a **Save draft now** button. On a brand-new page without a title
-  it fills in **"Untitled page 23"** (rename it later) and saves. If a save fails (e.g. a
-  required field is empty), your arrangement is kept.
-- **New page:** the Layout tab works before the first save — arrange, then save.
+- **Layout and Content stay in sync:** on a saved page, after you add, remove or move
+  sections, opening the **Content** tab waits for Wagtail's auto-save ("Saving your layout
+  changes…") and reloads the editor on the Content tab with the new sections in it. Edits
+  made in the Content tab show on the canvas when you switch back to Layout. ⚙ settings
+  update the Content tab at once, and the other way round.
+- **New page (not saved yet):** the Layout tab works before the first save. Sections you
+  add show in the Content tab **after you save** — a banner says so, with a **Save draft
+  now** button; without a title it fills in **"Untitled page 23"** (rename it later). With
+  Wagtail's auto-save turned off (`WAGTAIL_AUTOSAVE_INTERVAL = 0`) every page works this
+  way. If a save fails (e.g. a required field is empty), your arrangement is kept and the
+  editor opens the tab with the error.
+- **Two-column forms:** the built-in blocks' forms (Content tab, Headers, Footers, Theme)
+  show short fields two per row — text, dropdowns, choosers — and long text, rich text and
+  lists full width. Turn it on for your own blocks with `PRBLM_BUILDER_FORM_COLUMNS = "all"`.
 - **Section settings (⚙):** sections with settings (e.g. background, anchor ID) have a ⚙
   button in their toolbar. It opens a small panel; the canvas updates as you change
   things, and the change saves with the page. See [Section settings](#section-settings-).
@@ -333,6 +345,8 @@ A block can also hide itself — see [Hiding a block](#hiding-a-block).
 | Setting | Default | What it does |
 |---|---|---|
 | `PRBLM_BUILDER_ADMIN_TWEAKS` | `True` | Two extras in the **page editor** that rely on Wagtail admin internals. Set `False` if a Wagtail upgrade breaks them — the Layout tab and saving keep working. See the table below. |
+
+| `PRBLM_BUILDER_FORM_COLUMNS` | `"builtin"` | Two-column block forms in the admin (short fields side by side, long ones full width; one column on narrow screens). `"builtin"` = the built-in blocks and the Theme page; `"all"` = also your own blocks; `False` = off. |
 
 What `PRBLM_BUILDER_ADMIN_TWEAKS` changes (in the page editor only — not the Block library page or the canvas itself):
 
@@ -572,6 +586,12 @@ Releasing: bump `version` in `pyproject.toml`, add a `CHANGELOG.md` entry, commi
 from the tag (attach the wheel from `python -m build`).
 
 ## Upgrading
+
+**0.5 → 0.6**
+- No migrations, no setting changes needed — just install the new version.
+- The **Layout** tab is now the first tab in the page editor.
+- The built-in blocks' forms use two columns. Don't want it? `PRBLM_BUILDER_FORM_COLUMNS =
+  False`. Want it for your own blocks too? `PRBLM_BUILDER_FORM_COLUMNS = "all"`.
 
 **0.4 → 0.5**
 - Run `python manage.py migrate` (migration `0003_link_types` only updates the built-in

@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.6.0 — 2026-11-09
+
+**Added**
+- The **Layout** tab is the **first tab** in the page editor, for new and existing pages.
+- **Layout and Content tabs stay in sync:** ⚙ settings update the Content tab at once (and
+  the other way round); on a saved page, opening the Content tab after adding / removing /
+  moving sections waits for Wagtail's auto-save and reloads onto the Content tab with the
+  new sections; switching back to Layout after Content edits refreshes the canvas. New
+  pages, and sites with auto-save off, keep the "Save draft now" banner.
+- **Two-column block forms:** short fields side by side, long text / rich text / lists /
+  grouped fields full width, an unpaired field full width, everything filling its column;
+  the block settings area in two columns with a divider while open; one column on narrow
+  screens. On for the built-in blocks and the Theme page.
+- Setting **`PRBLM_BUILDER_FORM_COLUMNS`**: `"builtin"` (default), `"all"` (also your own
+  blocks) or `False`.
+- **[docs/EXAMPLES.md](docs/EXAMPLES.md):** copy-paste page models and blocks for every
+  feature, checked by the test suite (`tests/examples/`).
+
+**Fixed**
+- Opening a page no longer creates an auto-saved draft when nothing changed.
+- After a failed save, the editor opens the tab holding the first error (it could be hidden
+  behind the Layout tab).
+
+**Upgrade notes**
+- No migrations.
+
 ## 0.5.0 — 2026-11-09
 
 **Added**

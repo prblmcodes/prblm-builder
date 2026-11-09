@@ -226,12 +226,12 @@ of the code only calls these (never `django.conf.settings` directly). See §6.
    settings: SEED_NEW_BLOCKS, CANVAS_WIDTH, PLACEHOLDER_IMAGES, LIBRARY_SCOPE,
    ADMIN_TWEAKS; header/footer get the page. Lesson: an "empty" new block must use `""`
    for text fields — Wagtail's `get_default()` is `None`, which renders as "None".
-10. **0.3 (see `plan.md` for the full plan + log)** — removed SEED_NEW_BLOCKS again (saving empty
+10. **0.3 (plan in `docs/plans/v0.3.0.md`)** — removed SEED_NEW_BLOCKS again (saving empty
     blocks made no sense; demo content + a "Not edited yet" badge is safer); added the
     "Page builder" admin section; built-in blocks app. Lesson: Wagtail builds admin
     menus once — a menu hook that returns `None` based on a setting is cached forever;
     use a `MenuItem` subclass with `is_shown()`.
-11. **0.4 (plan in `plan.md`)** — feedback from a real project: save banner + "Save draft
+11. **0.4 (plan in `docs/plans/v0.4.0.md`)** — feedback from a real project: save banner + "Save draft
     now" with a placeholder title, arrangement kept after a failed save; foldable groups;
     reusable Headers/Footers with per-Builder-page choice (data migration from 0.3);
     Builder page placement + extra blocks settings. Lessons: Wagtail's snippet add view
@@ -239,7 +239,7 @@ of the code only calls these (never `django.conf.settings` directly). See §6.
     raw (seed `form.initial` from a fresh instance); reset `_clean_subpage_models` to `None`,
     never delete it; browser-test JS flows with Playwright + system Chrome
     (`channel="chrome"`) against a throwaway dev server.
-12. **0.5 (plan in `plan.md`)** — easier editing in the Layout tab: Wagtail `preview_value` /
+12. **0.5 (plan in `docs/plans/v0.5.0.md`)** — easier editing in the Layout tab: Wagtail `preview_value` /
     `description`; built-in links with a *Link to* switch (telepath `StructBlockDefinition`
     subclass, `link-block.js`); ⚙ section settings (`Meta.builder_settings`, core
     `BuilderSettingsMixin` → Wagtail 8.1 `form_layout` settings area; popover; `?settings=`
@@ -252,6 +252,19 @@ of the code only calls these (never `django.conf.settings` directly). See §6.
     of the migration description** (changing defaults needs a migration, unlike adding child
     fields to a StructBlock subclass); Wagtail 8.1 **auto-saves drafts** on form changes —
     Layout changes trigger it; hide a StructBlock child via its `data-contentpath` element.
+
+13. **0.6 (plan in `docs/plans/v0.6.0.md`) — Layout first, tabs in sync, two-column forms, examples.** The Layout tab
+    is inserted first. Tab sync: ⚙ ↔ Content-tab inputs via `<field>-N-id` /
+    `<field>-N-value-<name>`; after structure changes on a saved page, opening Content waits
+    for `w-autosave:success` and reloads onto `#tab-content`; opening Layout after Content
+    edits refreshes the previews. `form-columns.js/.css` (global admin hooks) lay out forms
+    marked `pbk-form` (built-in blocks' `form_classname`, Theme `MultiFieldPanel`
+    classname). `docs/EXAMPLES.md` mirrors `tests/examples/`. Lessons: with Layout first the
+    iframe loaded at once and wrote hidden fields → an auto-saved draft on every open (now
+    only after a real change); the panel script ran before the Content tab was parsed (wait
+    for DOMContentLoaded); `form_classname` **replaces** `struct-block`; `.w-field` is
+    inline-block (stretch it); an empty ListBlock has no `[data-contentpath]` children;
+    model-form field panels contain their own `[data-contentpath]`.
 
 ---
 
@@ -352,13 +365,14 @@ previews unstyled.
 | `PRBLM_BUILDER_PAGE_TYPE` | `True` | Built-in "Builder page" creatable (0.3, blocks app only) |
 | `PRBLM_BUILDER_PAGE_PARENTS` | `[]` | Page types allowed to hold Builder pages (0.4) |
 | `PRBLM_BUILDER_PAGE_EXTRA_BLOCKS` | `None` | Site blocks on the Builder page, no migration (0.4) |
+| `PRBLM_BUILDER_CANVAS_WIDTH` | `1280` | Desktop width sections render at on the canvas (0.2) |
+| `PRBLM_BUILDER_PLACEHOLDER_IMAGES` | `True` | Allow creating placeholder images (0.2) |
+| `PRBLM_BUILDER_ADMIN_TWEAKS` | `True` | Full-width tab + header link (Wagtail internals) (0.2) |
+| `PRBLM_BUILDER_FORM_COLUMNS` | `"builtin"` | Two-column block forms: `"builtin"`, `"all"`, `False` (0.6) |
 
 Block-level options (not settings): `Meta.builder = False` (hide), `Meta.builder_settings =
 [...]` (⚙ panel, 0.5), Wagtail's `preview_value` / `description` (0.5). Model attribute:
 `builder_layout_panels` (hidden Layout-tab fields for the Page tab, 0.5).
-| `PRBLM_BUILDER_CANVAS_WIDTH` | `1280` | Desktop width sections render at on the canvas (0.2) |
-| `PRBLM_BUILDER_PLACEHOLDER_IMAGES` | `True` | Allow creating placeholder images (0.2) |
-| `PRBLM_BUILDER_ADMIN_TWEAKS` | `True` | Full-width tab + header link (Wagtail internals) (0.2) |
 
 A block can also opt out itself: `class Meta: builder = False`.
 
@@ -414,7 +428,7 @@ runtests.py                   test runner (also `runtests.py makemigrations`)
 README.md                     user docs: install, settings reference, troubleshooting
 CHANGELOG.md                  per-release changes
 LICENSE                       MIT
-plan.md                       the v0.3.0 plan + progress log
+docs/plans/               each release's plan + progress log
 
 prblm_builder/blocks/         optional built-in blocks app (0.3)
   __init__.py        builder_blocks()

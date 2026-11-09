@@ -41,6 +41,8 @@ jobs:
           python -m zipfile -l dist/*.whl | grep -q "static/prblm_builder/fold.js"
           python -m zipfile -l dist/*.whl | grep -q "blocks/static/prblm_builder/blocks/link-block.js"
           python -m zipfile -l dist/*.whl | grep -q "blocks/migrations/0003_link_types.py"
+          python -m zipfile -l dist/*.whl | grep -q "static/prblm_builder/form-columns.js"
+          python -m zipfile -l dist/*.whl | grep -q "static/prblm_builder/form-columns.css"
       - uses: actions/upload-artifact@v4
         with:
           name: dist
