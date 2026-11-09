@@ -1,120 +1,114 @@
-# Plan — v0.4.0: editor feedback round
+# Plan — v0.5.0: easier editing in the Layout tab
 
-Branch: `feature/v0.4.0` · Status: **released as v0.4.0** · Started 2026-11-09
-Previous plan (v0.3.0, built-in blocks): `docs/plans/v0.3.0.md`.
-
-Feedback from using 0.3.0 in a real project, and what we agreed to do about it.
+Branch: `feature/v0.5.0` · Status: **planned — not started** · Written 2026-11-09
+Previous plans: `docs/plans/v0.3.0.md` (built-in blocks), `docs/plans/v0.4.0.md` (feedback round).
 
 ---
 
 ## 1. Decisions (agreed)
 
-| # | Problem seen | Decision |
+| # | Topic | Decision |
 |---|---|---|
-| 1 | On a **new page**, sections added in the Layout tab don't appear in the Content tab until the page is saved — and a save that fails (e.g. empty title) **loses the arrangement**. | After any layout change, a clear **banner** in the Layout tab: "Save to edit these sections in the Content tab — **[Save draft now]**". If the title is empty the button fills a placeholder (**"Untitled page 23"**) first, then saves. A failed save **keeps the arrangement** on the canvas. |
-| 2 | The **Builder page** can only be added at the root, not under the home page. | Cause: the site's own page types restrict their child types (`subpage_types`). New setting **`PRBLM_BUILDER_PAGE_PARENTS = ["home.HomePage", …]`** — the plugin allows Builder pages under those types. Documented in the README. |
-| 3 | Site pages can't use built-in blocks; the Builder page can't use the site's blocks. | Admin switches can't work (block lists are fixed at startup). **`PRBLM_BUILDER_PAGE_EXTRA_BLOCKS`** adds the site's blocks to the Builder page (no migration inside the plugin). Site pages keep using the one-line `builder_blocks()` helper. |
-| 4 | Header & footer are one page that can hold several of each — confusing. | **Headers** and **Footers** become separate lists under Page builder (like snippets): create many, click one to edit, each holds exactly one. A **"Use as site default"** checkbox (one default each). Each **Builder page chooses** its header and its footer: *site default* / *a specific one* / *the site's own template* / *none*. Existing 0.3 content is **migrated automatically**. |
-| 5 | Long block lists are hard to scan. | **Collapsible groups** in the Block library and the Layout sidebar: the two big groups (Built-in / Your site's blocks) and the smaller groups inside. Folding in the sidebar also hides the group in the preview area. Folded state **remembered per browser**. |
-| 6 | Canvas header/footer on the site's *own* page types. | The site's `PRBLM_BUILDER_HEADER/FOOTER_TEMPLATE` if set, else the plugin's **site-default** header/footer, else nothing. |
+| 1 | **Wagtail block preview values** | When a block defines Wagtail's own `preview_value` (Wagtail 6.4+ API), use it **everywhere**: Block library, sidebar thumbnails, and as the starting content of a new section — first choice, before real site content / generated text. Show the block's `description` as a subtitle (library) and tooltip (sidebar). |
+| 2 | **Simpler link field** (built-in `LinkBlock`) | **Label**, then **Link type**, then only the matching field. Types: **Page**, **Web address** (`https://…` or `/path/`), **Section on this page** (`#anchor`), **Document**, **Email**, **Phone**. Fields shown/hidden by a small admin script. Existing links keep working (type inferred). |
+| 3 | **Section settings in the Layout tab** | A **⚙ Settings** button in each section's toolbar opens a **popover next to the section** with its settings (built-ins: background swatches + anchor ID). Canvas updates live; saved with the page. In the Content tab these fields move into **Wagtail's collapsed "settings" area** of the block (Wagtail 8.1 `form_layout` settings). |
+| 4 | **Settings for the site's own blocks** | **Opt-in per block**: `class Meta: builder_settings = ["background", "theme"]` makes those fields appear in the ⚙ popover. Built-ins declare theirs the same way. |
+| 5 | **Copy / paste sections** | **Same page only.** Copy from the section toolbar, Ctrl/⌘+C / V on a selected section, and a **right-click menu** (Copy, Paste above, Paste below, Duplicate, Settings, Delete). The existing ⧉ Duplicate stays. |
+| 6 | **Header & footer on Builder pages** | **One dropdown each** (instead of two fields each): *Site default (name)*, *None*, *My site's own* (only if the template setting exists), then every header/footer by name. They move from the Content tab to a new **"Page" tab in the Layout sidebar** (tabs: **Sections \| Page**). Canvas updates live. Database fields unchanged. |
+| 7 | **Release** | **v0.5.0** on `feature/v0.5.0`, phase by phase with tests + browser checks; release after the owner tests. |
 
-Ships as **v0.4.0** (Header & footer storage changes).
+### Why there are four header/footer fields today
+Each of header and footer has two: `header_choice` (*what kind*: site default / choose one /
+site's own / none) and `header` (*which one*, only used with "choose one"). v0.5 shows them
+as **one** dropdown each; the two stored fields stay (so no data migration).
 
 ## 2. Technical approach
 
-### 2.1 Save flow (core, `layout_panel.html` + `builder.js`)
-- The builder already knows when the layout changed (`dirtied`). It tells the parent
-  page (same origin) to show the banner, which sits **in the Layout tab, above the
-  canvas** (part of `layout_panel.html`, so it's visible without scrolling the iframe).
-- **[Save draft now]**: if the edit form's title is empty, fill `Untitled page N` (N
-  supplied by the server: number of pages + 1) and let Wagtail auto-fill the slug; then
-  click Wagtail's own *Save draft* button (so all normal validation/hooks run).
-- **Failed save keeps the layout**: when the edit form is re-shown after an error, the
-  panel passes the submitted `_pb_layout` back to the builder iframe, which restores the
-  arrangement (new sections included) instead of starting empty.
+### 2.1 Preview values + descriptions (core)
+- `previews.explicit_preview_value(block)` → `block.get_preview_value()` **only when** the
+  block sets `preview_value` (`hasattr(block.meta, "preview_value")`) — Wagtail falls back to
+  `default` otherwise, which we already handle.
+- Order in `previews.demo_value` and `views._demo_value`: explicit preview value → (built-ins:
+  own defaults) → real site content → generated content.
+- `is_unedited` also compares against the preview value.
+- `registry` returns `block.get_description()` with each block; palette item `title` +
+  Block-library card subtitle.
 
-### 2.2 Collapsible groups (core, `demo.html`, `builder.html`, `builder.js`)
-- Each kind (Built-in / Your site's) and each group gets a toggle button (chevron) right of
-  its title, with `aria-expanded`.
-- Block library: folding a kind or group in the left sidebar also hides its cards in the
-  preview column, and vice versa — one shared state per key.
-- Layout sidebar: same toggles for its groups (and kinds, when both exist).
-- State in `localStorage` (`prblm-builder:folded`), wrapped in try/except — the page works
-  without it.
+### 2.2 Link block (blocks app)
+- `LinkBlock` gains `link_type` (choice), `anchor`, `document`, `email`, `phone`; keeps
+  `label`, `page`, `url`. Field order: label, link type, then the type fields.
+- `LinkValue.href` resolves by `link_type` (`#anchor`, document URL, `mailto:`, `tel:`…). For
+  links saved before 0.5 (no `link_type`): **inferred** — page set → page; `url` starting
+  `#` → section; otherwise web address. No data migration.
+- `clean()`: when a label is set, the chosen type's field is required (clear message).
+- Admin JS: a `StructBlockDefinition` subclass registered via a Wagtail telepath adapter
+  (`js_constructor`, documented Wagtail API) that shows only the selected type's field and
+  updates on change. Without JS everything still shows (graceful).
+- All built-in defaults updated to set `link_type` (e.g. `{"label": "Get in touch",
+  "link_type": "anchor", "anchor": "contact"}`).
+- Check: `makemigrations prblm_builder_blocks --check` (StructBlock subclasses deconstruct by
+  class path, so adding child fields shouldn't need a migration — verify; same for sites
+  using `builder_blocks()`).
+- Note: sections seeded with the *old* defaults lose the "Not edited yet" badge (their value
+  no longer equals the new default) — false negative only, acceptable.
 
-### 2.3 Headers & Footers (blocks app)
-- Models **`SiteHeader`** and **`SiteFooter`** (snippet-style): `name`, `is_default`,
-  `content` = StreamField with exactly one Header / Footer block (`min_num=1, max_num=1`).
-  Saving one as default clears the flag on the others (per kind).
-- Admin: registered as snippets with their own listing/edit views, shown under
-  **Page builder → Headers / Footers** (not in the Snippets menu).
-- **Data migration**: each site's 0.3 `SiteChrome` header/footer becomes a `SiteHeader` /
-  `SiteFooter` named after the site, marked default; then `SiteChrome` is removed. Uses
-  historical models (`apps.get_model`) — see the lessons in the history doc.
-- **Builder page** gets `header_choice` / `footer_choice` (`default` / `custom` / `site` /
-  `none`) + `header` / `footer` foreign keys (used with `custom`); `site` renders the
-  site's `PRBLM_BUILDER_HEADER/FOOTER_TEMPLATE`.
-- Template tags: `{% prblm_header %}` / `{% prblm_footer %}` render the site default (as in
-  0.3); on a Builder page they follow the page's choice. Optional argument to name one:
-  `{% prblm_header "Main header" %}`.
-- Canvas: the `prblm_builder_chrome` hook returns, for a Builder page, its own choice; for
-  other pages the site default (after the template settings, which win — §1 #6).
+### 2.3 Section settings
+- **Declaring:** `Meta.builder_settings = [field names]` on any StructBlock. Built-ins: a shared
+  base `SectionBlock` sets `["background", "anchor_id"]` (Header/Footer: `["background"]`) and
+  overrides `get_form_layout()` → `BlockGroup(children=<content fields>, settings=<those>)`,
+  so the Content tab shows them in Wagtail's collapsed settings area. (Changing the base
+  class keeps every block's module path — the promise holds.)
+- **Schema to the canvas:** for each block type with settings, the builder page receives a
+  small schema per field: `choice` (+ choices; the four backgrounds render as colour swatches),
+  `text` (+ max length / pattern), `boolean`. Current values per section come with the
+  section list.
+- **Popover** (builder.js/css): ⚙ button in the section toolbar (only when the type has
+  settings); popover anchored to the section, keyboard-accessible, Esc / click-outside closes.
+  Changes apply instantly to the preview (preview URL gets `&settings=<json>`; the preview
+  view overrides those fields before rendering).
+- **Saving:** `_pb_layout` items carry `settings: {field: value}` **only for changed fields**;
+  `layout.reconcile` writes them into the section's value (existing, new and copied sections),
+  validating each with the child block's `clean()` — an invalid anchor ID becomes a normal form
+  error (and the arrangement is kept, as in 0.4). If the same field was also changed in the
+  Content tab, the Layout tab's change wins (documented).
 
-### 2.4 Builder page placement + extra blocks (blocks app)
-- **`PRBLM_BUILDER_PAGE_PARENTS`**: at startup, for each listed page type that restricts
-  its children, add `prblm_builder_blocks.BuilderPage` to its allowed child types (and
-  clear Wagtail's cached list). Unknown names → a system-check warning, never a crash.
-- **`PRBLM_BUILDER_PAGE_EXTRA_BLOCKS`**: list of `("name", "dotted.path.BlockClass")` (or a
-  dotted path to a function returning `[(name, block)]`). The Builder page's body uses a
-  small `StreamField` subclass whose *runtime* block list = built-ins + extras, but whose
-  migration description stays the built-ins only — so the extras never trigger a
-  migration inside the installed package. Clashing names / bad paths → `ImproperlyConfigured`
-  at startup with a clear message (a broken block list can't be left for later).
+### 2.4 Copy / paste + context menu (builder.js)
+- In-memory clipboard of a section (`type`, source id, settings), also in `sessionStorage`
+  keyed by page id so it survives the iframe reloading; ignored on other pages.
+- Paste inserts a `copy_from` section (the mechanism Duplicate already uses), carrying the
+  copied settings; part of undo/redo.
+- Toolbar: **Copy**; when the clipboard is filled, **Paste below** appears in toolbars.
+- Keys: Ctrl/⌘+C / Ctrl/⌘+V on the selected section (not while typing in inputs).
+- Right-click on a section: custom menu (Copy, Paste above, Paste below, Duplicate,
+  Settings, Delete); the browser menu still works elsewhere.
+
+### 2.5 Sidebar tabs + header/footer dropdowns
+- **Generic "Page" options (core):** a new hook `prblm_builder_page_options(request, page,
+  model)` returns option descriptors `{name, label, choices, value}`. The core renders a
+  **Sections | Page** tab bar only when some option exists. The blocks app answers for
+  Builder pages with *Header* and *Footer*.
+- **Where the values live:** the real `header_choice` / `header` / `footer_choice` / `footer`
+  form fields move from the Content tab into the Layout tab, **visually hidden**; the
+  sidebar dropdown writes into them (same-origin, like the hidden layout fields). One
+  dropdown value maps to the two stored fields (`"h:12"` → choice *custom* + header 12).
+- **Live canvas:** changing a dropdown reloads the header/footer frame with the chosen
+  override (`&header=…`).
+- Works on new, unsaved Builder pages too.
 
 ## 3. Phases (checklist)
 
-- [x] **Phase 1 — Save flow**: banner + Save draft now + placeholder title; keep arrangement
-      after a failed save. Tests.
-- [x] **Phase 2 — Collapsible groups**: Block library (kinds + groups, sidebar ↔ preview
-      sync) and Layout sidebar; remembered per browser. Tests + visual check.
-- [x] **Phase 3 — Headers & Footers**: models, admin lists under Page builder, default
-      checkbox, data migration from 0.3, Builder page choices, template tags, canvas. Tests.
-- [x] **Phase 4 — Builder page placement + extra blocks**: the two settings, system checks.
-      Tests.
-- [x] **Phase 5 — Release**
-  - [x] README (incl. "Builder page only at root?"), CHANGELOG, history doc, CLAUDE.md,
-        version 0.4.0, CI wheel checks
-  - [x] Real upgrade test: 0.3.0 install with Header & footer content → install 0.4.0 wheel →
-        `migrate` → content is a default Header, Builder page shows it
-  - [x] Merge to `main`, tag `v0.4.0` (GitHub release by the owner)
-  - [ ] Owner tests the release in a real project
+- [ ] **Phase 1 — Preview values + descriptions** (core). Tests.
+- [ ] **Phase 2 — Link block**: fields, inferred types, validation, admin JS, new defaults,
+      migration check. Tests + browser check of the show/hide.
+- [ ] **Phase 3 — Section settings**: `builder_settings`, collapsed settings area in the Content
+      tab, schema, ⚙ popover, live preview, save + validation. Tests + browser check.
+- [ ] **Phase 4 — Copy / paste + right-click menu** (same page). Browser check.
+- [ ] **Phase 5 — Sidebar tabs + header/footer dropdowns** (page-options hook). Tests +
+      browser check.
+- [ ] **Phase 6 — Release**: README (settings, `builder_settings`, preview values, links,
+      copy/paste), CHANGELOG, history doc, CLAUDE.md, version 0.5.0, upgrade test from 0.4.1,
+      merge + tag.
 
 ## 4. Progress log
 
-- 2026-11-09 — Feedback interview done; plan written. v0.3 plan archived in `docs/plans/`.
-- 2026-11-09 — Phase 1 done (98 tests) and checked end-to-end in a real browser (Playwright
-  + system Chrome against a dev server): new page → add 2 blocks in Layout → banner shows →
-  "Save draft now" → saved as "Untitled page 3" with both blocks in the Content tab. The
-  Layout iframe stays lazy-loaded (so an unopened Layout tab never overrides Content-tab
-  reordering); after a failed save the arrangement is also re-submitted via hidden inputs.
-- 2026-11-09 — Phase 2 done (100 tests; browser-checked: folding in the library sidebar hides
-  the preview cards and vice versa, survives reload, search still finds folded blocks).
-  Shared `fold.js`; the Layout sidebar now also splits Built-in / Your site's blocks. Also
-  fixed the canvas empty-state text (it mentioned a pencil button the Layout tab doesn't have).
-- 2026-11-09 — Phase 3 done (105 tests incl. a migration test that starts from a real 0.3
-  database; browser-checked: create a Header in the admin → it opens pre-filled → mark as
-  default → a new Builder page shows it → choosing "None" removes it). Core canvas logic
-  moved to `prblm_builder/chrome.py` with a new `prblm_builder_chrome_for_page` hook so a
-  Builder page's own choice beats the template setting. Lesson: Wagtail's add view builds
-  forms without an instance, so a callable StreamField default reaches the widget raw — the
-  Header/Footer form seeds `initial` from a fresh instance. Registering them as snippets
-  also makes Wagtail's general "Snippets" menu appear (harmless; documented).
-- 2026-11-09 — Phase 4 done (113 tests). With an extra block configured,
-  `makemigrations prblm_builder_blocks --check` still reports no changes. Lesson: Wagtail
-  caches allowed child types in `cls._clean_subpage_models`, set to `None` on every page
-  class — reset it to `None`, don't delete it (deleting falls back to the base class's cache).
-- 2026-11-09 — Phase 5 docs + version done; 113 tests; real 0.3 → 0.4 upgrade verified.
-  Waiting for the owner's test before merging and tagging.
-- 2026-11-09 — Merged to `main` and tagged `v0.4.0`.
-- 2026-11-09 — v0.4.1 patch: sidebar titles (Block library + Layout tab) lose their side
-  margins so they align with the search box (measured in the browser: all at the box edge).
+- 2026-11-09 — Discussion + interview done; plan written. Nothing implemented yet.
