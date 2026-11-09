@@ -43,6 +43,7 @@
        data-csrf="{{ csrf_token }}"
        data-canvas-width="{{ canvas_width }}">
     {{ sections|json_script:"pb-sections" }}
+    {{ settings_schema|json_script:"pb-settings-schema" }}
 
     <aside class="pb-palette">
       <p class="pb-palette-title">Add a section</p>

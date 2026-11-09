@@ -417,7 +417,16 @@ def is_unedited(block, name, stored_prep, page_id=None, section_id=None):
     (a false "edited"), never the other way round."""
     if stored_prep is None:
         return False
-    stored_prep = _strip_ids(stored_prep)
+    # ⚙ settings (background, anchor…) aren't content: changing them doesn't "edit" a section.
+    from .mixins import builder_setting_names
+    skip = set(builder_setting_names(block))
+
+    def content(data):
+        data = _strip_ids(data)
+        if skip and isinstance(data, dict):
+            return {k: v for k, v in data.items() if k not in skip}
+        return data
+    stored_prep = content(stored_prep)
     candidates = [_prep(block, block.get_default())]
     preview = explicit_preview_value(block)
     if preview is not None:
@@ -432,7 +441,7 @@ def is_unedited(block, name, stored_prep, page_id=None, section_id=None):
                  and src_id == str(section_id))
     if value is not None and not is_source:
         candidates.append(_prep(block, value))
-    return any(c is not None and c == stored_prep for c in candidates)
+    return any(c is not None and content(c) == stored_prep for c in candidates)
 
 
 def explicit_preview_value(block):

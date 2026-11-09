@@ -133,6 +133,45 @@ def grouped_blocks(stream_block):
 
 KIND_KEYS = {KIND_BUILTIN: "builtin", KIND_SITE: "site"}
 
+BACKGROUND_KEYS = {"light", "muted", "dark", "brand"}
+
+
+def settings_schema(block):
+    """What the ⚙ popover shows for a block: ``[{name, label, help, kind, …}]`` for each
+    field in ``Meta.builder_settings`` that the popover can edit (choice, on/off, short
+    text). Empty when the block has no settings."""
+    from wagtail import blocks as wb
+
+    from .mixins import builder_setting_names
+
+    out = []
+    for name in builder_setting_names(block):
+        child = block.child_blocks[name]
+        field = {"name": name, "label": str(child.label or name.replace("_", " ").title()),
+                 "help": str(getattr(child.meta, "help_text", "") or "")}
+        if isinstance(child, wb.ChoiceBlock):
+            choices = [[str(k), str(v)] for k, v in child.field.choices if k not in ("", None)]
+            field.update(kind="choice", choices=choices, required=bool(child.required),
+                         swatches={k for k, _v in choices} <= BACKGROUND_KEYS)
+        elif isinstance(child, wb.BooleanBlock):
+            field.update(kind="boolean")
+        elif isinstance(child, (wb.CharBlock, wb.TextBlock, wb.URLBlock, wb.EmailBlock,
+                                wb.IntegerBlock)):
+            field.update(kind="text", max_length=getattr(child.field, "max_length", None),
+                         required=bool(child.required))
+        else:
+            continue  # choosers, rich text, nested blocks: edit those in the Content tab
+        out.append(field)
+    return out
+
+
+def settings_values(block, raw_value):
+    """Current settings of a stored section: ``{name: value}`` from its raw value."""
+    from .mixins import builder_setting_names
+    if not isinstance(raw_value, dict):
+        return {}
+    return {n: raw_value.get(n) for n in builder_setting_names(block)}
+
 
 def _split_kinds(pairs):
     builtin = [(n, b) for n, b in pairs if is_builtin(b)]

@@ -2,7 +2,7 @@
 from wagtail import blocks
 from wagtail.images.blocks import ImageChooserBlock
 
-from .base import BackgroundBlock, LinkBlock, SocialChoiceBlock, link
+from .base import BackgroundBlock, LinkBlock, SocialChoiceBlock, link, SectionBlock
 
 T = "prblm_builder/blocks/"
 
@@ -15,7 +15,7 @@ class MenuItemBlock(LinkBlock):
         help_text="Optional. Links shown in a dropdown under this item.")
 
 
-class HeaderBlock(blocks.StructBlock):
+class HeaderBlock(SectionBlock):
     logo = ImageChooserBlock(required=False, help_text="Your logo. Leave empty to show the site name as text.")
     site_name = blocks.CharBlock(default="Your site name", help_text="Shown when there's no logo, and read by screen readers.")
     menu = blocks.ListBlock(MenuItemBlock(), label="Menu", default=[
@@ -51,7 +51,7 @@ class SocialLinkBlock(blocks.StructBlock):
     url = blocks.CharBlock(help_text="Full address of your profile, e.g. https://linkedin.com/company/…")
 
 
-class FooterBlock(blocks.StructBlock):
+class FooterBlock(SectionBlock):
     logo = ImageChooserBlock(required=False, help_text="Leave empty to show the site name as text.")
     site_name = blocks.CharBlock(default="Your site name")
     description = blocks.TextBlock(

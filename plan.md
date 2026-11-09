@@ -100,7 +100,7 @@ as **one** dropdown each; the two stored fields stay (so no data migration).
 - [x] **Phase 1 — Preview values + descriptions** (core). Tests.
 - [x] **Phase 2 — Link block**: fields, inferred types, validation, admin JS, new defaults,
       migration check. Tests + browser check of the show/hide.
-- [ ] **Phase 3 — Section settings**: `builder_settings`, collapsed settings area in the Content
+- [x] **Phase 3 — Section settings**: `builder_settings`, collapsed settings area in the Content
       tab, schema, ⚙ popover, live preview, save + validation. Tests + browser check.
 - [ ] **Phase 4 — Copy / paste + right-click menu** (same page). Browser check.
 - [ ] **Phase 5 — Sidebar tabs + header/footer dropdowns** (page-options hook). Tests +
@@ -121,3 +121,13 @@ as **one** dropdown each; the two stored fields stay (so no data migration).
   (2) hide the element marked `data-contentpath="<field>"` (it holds the label too), not the
   input wrapper; (3) a document link falls back to the file URL if the site doesn't route
   `wagtail.documents` URLs.
+- Phase 3 done (134 tests; browser-checked in the real editor: ⚙ → popover with Background
+  swatches + Anchor ID → canvas turns dark/brand instantly → Save → stored `background` /
+  `anchor_id` changed, content untouched). `BuilderSettingsMixin` lives in the **core**
+  (`prblm_builder/mixins.py`) so site blocks can use it without the blocks app; the test app
+  has such a block. Findings: (1) the floating "Wider preview" button covered the top
+  section's toolbar → moved to the bottom-right; (2) Playwright's auto-scroll inside a fixed
+  popover in an iframe shifts Wagtail's `main` sideways — a test artifact (real mouse clicks
+  don't); (3) **Wagtail 8.1 auto-saves drafts** (`WAGTAIL_AUTOSAVE_INTERVAL`, default 500 ms)
+  when the form changes — Layout-tab changes trigger it too, and reconcile handles repeated
+  saves correctly.

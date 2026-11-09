@@ -2,12 +2,12 @@
 from wagtail import blocks
 from wagtail.images.blocks import ImageChooserBlock
 
-from .base import AnchorBlock, BackgroundBlock, LinkBlock, link
+from .base import AnchorBlock, BackgroundBlock, LinkBlock, link, SectionBlock
 
 T = "prblm_builder/blocks/"
 
 
-class CallToActionBlock(blocks.StructBlock):
+class CallToActionBlock(SectionBlock):
     heading = blocks.CharBlock(default="Ready to take the next step?")
     text = blocks.TextBlock(
         required=False,
@@ -31,7 +31,7 @@ class FAQItemBlock(blocks.StructBlock):
     answer = blocks.RichTextBlock(features=["bold", "italic", "link", "ul", "ol"])
 
 
-class FAQBlock(blocks.StructBlock):
+class FAQBlock(SectionBlock):
     eyebrow = blocks.CharBlock(required=False, default="FAQ")
     heading = blocks.CharBlock(default="Frequently asked questions")
     intro = blocks.TextBlock(required=False, default="Answers to the questions people ask most.")
@@ -63,7 +63,7 @@ class TestimonialItemBlock(blocks.StructBlock):
     photo = ImageChooserBlock(required=False, help_text="Optional. A square photo works best.")
 
 
-class TestimonialsBlock(blocks.StructBlock):
+class TestimonialsBlock(SectionBlock):
     eyebrow = blocks.CharBlock(required=False, default="Testimonials")
     heading = blocks.CharBlock(default="What people say about you")
     intro = blocks.TextBlock(required=False, default="Real quotes from real customers build trust.")
@@ -92,7 +92,7 @@ class LogoItemBlock(blocks.StructBlock):
     url = blocks.CharBlock(required=False, help_text="Optional link to their website.")
 
 
-class LogoStripBlock(blocks.StructBlock):
+class LogoStripBlock(SectionBlock):
     heading = blocks.CharBlock(required=False, default="Trusted by teams at")
     items = blocks.ListBlock(LogoItemBlock(), default=[
         {"name": "Client one"}, {"name": "Client two"}, {"name": "Client three"},
@@ -117,7 +117,7 @@ class StatItemBlock(blocks.StructBlock):
     note = blocks.CharBlock(required=False)
 
 
-class StatsBlock(blocks.StructBlock):
+class StatsBlock(SectionBlock):
     heading = blocks.CharBlock(required=False, default="Numbers that show your impact")
     items = blocks.ListBlock(StatItemBlock(), default=[
         {"number": "500+", "label": "Happy customers", "note": "Replace with your own numbers"},
@@ -146,7 +146,7 @@ class PlanBlock(blocks.StructBlock):
     highlighted = blocks.BooleanBlock(required=False, help_text="Make this plan stand out.")
 
 
-class PricingBlock(blocks.StructBlock):
+class PricingBlock(SectionBlock):
     eyebrow = blocks.CharBlock(required=False, default="Pricing")
     heading = blocks.CharBlock(default="Simple, clear pricing")
     intro = blocks.TextBlock(required=False, default="Two to four plans. Highlight the one most people choose.")

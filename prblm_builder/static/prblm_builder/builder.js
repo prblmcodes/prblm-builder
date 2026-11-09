@@ -15,6 +15,9 @@
   // builder has no Save of its own: it writes the arrangement into hidden inputs
   // on the parent edit form, so Wagtail's own Save draft / Publish saves it.
   var EMBED = document.body.classList.contains("pb-embed");
+  // ⚙ section settings per block type (Meta.builder_settings): {type: {fields, defaults}}
+  var SCHEMA = {};
+  try { SCHEMA = JSON.parse(document.getElementById("pb-settings-schema").textContent) || {}; } catch (e) {}
   var INITIAL_IDS = [];   // ids known at load — tells a Layout-tab delete apart
                           // from a block added in the normal editor (see layout.py)
   var dirtied = false;    // only flag the page 'unsaved' after a real user change
@@ -118,11 +121,30 @@
   }
 
   /* ---------- sections ---------- */
+  // Only the settings changed in the Layout tab (they're sent with the save, and shown
+  // on the canvas before saving).
+  function changedSettings(s) {
+    var out = {};
+    (s.changed || []).forEach(function (k) { out[k] = (s.settings || {})[k]; });
+    return out;
+  }
   function previewSrc(s) {
-    var q = CFG.context + "&block=" + encodeURIComponent(s.type);
-    if (s.copyFrom) return CFG.preview + "?" + q + "&section=" + encodeURIComponent(s.copyFrom);
-    if (s.isNew) return CFG.preview + "?" + q + "&demo=1";
-    return CFG.preview + "?" + q + "&section=" + encodeURIComponent(s.id);
+    var q = CFG.context + "&block=" + encodeURIComponent(s.type), url;
+    if (s.copyFrom) url = CFG.preview + "?" + q + "&section=" + encodeURIComponent(s.copyFrom);
+    else if (s.isNew) url = CFG.preview + "?" + q + "&demo=1";
+    else url = CFG.preview + "?" + q + "&section=" + encodeURIComponent(s.id);
+    var ch = changedSettings(s);
+    if (Object.keys(ch).length) url += "&settings=" + encodeURIComponent(JSON.stringify(ch));
+    return url;
+  }
+  function sectionState(c) {
+    return { type: c.dataset.type, id: c.dataset.id,
+             label: (c.querySelector(".pb-sec-name").firstChild.textContent || "").trim(),
+             copyFrom: c.dataset.copyFrom || undefined,
+             isNew: !!c.dataset.unsaved && !c.dataset.copyFrom,
+             unedited: !!c.dataset.unedited,
+             settings: JSON.parse(c.dataset.settings || "{}"),
+             changed: JSON.parse(c.dataset.changed || "[]") };
   }
 
   function makeSection(s) {
@@ -133,6 +155,9 @@
     // placeholder text isn't published by accident.
     var unedited = !!(s.isNew || s.unedited);
     if (unedited) el.dataset.unedited = "1";
+    var sch = SCHEMA[s.type];
+    el.dataset.settings = JSON.stringify(s.settings || (sch && sch.defaults) || {});
+    el.dataset.changed = JSON.stringify(s.changed || []);
     el.innerHTML =
       '<iframe class="pb-frame" title="preview" scrolling="no"></iframe>' +
       (unedited ? '<span class="pb-unedited" title="This section still has demo content \u2014 edit it in the Content tab">Not edited yet</span>' : '') +
@@ -145,6 +170,7 @@
           '<button class="pb-grab" data-act="grab" title="Drag to reorder">&#8942;&#8942;</button>' +
           '<button data-act="up" title="Move up">&#8593;</button>' +
           '<button data-act="down" title="Move down">&#8595;</button>' +
+          (sch ? '<button data-act="settings" title="Section settings" aria-haspopup="dialog">&#9881;</button>' : '') +
           '<button data-act="dup" title="Duplicate">&#10697;</button>' +
           '<button class="pb-del" data-act="del" title="Remove">&#10005;</button>' +
         '</span>' +
@@ -190,6 +216,7 @@
       return { type: c.dataset.type, id: c.dataset.id,
                copyFrom: c.dataset.copyFrom || null, unsaved: c.dataset.unsaved || null,
                unedited: c.dataset.unedited || null,
+               settings: c.dataset.settings || "{}", changed: c.dataset.changed || "[]",
                label: (c.querySelector(".pb-sec-name").firstChild.textContent || "").trim() };
     });
   }
@@ -207,7 +234,8 @@
     snap.forEach(function (d) {
       var el = makeSection({ type: d.type, id: d.id, label: d.label,
                              copyFrom: d.copyFrom || undefined, isNew: !!d.unsaved && !d.copyFrom,
-                             unedited: !!d.unedited });
+                             unedited: !!d.unedited,
+                             settings: JSON.parse(d.settings || "{}"), changed: JSON.parse(d.changed || "[]") });
       canvas.appendChild(el);
       wirePreview(el.querySelector(".pb-frame"));
     });
@@ -231,6 +259,7 @@
     var btn = e.target.closest("button[data-act]");
     if (btn) {
       var sec = btn.closest(".pb-sec"), act = btn.dataset.act;
+      if (act === "settings") { openSettings(sec, btn); return; }
       if (act !== "edit") dirtied = true;   // a real layout change → page is now unsaved
       if (act === "up" && sec.previousElementSibling && sec.previousElementSibling.classList.contains("pb-sec"))
         sec.parentNode.insertBefore(sec, sec.previousElementSibling);
@@ -243,7 +272,8 @@
       else if (act === "del") { sec.remove(); }
       else if (act === "dup") {
         var copy = makeSection({ type: sec.dataset.type, label: sec.querySelector(".pb-sec-name").firstChild.textContent,
-          id: uuid(), copyFrom: sec.dataset.copyFrom || sec.dataset.id, unedited: !!sec.dataset.unedited });
+          id: uuid(), copyFrom: sec.dataset.copyFrom || sec.dataset.id, unedited: !!sec.dataset.unedited,
+          settings: JSON.parse(sec.dataset.settings || "{}"), changed: JSON.parse(sec.dataset.changed || "[]") });
         sec.parentNode.insertBefore(copy, sec.nextElementSibling);
         wirePreview(copy.querySelector(".pb-frame")); select(copy);
       }
@@ -253,6 +283,96 @@
     }
     select(e.target.closest(".pb-sec"));  // click a section (or empty) to (de)select
   });
+
+  /* ---------- ⚙ section settings popover ---------- */
+  var SWATCH = { light: "#ffffff", muted: "#f3f4f6", dark: "#0f172a", brand: "#2563eb" };
+  var pop = null, popBtn = null;
+  function closeSettings() {
+    if (!pop) return;
+    pop.remove(); pop = null;
+    if (popBtn) { popBtn.setAttribute("aria-expanded", "false"); popBtn.focus(); popBtn = null; }
+  }
+  function placeSettings() {
+    if (!pop || !popBtn) return;
+    var r = popBtn.getBoundingClientRect(), w = pop.offsetWidth;
+    pop.style.top = Math.min(window.innerHeight - pop.offsetHeight - 8, r.bottom + 8) + "px";
+    pop.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.right - w)) + "px";
+  }
+  function setSetting(sec, name, value) {
+    var st = sectionState(sec);
+    st.settings[name] = value;
+    if (st.changed.indexOf(name) < 0) st.changed.push(name);
+    sec.dataset.settings = JSON.stringify(st.settings);
+    sec.dataset.changed = JSON.stringify(st.changed);
+    dirtied = true; refresh(); pushHistory();
+    var frame = sec.querySelector(".pb-frame");
+    frame.src = previewSrc(sectionState(sec));   // live update on the canvas
+  }
+  function field(sec, f, value) {
+    var row = document.createElement("div"); row.className = "pb-pop-field";
+    var id = "pb-set-" + f.name;
+    var label = '<label class="pb-pop-label" for="' + id + '">' + f.label + "</label>";
+    if (f.kind === "choice" && f.swatches) {
+      row.innerHTML = '<span class="pb-pop-label" id="' + id + '">' + f.label + '</span><div class="pb-swatches" role="radiogroup" aria-labelledby="' + id + '"></div>';
+      var box = row.querySelector(".pb-swatches");
+      f.choices.forEach(function (c) {
+        var b = document.createElement("button"); b.type = "button"; b.className = "pb-swatch";
+        b.setAttribute("role", "radio"); b.setAttribute("aria-checked", c[0] === value ? "true" : "false");
+        b.innerHTML = '<span class="pb-swatch-chip" style="background:' + (SWATCH[c[0]] || "#ccc") + '"></span><span>' + c[1] + "</span>";
+        b.addEventListener("click", function () {
+          box.querySelectorAll(".pb-swatch").forEach(function (x) { x.setAttribute("aria-checked", x === b ? "true" : "false"); });
+          setSetting(sec, f.name, c[0]);
+        });
+        box.appendChild(b);
+      });
+    } else if (f.kind === "choice") {
+      row.innerHTML = label + '<select id="' + id + '"></select>';
+      var sel = row.querySelector("select");
+      if (!f.required) sel.add(new Option("—", ""));
+      f.choices.forEach(function (c) { sel.add(new Option(c[1], c[0], false, c[0] === value)); });
+      sel.addEventListener("change", function () { setSetting(sec, f.name, sel.value); });
+    } else if (f.kind === "boolean") {
+      row.innerHTML = '<label class="pb-pop-check"><input type="checkbox" id="' + id + '"> ' + f.label + "</label>";
+      var cb = row.querySelector("input"); cb.checked = !!value;
+      cb.addEventListener("change", function () { setSetting(sec, f.name, cb.checked); });
+    } else {
+      row.innerHTML = label + '<input type="text" id="' + id + '">';
+      var inp = row.querySelector("input"); inp.value = value == null ? "" : value;
+      if (f.max_length) inp.maxLength = f.max_length;
+      inp.addEventListener("change", function () { setSetting(sec, f.name, inp.value.trim()); });
+      inp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); inp.blur(); } });
+    }
+    if (f.help) {
+      var h = document.createElement("p"); h.className = "pb-pop-help"; h.textContent = f.help; row.appendChild(h);
+    }
+    return row;
+  }
+  function openSettings(sec, btn) {
+    var again = pop && popBtn === btn;
+    closeSettings();
+    if (again) return;   // clicking ⚙ again closes it
+    var sch = SCHEMA[sec.dataset.type]; if (!sch) return;
+    var values = sectionState(sec).settings;
+    pop = document.createElement("div");
+    pop.className = "pb-pop"; pop.setAttribute("role", "dialog"); pop.setAttribute("aria-label", "Section settings");
+    pop.innerHTML = '<div class="pb-pop-head"><strong>Section settings</strong>' +
+      '<button type="button" class="pb-pop-close" aria-label="Close">&#10005;</button></div>';
+    sch.fields.forEach(function (f) { pop.appendChild(field(sec, f, values[f.name])); });
+    var note = document.createElement("p"); note.className = "pb-pop-note";
+    note.textContent = "Saved with the page (Save draft / Publish).";
+    pop.appendChild(note);
+    pop.querySelector(".pb-pop-close").addEventListener("click", closeSettings);
+    document.body.appendChild(pop);
+    popBtn = btn; btn.setAttribute("aria-expanded", "true");
+    placeSettings();
+    var first = pop.querySelector("button.pb-swatch, select, input"); if (first) first.focus();
+  }
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeSettings(); });
+  document.addEventListener("mousedown", function (e) {
+    if (pop && !pop.contains(e.target) && !e.target.closest('[data-act="settings"]')) closeSettings();
+  });
+  window.addEventListener("scroll", placeSettings, true);
+  window.addEventListener("resize", placeSettings);
 
   /* ---------- drag/drop ---------- */
   new Sortable(canvas, {
@@ -358,6 +478,8 @@
       var s = { type: c.dataset.type, id: c.dataset.id };
       if (c.dataset.copyFrom) s.copy_from = c.dataset.copyFrom;
       else if (c.dataset.unsaved) s.new = true;   // brand-new → seed with demo content
+      var ch = changedSettings(sectionState(c));
+      if (Object.keys(ch).length) s.settings = ch;  // ⚙ settings changed in the Layout tab
       return s;
     });
   }
@@ -459,9 +581,12 @@
         data = layout.map(function (it) {
           var pal = document.querySelector('.pb-pitem[data-type="' + it.type + '"]');
           var known = stored[it.id] || {};
+          var base = known.settings || (SCHEMA[it.type] && SCHEMA[it.type].defaults) || {};
           return { type: it.type, id: it.id, label: known.label || (pal && pal.dataset.label) || it.type,
                    isNew: !!it["new"] && !it.copy_from, copyFrom: it.copy_from || undefined,
-                   unedited: !!(it["new"] || it.copy_from || known.unedited) };
+                   unedited: !!(it["new"] || it.copy_from || known.unedited),
+                   settings: Object.assign({}, base, it.settings || {}),
+                   changed: Object.keys(it.settings || {}) };
         });
         dirtied = true;
       } catch (e) {}

@@ -19,7 +19,7 @@ import json
 from wagtail.admin.forms import WagtailAdminPageForm
 
 from . import registry
-from .layout import reconcile
+from .layout import SettingsError, reconcile
 
 
 class LayoutBuilderForm(WagtailAdminPageForm):
@@ -39,6 +39,11 @@ class LayoutBuilderForm(WagtailAdminPageForm):
         if not isinstance(layout, list):
             return cleaned
         current_raw = list(cleaned[field_name].raw_data)
-        new_raw = reconcile(stream_block, current_raw, layout, initial)
+        try:
+            new_raw = reconcile(stream_block, current_raw, layout, initial)
+        except SettingsError as exc:
+            for message in exc.messages:
+                self.add_error(None, f"Section settings: {message}")
+            return cleaned
         cleaned[field_name] = stream_block.to_python(new_raw)
         return cleaned

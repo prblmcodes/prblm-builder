@@ -116,3 +116,94 @@ class LinkBlockTests(TestCase):
         ctx = JSContext()
         ctx.pack(LinkBlock())
         self.assertIn("prblm_builder/blocks/link-block.js", str(ctx.media))
+
+
+@override_settings(STORAGES=STORAGES)
+class SectionSettingsTests(TestCase):
+    def setUp(self):
+        self.client.force_login(get_user_model().objects.create_superuser("ss", "ss@example.com", "pw"))
+
+    def make_page(self, body):
+        page = StandardPage(title="S", slug="s-" + uuid.uuid4().hex[:5])
+        page.body = json.dumps(body)
+        Page.objects.get(depth=1).add_child(instance=page)
+        return page
+
+    def test_schema_for_site_block(self):
+        fields = registry.settings_schema(stream().child_blocks["banner"])
+        self.assertEqual([f["name"] for f in fields], ["tone", "show_border"])   # unknown name skipped
+        self.assertEqual(fields[0]["kind"], "choice")
+        self.assertFalse(fields[0]["swatches"])
+        self.assertEqual(fields[1]["kind"], "boolean")
+        self.assertEqual(registry.settings_schema(stream().child_blocks["heading"]), [])
+
+    def test_builtin_schema_has_background_swatches_and_anchor(self):
+        from prblm_builder.blocks.sections.heroes import HeroBlock
+        fields = {f["name"]: f for f in registry.settings_schema(HeroBlock())}
+        self.assertTrue(fields["background"]["swatches"])
+        self.assertEqual(fields["anchor_id"]["kind"], "text")
+
+    def test_content_tab_puts_settings_in_collapsed_area(self):
+        from prblm_builder.blocks.sections.heroes import HeroBlock
+        layout = HeroBlock().meta.form_layout
+        self.assertEqual(layout.settings, ["background", "anchor_id"])
+        self.assertNotIn("background", layout.children)
+        self.assertEqual(stream().child_blocks["banner"].meta.form_layout.settings, ["tone", "show_border"])
+
+    def test_builder_sends_schema_and_current_values(self):
+        page = self.make_page([{"type": "banner", "id": "b1",
+                                "value": {"title": "Hi", "tone": "loud", "show_border": True}}])
+        r = self.client.get(reverse("prblm_builder:builder", args=[page.id]) + "?embed=1")
+        self.assertEqual(r.context["sections"][0]["settings"], {"tone": "loud", "show_border": True})
+        self.assertIn("banner", r.context["settings_schema"])
+        self.assertEqual(r.context["settings_schema"]["banner"]["defaults"]["tone"], "calm")
+        self.assertContains(r, 'id="pb-settings-schema"')
+
+    def test_reconcile_applies_only_changed_settings(self):
+        current = [{"type": "banner", "id": "b1", "value": {"title": "Edited in Content tab", "tone": "calm", "show_border": False}}]
+        out = reconcile(stream(), current, [{"type": "banner", "id": "b1", "settings": {"tone": "loud"}},
+                                            {"type": "banner", "id": "n1", "new": True, "settings": {"show_border": True}}], ["b1"])
+        self.assertEqual(out[0]["value"], {"title": "Edited in Content tab", "tone": "loud", "show_border": False})
+        self.assertTrue(out[1]["value"]["show_border"])
+        self.assertEqual(current[0]["value"]["tone"], "calm")                  # input not mutated
+
+    def test_reconcile_ignores_non_settings_fields(self):
+        current = [{"type": "banner", "id": "b1", "value": {"title": "Keep", "tone": "calm", "show_border": False}}]
+        out = reconcile(stream(), current, [{"type": "banner", "id": "b1", "settings": {"title": "Hacked"}}], ["b1"])
+        self.assertEqual(out[0]["value"]["title"], "Keep")
+
+    def test_invalid_setting_is_a_form_error_and_keeps_layout(self):
+        from prblm_builder.blocks.models import BuilderPage
+        home = Page.objects.get(depth=2)
+        url = reverse("wagtailadmin_pages:add", args=["prblm_builder_blocks", "builderpage", home.pk])
+        layout = [{"type": "hero", "id": "h1", "new": True, "settings": {"anchor_id": "1 bad id"}}]
+        r = self.client.post(url, {"title": "T", "slug": "t-x", "body-count": "0",
+                                   "header_choice": "default", "footer_choice": "default",
+                                   "_pb_layout": json.dumps(layout), "_pb_initial": "[]"})
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "Section settings: Hero")
+        self.assertContains(r, 'id="pb-restore"')
+        self.assertFalse(BuilderPage.objects.filter(slug="t-x").exists())
+
+    def test_preview_shows_unsaved_settings(self):
+        page = self.make_page([{"type": "banner", "id": "b1", "value": {"title": "Hi", "tone": "calm", "show_border": False}}])
+        base = reverse("prblm_builder:preview") + f"?page={page.id}&block=banner&section=b1"
+        self.assertContains(self.client.get(base), "tone-calm")
+        r = self.client.get(base + "&settings=" + json.dumps({"tone": "loud", "title": "nope"}))
+        self.assertContains(r, "tone-loud")
+        self.assertNotContains(r, "nope")
+        r = self.client.get(base + "&settings=" + json.dumps({"tone": "not-a-choice"}))
+        self.assertContains(r, "tone-calm")                                    # invalid → ignored
+
+    def test_changing_settings_keeps_not_edited_badge(self):
+        from prblm_builder.blocks.sections.heroes import HeroBlock
+        block = HeroBlock()
+        value = block.get_prep_value(block.get_default())
+        value["background"] = "dark"
+        self.assertTrue(previews.is_unedited(block, "hero", value))
+
+    def test_builder_js_has_settings_popover(self):
+        from django.contrib.staticfiles import finders
+        js = open(finders.find("prblm_builder/builder.js")).read()
+        self.assertIn('data-act="settings"', js)
+        self.assertIn("&settings=", js)

@@ -1,12 +1,12 @@
 """Utility sections."""
 from wagtail import blocks
 
-from .base import AnchorBlock, BackgroundBlock, LinkBlock, link
+from .base import AnchorBlock, BackgroundBlock, LinkBlock, link, SectionBlock
 
 T = "prblm_builder/blocks/"
 
 
-class ContactInfoBlock(blocks.StructBlock):
+class ContactInfoBlock(SectionBlock):
     eyebrow = blocks.CharBlock(required=False, default="Contact")
     heading = blocks.CharBlock(default="How to reach us")
     intro = blocks.TextBlock(required=False,
@@ -28,7 +28,7 @@ class ContactInfoBlock(blocks.StructBlock):
         group = "Utility"
 
 
-class DividerBlock(blocks.StructBlock):
+class DividerBlock(SectionBlock):
     style = blocks.ChoiceBlock(choices=[("line", "Line"), ("space", "Empty space")], default="line")
     size = blocks.ChoiceBlock(choices=[("small", "Small"), ("medium", "Medium"), ("large", "Large")],
                               default="medium", help_text="How much space above and below.")

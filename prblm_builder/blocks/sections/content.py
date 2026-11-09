@@ -2,7 +2,7 @@
 from wagtail import blocks
 from wagtail.images.blocks import ImageChooserBlock
 
-from .base import AnchorBlock, BackgroundBlock, IconChoiceBlock, LinkBlock, link
+from .base import AnchorBlock, BackgroundBlock, IconChoiceBlock, LinkBlock, link, SectionBlock
 
 T = "prblm_builder/blocks/"
 
@@ -14,7 +14,7 @@ def eyebrow(default=""):
                             help_text="Optional small label above the heading.")
 
 
-class TextSectionBlock(blocks.StructBlock):
+class TextSectionBlock(SectionBlock):
     content = blocks.RichTextBlock(default=(
         "<h2>A heading for this text</h2>"
         "<p>Use this block for longer writing: an introduction, a story or details "
@@ -35,7 +35,7 @@ class TextSectionBlock(blocks.StructBlock):
         group = "Content"
 
 
-class TextImageBlock(blocks.StructBlock):
+class TextImageBlock(SectionBlock):
     eyebrow = eyebrow("Short label")
     heading = blocks.CharBlock(default="A heading that sums up this section")
     text = blocks.RichTextBlock(default=(
@@ -62,7 +62,7 @@ class FeatureItemBlock(blocks.StructBlock):
     text = blocks.TextBlock(required=False)
 
 
-class FeaturesBlock(blocks.StructBlock):
+class FeaturesBlock(SectionBlock):
     eyebrow = eyebrow("Why choose us")
     heading = blocks.CharBlock(default="What makes you different")
     intro = blocks.TextBlock(required=False, default="A sentence introducing the points below.")
@@ -93,7 +93,7 @@ class CardItemBlock(blocks.StructBlock):
     link = LinkBlock()
 
 
-class CardsBlock(blocks.StructBlock):
+class CardsBlock(SectionBlock):
     eyebrow = eyebrow("Our services")
     heading = blocks.CharBlock(default="Cards for services, projects or articles")
     intro = blocks.TextBlock(required=False, default="Each card can have an image, a short text and a link.")
@@ -122,7 +122,7 @@ class StepItemBlock(blocks.StructBlock):
     text = blocks.TextBlock(required=False)
 
 
-class StepsBlock(blocks.StructBlock):
+class StepsBlock(SectionBlock):
     eyebrow = eyebrow("How it works")
     heading = blocks.CharBlock(default="Explain your process in a few steps")
     intro = blocks.TextBlock(required=False, default="Steps are numbered automatically, in this order.")
@@ -142,7 +142,7 @@ class StepsBlock(blocks.StructBlock):
         group = "Content"
 
 
-class QuoteBlock(blocks.StructBlock):
+class QuoteBlock(SectionBlock):
     quote = blocks.TextBlock(default="A single strong quote stands out on a page. Use a "
                                      "customer's words, a founder's belief or a key statistic.")
     author = blocks.CharBlock(required=False, default="Person's name")

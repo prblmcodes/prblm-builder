@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 from wagtail import blocks
 from wagtail.images.blocks import ImageChooserBlock
 
-from .base import AnchorBlock, BackgroundBlock, LinkBlock
+from .base import AnchorBlock, BackgroundBlock, LinkBlock, SectionBlock
 
 T = "prblm_builder/blocks/"
 
@@ -45,7 +45,7 @@ class GalleryImageBlock(blocks.StructBlock):
     caption = blocks.CharBlock(required=False)
 
 
-class GalleryBlock(blocks.StructBlock):
+class GalleryBlock(SectionBlock):
     heading = blocks.CharBlock(required=False, default="A gallery of images")
     intro = blocks.TextBlock(required=False, default="Add photos in the Content tab. Captions are optional.")
     columns = blocks.ChoiceBlock(choices=[("2", "2"), ("3", "3"), ("4", "4")], default="3")
@@ -64,7 +64,7 @@ class GalleryBlock(blocks.StructBlock):
         group = "Media & people"
 
 
-class VideoBlock(blocks.StructBlock):
+class VideoBlock(SectionBlock):
     heading = blocks.CharBlock(required=False, default="A video worth watching")
     url = VideoURLBlock(required=False, label="Video link",
                         help_text="A YouTube or Vimeo link, e.g. https://www.youtube.com/watch?v=…")
@@ -89,7 +89,7 @@ class MemberBlock(blocks.StructBlock):
     link = LinkBlock(help_text="Optional, e.g. their LinkedIn profile.")
 
 
-class TeamBlock(blocks.StructBlock):
+class TeamBlock(SectionBlock):
     eyebrow = blocks.CharBlock(required=False, default="Our team")
     heading = blocks.CharBlock(default="The people behind the work")
     intro = blocks.TextBlock(required=False, default="Faces build trust. Add a photo, name and role for each person.")

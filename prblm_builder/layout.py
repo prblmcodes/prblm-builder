@@ -28,10 +28,50 @@ def new_block_value(block, name):
     return block.get_prep_value(previews.demo_value(block, name))
 
 
+class SettingsError(ValueError):
+    """Section settings from the Layout tab that don't validate (e.g. a bad anchor ID)."""
+
+    def __init__(self, messages):
+        super().__init__("; ".join(messages))
+        self.messages = messages
+
+
+def apply_settings(block, item, settings, errors, label):
+    """Write Layout-tab section settings (only the changed ones) into a raw section
+    ``item`` — validated by each field's own block."""
+    from django.core.exceptions import ValidationError
+
+    from .mixins import builder_setting_names
+    allowed = set(builder_setting_names(block))
+    if not settings or not allowed or not isinstance(item.get("value"), dict):
+        return item
+    item = dict(item)
+    value = dict(item["value"])
+    for name, raw in settings.items():
+        if name not in allowed:
+            continue
+        child = block.child_blocks[name]
+        try:
+            cleaned = child.clean(child.to_python(raw))
+        except ValidationError as exc:
+            errors.append(f"{label} — {child.label or name}: {' '.join(exc.messages)}")
+            continue
+        value[name] = child.get_prep_value(cleaned)
+    item["value"] = value
+    return item
+
+
 def reconcile(stream_block, current_raw, layout, initial_ids=None):
     raw_by_id = {str(d.get("id")): d for d in current_raw if d.get("id")}
     initial = {str(i) for i in (initial_ids or [])}
-    result, used = [], set()
+    result, used, errors = [], set(), []
+
+    def add(item, block, layout_item, t):
+        settings = layout_item.get("settings")
+        if settings:
+            from .registry import block_label
+            item = apply_settings(block, item, settings, errors, block_label(t, block))
+        result.append(item)
 
     for item in layout:
         t = item.get("type")
@@ -45,13 +85,13 @@ def reconcile(stream_block, current_raw, layout, initial_ids=None):
         if copy_from and str(copy_from) in raw_by_id:
             src = dict(raw_by_id[str(copy_from)])
             src["id"] = sid
-            result.append(src)
+            add(src, block, item, t)
             continue
 
         # An existing section still present in the content → keep it verbatim.
         existing = raw_by_id.get(sid)
         if existing and existing.get("type") == t:
-            result.append(existing)
+            add(existing, block, item, t)
             used.add(sid)
             continue
 
@@ -60,7 +100,7 @@ def reconcile(stream_block, current_raw, layout, initial_ids=None):
         # content was deleted elsewhere, so it falls through here only when flagged
         # new; an unflagged vanished id is simply dropped.
         if item.get("new") or copy_from:
-            result.append({"type": t, "value": new_block_value(block, t), "id": sid})
+            add({"type": t, "value": new_block_value(block, t), "id": sid}, block, item, t)
 
     # Sections added in the normal editor that the Layout tab never knew about are
     # kept (appended after the arranged ones). Ones the Layout tab *did* know and
@@ -70,4 +110,6 @@ def reconcile(stream_block, current_raw, layout, initial_ids=None):
         if did and did not in used and did not in initial:
             result.append(d)
 
+    if errors:
+        raise SettingsError(errors)
     return result

@@ -7,6 +7,8 @@ from wagtail.models import Page
 
 from prblm_builder.blocks import builder_blocks
 
+from .blocks import SettingsBannerBlock
+
 
 class LinkBlock(blocks.StructBlock):
     """A reusable link fragment — used inside other blocks and in the footer snippet,
@@ -41,6 +43,7 @@ class StandardPage(Page):
             template="testapp/blocks/promo.html",
             preview_value={"title": "Preview promo title", "text": "From preview_value"},
             description="A promo band with a title and text.")),
+        ("banner", SettingsBannerBlock()),
     ], blank=True)
 
     content_panels = Page.content_panels + [FieldPanel("body")]

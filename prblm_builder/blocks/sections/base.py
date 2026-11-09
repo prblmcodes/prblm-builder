@@ -14,6 +14,8 @@ from wagtail.blocks.struct_block import StructBlockAdapter, StructBlockValidatio
 from wagtail.documents.blocks import DocumentChooserBlock
 from wagtail.admin.telepath import register
 
+from prblm_builder.mixins import BuilderSettingsMixin
+
 from .. import icons
 
 
@@ -181,9 +183,11 @@ class SocialChoiceBlock(blocks.ChoiceBlock):
         super().__init__(**kwargs)
 
 
-class SectionBlock(blocks.StructBlock):
-    """Base for full-width sections. Subclasses add their fields, then end with
-    ``background = BackgroundBlock()`` and ``anchor_id = AnchorBlock()``."""
+class SectionBlock(BuilderSettingsMixin, blocks.StructBlock):
+    """Base for the built-in sections. Their ``background`` and ``anchor_id`` are layout
+    settings: edited from the ⚙ button in the Layout tab, and kept in Wagtail's collapsed
+    settings area in the Content tab."""
 
     class Meta:
         group = "Built-in"
+        builder_settings = ["background", "anchor_id"]

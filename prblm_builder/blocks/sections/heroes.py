@@ -2,12 +2,12 @@
 from wagtail import blocks
 from wagtail.images.blocks import ImageChooserBlock
 
-from .base import AnchorBlock, BackgroundBlock, LinkBlock, link
+from .base import AnchorBlock, BackgroundBlock, LinkBlock, link, SectionBlock
 
 T = "prblm_builder/blocks/"
 
 
-class HeroBlock(blocks.StructBlock):
+class HeroBlock(SectionBlock):
     eyebrow = blocks.CharBlock(required=False, default="Short label above the headline",
                                help_text="Optional small text above the headline.")
     heading = blocks.CharBlock(default="Your main headline — say what you do in a few words")
@@ -34,7 +34,7 @@ class HeroBlock(blocks.StructBlock):
         group = "Page openers"
 
 
-class PageBannerBlock(blocks.StructBlock):
+class PageBannerBlock(SectionBlock):
     heading = blocks.CharBlock(default="Page title")
     intro = blocks.TextBlock(
         required=False,

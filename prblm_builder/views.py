@@ -49,8 +49,46 @@ def _sections(page, field_name):
             # Still holds the demo content it was seeded with → "Not edited yet" badge.
             "unedited": previews.is_unedited(child.block, child.block_type,
                                              raw_by_id.get(str(child.id)), page.pk, child.id),
+            # Current ⚙ settings (Meta.builder_settings), editable from the canvas.
+            "settings": registry.settings_values(child.block, raw_by_id.get(str(child.id))),
         })
     return out
+
+
+def _settings_schema(stream_block):
+    """``{block type: {"fields": [...], "defaults": {...}}}`` for blocks with ⚙ settings —
+    the popover's form, and the starting values for a newly added section."""
+    out = {}
+    for name, block in stream_block.child_blocks.items():
+        fields = registry.settings_schema(block)
+        if not fields:
+            continue
+        try:
+            start = block.get_prep_value(previews.demo_value(block, name, prefer_real=False))
+        except Exception:
+            start = {}
+        out[name] = {"fields": fields, "defaults": registry.settings_values(block, start)}
+    return out
+
+
+def _apply_settings_preview(block, value, request):
+    """Show unsaved ⚙ settings on the canvas: ``?settings={"background": "dark"}`` is
+    applied to the previewed value (invalid values are simply ignored)."""
+    raw = request.GET.get("settings")
+    if not raw:
+        return value
+    from .mixins import builder_setting_names
+    try:
+        settings = json.loads(raw)
+        allowed = set(builder_setting_names(block))
+        prep = dict(block.get_prep_value(value))
+        for name, v in settings.items():
+            if name in allowed:
+                child = block.child_blocks[name]
+                prep[name] = child.get_prep_value(child.clean(child.to_python(v)))
+        return block.to_python(prep)
+    except Exception:
+        return value
 
 
 def _palette(stream_block):
@@ -145,6 +183,7 @@ def builder(request, page_id):
         "field_name": field_name,
         "sections": _sections(page, field_name),
         "palette": _palette(stream_block),
+        "settings_schema": _settings_schema(stream_block),
         "show_kinds": len(_palette(stream_block)) > 1,
         "preview_url": reverse("prblm_builder:preview"),
         "save_url": reverse("prblm_builder:save", args=[page.id]),
@@ -185,6 +224,7 @@ def builder_new(request):
         "field_name": field_name,
         "sections": [],
         "palette": _palette(stream_block),
+        "settings_schema": _settings_schema(stream_block),
         "show_kinds": len(_palette(stream_block)) > 1,
         "preview_url": reverse("prblm_builder:preview"),
         "save_url": "",
@@ -300,7 +340,8 @@ def preview(request):       # builder frames this from the same origin, so allow
     if section_id and page is not None and stream_block is not None:
         for child in getattr(page, field_name):
             if str(child.id) == section_id:
-                html = _render_block_safe(child.block, child.value, request, page)
+                value = _apply_settings_preview(child.block, child.value, request)
+                html = _render_block_safe(child.block, value, request, page)
                 return HttpResponse(previews.frame(html, request))
 
     block_name = request.GET.get("block")
@@ -314,6 +355,7 @@ def preview(request):       # builder frames this from the same origin, so allow
     # title / header_image / excerpt) render fully instead of an empty band. Long text
     # is trimmed for an elegant demo (display only).
     value, src_page = _demo_value(block_name, block)
+    value = _apply_settings_preview(block, value, request)
     html = _render_block_safe(block, value, request, src_page or page)
     return HttpResponse(previews.frame(html, request))
 
@@ -340,7 +382,10 @@ def save(request, page_id):
     # omitted one was removed by the editor and is dropped.
     current_raw = list(getattr(page, field_name).raw_data)
     initial_ids = [d.get("id") for d in current_raw]
-    new_raw = layout_mod.reconcile(stream_block, current_raw, sections, initial_ids)
+    try:
+        new_raw = layout_mod.reconcile(stream_block, current_raw, sections, initial_ids)
+    except layout_mod.SettingsError as exc:
+        return JsonResponse({"ok": False, "error": "; ".join(exc.messages)}, status=400)
 
     setattr(page, field_name, stream_block.to_python(new_raw))
     revision = page.save_revision(user=request.user)
