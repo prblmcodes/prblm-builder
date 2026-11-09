@@ -92,7 +92,7 @@ Previous plans: `docs/plans/` (v0.3.0 built-in blocks, v0.4.0 feedback round, v0
       (Hero, FAQ list items, link type switch, settings open/closed, narrow window).
 - [x] **Phase 4 — Plugin admin forms** (Theme page) + opt-in for site blocks ("all").
       Browser check.
-- [ ] **Phase 5 — Examples guide**: `docs/EXAMPLES.md` + `tests/examples/` app + tests.
+- [x] **Phase 5 — Examples guide**: `docs/EXAMPLES.md` + `tests/examples/` app + tests.
 - [ ] **Phase 6 — Release**: README (link the examples, new setting, tab order, sync),
       CHANGELOG, history doc, CLAUDE.md, version 0.6.0, upgrade check from 0.5.0, merge +
       tag after the owner tests.
@@ -130,3 +130,6 @@ Previous plans: `docs/plans/` (v0.3.0 built-in blocks, v0.4.0 feedback round, v0
   pickers; with "all", a site block's own fields + settings area use the same layout).
   Finding: in model forms each field panel (`.w-panel__wrapper`) contains its own
   `[data-contentpath]`, so "has nested fields → full width" must only apply to block fields.
+- Phase 5 done (168 tests): `docs/EXAMPLES.md` (9 sections) mirrors `tests/examples/`
+  (ArticlePage, LandingPage, HeadingBlock, ButtonLinkBlock, PromoBlock); `tests/test_examples.py`
+  checks each example (palette, hidden block, preview value, ⚙ settings, template, mixing).

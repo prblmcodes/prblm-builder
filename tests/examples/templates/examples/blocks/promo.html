@@ -1,0 +1,7 @@
+{% load wagtailcore_tags wagtailimages_tags %}
+<section class="promo promo--{{ value.background }}"{% if value.anchor_id %} id="{{ value.anchor_id }}"{% endif %}>
+  <h2>{{ value.title }}</h2>
+  {% if value.text %}<p>{{ value.text }}</p>{% endif %}
+  {% if value.image %}{% image value.image width-800 %}{% endif %}
+  {% include_block value.button %}
+</section>

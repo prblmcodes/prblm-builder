@@ -12,6 +12,7 @@ INSTALLED_APPS = [
     "prblm_builder",
     "prblm_builder.blocks",
     "tests.testapp",
+    "tests.examples",
     "wagtail.contrib.settings",
     "wagtail.users",
     "wagtail.snippets",
