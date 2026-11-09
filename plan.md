@@ -153,3 +153,5 @@ as **one** dropdown each; the two stored fields stay (so no data migration).
      empty text as `""` (default `None`) and adds `data-block-key` to rich text. The
      comparison now ignores both.
 - Phase 6 docs + upgrade test done; 146 tests. Waiting for the owner's test.
+- Owner request while testing: clear tooltips on the section toolbar buttons (were slow,
+  faint browser `title` tooltips) — instant `[data-tip]` tooltips, also on keyboard focus.

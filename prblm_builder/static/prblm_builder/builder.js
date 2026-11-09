@@ -166,15 +166,15 @@
         '<span class="pb-sec-name"></span>' +
         '<span class="pb-sec-ctrls">' +
           // In the Layout tab, content is edited in the Content tab — so no pencil.
-          (EMBED ? '' : '<button data-act="edit" title="Edit this section\'s content">&#9998;</button>') +
-          '<button class="pb-grab" data-act="grab" title="Drag to reorder">&#8942;&#8942;</button>' +
-          '<button data-act="up" title="Move up">&#8593;</button>' +
-          '<button data-act="down" title="Move down">&#8595;</button>' +
-          (sch ? '<button data-act="settings" title="Section settings" aria-haspopup="dialog">&#9881;</button>' : '') +
-          '<button data-act="copy" title="Copy (Ctrl/⌘+C)"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>' +
-          '<button data-act="paste" class="pb-paste" title="Paste below (Ctrl/⌘+V)"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3h6v1M12 10v7M9 14l3 3 3-3"/></svg></button>' +
-          '<button data-act="dup" title="Duplicate">&#10697;</button>' +
-          '<button class="pb-del" data-act="del" title="Remove">&#10005;</button>' +
+          (EMBED ? '' : '<button data-act="edit" aria-label="Edit content" data-tip="Edit this section\'s words and images">&#9998;</button>') +
+          '<button class="pb-grab" data-act="grab" aria-label="Drag to move" data-tip="Drag to move this section">&#8942;&#8942;</button>' +
+          '<button data-act="up" aria-label="Move up" data-tip="Move up">&#8593;</button>' +
+          '<button data-act="down" aria-label="Move down" data-tip="Move down">&#8595;</button>' +
+          (sch ? '<button data-act="settings" aria-haspopup="dialog" aria-label="Section settings" data-tip="Settings (background, anchor ID…)">&#9881;</button>' : '') +
+          '<button data-act="copy" aria-label="Copy section" data-tip="Copy section (Ctrl/⌘+C)"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>' +
+          '<button data-act="paste" class="pb-paste" aria-label="Paste below" data-tip="Paste the copied section below (Ctrl/⌘+V)"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3h6v1M12 10v7M9 14l3 3 3-3"/></svg></button>' +
+          '<button data-act="dup" aria-label="Duplicate" data-tip="Duplicate (adds a copy right below)">&#10697;</button>' +
+          '<button class="pb-del" data-act="del" aria-label="Remove section" data-tip="Remove this section">&#10005;</button>' +
         '</span>' +
       '</div>';
     el.querySelector(".pb-sec-name").textContent = s.label || s.type;
@@ -362,6 +362,37 @@
   document.addEventListener("mousedown", function (e) { if (menu && !menu.contains(e.target)) closeMenu(); });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeMenu(); });
   window.addEventListener("scroll", closeMenu, true);
+
+  /* ---------- tooltips for the section toolbar buttons ---------- */
+  // One tooltip element, shown on hover or keyboard focus of any [data-tip] button and
+  // placed with position:fixed so short sections can't clip it.
+  var tip = document.createElement("div");
+  tip.className = "pb-tip"; tip.setAttribute("role", "tooltip"); tip.hidden = true;
+  document.body.appendChild(tip);
+  var tipFor = null;
+  function showTip(el) {
+    tipFor = el;
+    tip.textContent = el.getAttribute("data-tip");
+    tip.hidden = false;
+    var r = el.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+    var top = r.bottom + 8, below = true;
+    if (top + h > window.innerHeight - 4) { top = r.top - h - 8; below = false; }
+    tip.classList.toggle("pb-tip-above", !below);
+    tip.style.top = top + "px";
+    tip.style.left = Math.max(6, Math.min(window.innerWidth - w - 6, r.left + r.width / 2 - w / 2)) + "px";
+  }
+  function hideTip() { tip.hidden = true; tipFor = null; }
+  document.addEventListener("mouseover", function (e) {
+    var el = e.target.closest && e.target.closest("[data-tip]");
+    if (el && el !== tipFor) showTip(el); else if (!el && tipFor) hideTip();
+  });
+  document.addEventListener("focusin", function (e) {
+    var el = e.target.closest && e.target.closest("[data-tip]");
+    if (el && el.matches(":focus-visible")) showTip(el);
+  });
+  document.addEventListener("focusout", hideTip);
+  document.addEventListener("mousedown", hideTip);
+  window.addEventListener("scroll", hideTip, true);
 
   /* ---------- sidebar tabs (Sections | Page) + page options ---------- */
   var tabBtns = Array.prototype.slice.call(document.querySelectorAll('.pb-tabs [role="tab"]'));

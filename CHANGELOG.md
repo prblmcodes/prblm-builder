@@ -16,6 +16,7 @@
   **`description`** shows in the Block library and sidebar. All built-ins have descriptions.
 - **Simpler links** in built-in blocks: Label → *Link to* (page, web address, section on this
   page, document, email, phone) → only that field. Old links keep working.
+- **Tooltips** on the section toolbar buttons (instant, on hover or keyboard focus).
 - Developers: hooks `prblm_builder_page_options`; model attribute `builder_layout_panels`.
 
 **Fixed**
