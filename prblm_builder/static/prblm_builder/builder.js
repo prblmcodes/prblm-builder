@@ -171,6 +171,8 @@
           '<button data-act="up" title="Move up">&#8593;</button>' +
           '<button data-act="down" title="Move down">&#8595;</button>' +
           (sch ? '<button data-act="settings" title="Section settings" aria-haspopup="dialog">&#9881;</button>' : '') +
+          '<button data-act="copy" title="Copy (Ctrl/⌘+C)"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>' +
+          '<button data-act="paste" class="pb-paste" title="Paste below (Ctrl/⌘+V)"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3h6v1M12 10v7M9 14l3 3 3-3"/></svg></button>' +
           '<button data-act="dup" title="Duplicate">&#10697;</button>' +
           '<button class="pb-del" data-act="del" title="Remove">&#10005;</button>' +
         '</span>' +
@@ -254,35 +256,112 @@
     else if (k === "y") { e.preventDefault(); redo(); }
   });
 
-  /* ---------- controls + select (delegation) ---------- */
-  canvas.addEventListener("click", function (e) {
-    var btn = e.target.closest("button[data-act]");
-    if (btn) {
-      var sec = btn.closest(".pb-sec"), act = btn.dataset.act;
-      if (act === "settings") { openSettings(sec, btn); return; }
-      if (act !== "edit") dirtied = true;   // a real layout change → page is now unsaved
-      if (act === "up" && sec.previousElementSibling && sec.previousElementSibling.classList.contains("pb-sec"))
-        sec.parentNode.insertBefore(sec, sec.previousElementSibling);
-      else if (act === "down" && sec.nextElementSibling) sec.parentNode.insertBefore(sec.nextElementSibling, sec);
-      else if (act === "edit") {
-        if (sec.dataset.unsaved) showToast("Save draft first to edit this new section's content", false);
-        else window.open(CFG.edit + "#block-" + sec.dataset.id, "_blank");
-        return;
-      }
-      else if (act === "del") { sec.remove(); }
-      else if (act === "dup") {
-        var copy = makeSection({ type: sec.dataset.type, label: sec.querySelector(".pb-sec-name").firstChild.textContent,
-          id: uuid(), copyFrom: sec.dataset.copyFrom || sec.dataset.id, unedited: !!sec.dataset.unedited,
-          settings: JSON.parse(sec.dataset.settings || "{}"), changed: JSON.parse(sec.dataset.changed || "[]") });
-        sec.parentNode.insertBefore(copy, sec.nextElementSibling);
-        wirePreview(copy.querySelector(".pb-frame")); select(copy);
-      }
-      refresh();
-      if (act !== "edit") pushHistory();
+  /* ---------- section actions (toolbar, keyboard, right-click menu) ---------- */
+  // Copy & paste work within this page: the pasted section copies the source's saved
+  // content (like Duplicate) plus any settings changed but not yet saved.
+  var CLIP_KEY = "prblm-builder:clip:" + CFG.context;
+  var clip = null;
+  try { clip = JSON.parse(window.sessionStorage.getItem(CLIP_KEY) || "null"); } catch (e) {}
+  function setClip(c) {
+    clip = c;
+    document.body.classList.toggle("pb-has-clip", !!c);
+    try { window.sessionStorage.setItem(CLIP_KEY, JSON.stringify(c)); } catch (e) {}
+  }
+  setClip(clip);
+  function copySection(sec) {
+    var st = sectionState(sec);
+    st.copyFrom = sec.dataset.copyFrom || sec.dataset.id;
+    setClip(st);
+    showToast("Copied “" + st.label + "” — paste it anywhere on this page", true);
+  }
+  function pasteSection(ref, where) {
+    if (!clip) return null;
+    var el = makeSection({ type: clip.type, label: clip.label, id: uuid(), copyFrom: clip.copyFrom,
+                           unedited: clip.unedited, settings: clip.settings, changed: clip.changed });
+    if (!ref) canvas.appendChild(el);
+    else if (where === "above") ref.parentNode.insertBefore(el, ref);
+    else ref.parentNode.insertBefore(el, ref.nextElementSibling);
+    wirePreview(el.querySelector(".pb-frame")); select(el);
+    return el;
+  }
+  function act(sec, name, btn) {
+    if (name === "settings") { openSettings(sec, btn || sec.querySelector('[data-act="settings"]')); return; }
+    if (name === "edit") {
+      if (sec.dataset.unsaved) showToast("Save draft first to edit this new section's content", false);
+      else window.open(CFG.edit + "#block-" + sec.dataset.id, "_blank");
       return;
     }
+    if (name === "copy") { copySection(sec); return; }
+    if (name === "up" && sec.previousElementSibling && sec.previousElementSibling.classList.contains("pb-sec"))
+      sec.parentNode.insertBefore(sec, sec.previousElementSibling);
+    else if (name === "down" && sec.nextElementSibling) sec.parentNode.insertBefore(sec.nextElementSibling, sec);
+    else if (name === "del") { closeSettings(); sec.remove(); }
+    else if (name === "dup") {
+      var copy = makeSection({ type: sec.dataset.type, label: sec.querySelector(".pb-sec-name").firstChild.textContent,
+        id: uuid(), copyFrom: sec.dataset.copyFrom || sec.dataset.id, unedited: !!sec.dataset.unedited,
+        settings: JSON.parse(sec.dataset.settings || "{}"), changed: JSON.parse(sec.dataset.changed || "[]") });
+      sec.parentNode.insertBefore(copy, sec.nextElementSibling);
+      wirePreview(copy.querySelector(".pb-frame")); select(copy);
+    }
+    else if (name === "paste" || name === "paste-below") { if (!pasteSection(sec, "below")) return; }
+    else if (name === "paste-above") { if (!pasteSection(sec, "above")) return; }
+    else return;
+    dirtied = true;   // a real layout change → page is now unsaved
+    refresh();
+    pushHistory();
+  }
+
+  canvas.addEventListener("click", function (e) {
+    var btn = e.target.closest("button[data-act]");
+    if (btn) { act(btn.closest(".pb-sec"), btn.dataset.act, btn); return; }
     select(e.target.closest(".pb-sec"));  // click a section (or empty) to (de)select
   });
+
+  // Ctrl/⌘+C / Ctrl/⌘+V on the selected section (not while typing or selecting text).
+  document.addEventListener("keydown", function (e) {
+    if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey) return;
+    var tag = (document.activeElement && document.activeElement.tagName) || "";
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+    var k = (e.key || "").toLowerCase(), sel = canvas.querySelector(".pb-sec.pb-selected");
+    if (k === "c" && sel && !String(window.getSelection() || "")) { e.preventDefault(); act(sel, "copy"); }
+    else if (k === "v" && clip) {
+      e.preventDefault();
+      if (sel) act(sel, "paste-below");
+      else { pasteSection(null); dirtied = true; refresh(); pushHistory(); }
+    }
+  });
+
+  // Right-click menu on a section.
+  var menu = null;
+  function closeMenu() { if (menu) { menu.remove(); menu = null; } }
+  canvas.addEventListener("contextmenu", function (e) {
+    var sec = e.target.closest(".pb-sec");
+    if (!sec) return;
+    e.preventDefault();
+    closeMenu(); closeSettings(); select(sec);
+    var items = [["copy", "Copy"], ["paste-above", "Paste above", !clip], ["paste-below", "Paste below", !clip],
+                 null, ["dup", "Duplicate"]];
+    if (SCHEMA[sec.dataset.type]) items.push(["settings", "Settings…"]);
+    items.push(null, ["up", "Move up", !sec.previousElementSibling || !sec.previousElementSibling.classList.contains("pb-sec")],
+               ["down", "Move down", !sec.nextElementSibling || !sec.nextElementSibling.classList.contains("pb-sec")],
+               null, ["del", "Delete", false, true]);
+    menu = document.createElement("div");
+    menu.className = "pb-menu"; menu.setAttribute("role", "menu");
+    items.forEach(function (it) {
+      if (!it) { var hr = document.createElement("div"); hr.className = "pb-menu-sep"; menu.appendChild(hr); return; }
+      var b = document.createElement("button"); b.type = "button"; b.setAttribute("role", "menuitem");
+      b.textContent = it[1]; b.disabled = !!it[2]; if (it[3]) b.className = "pb-menu-danger";
+      b.addEventListener("click", function () { closeMenu(); act(sec, it[0]); });
+      menu.appendChild(b);
+    });
+    document.body.appendChild(menu);
+    menu.style.left = Math.min(e.clientX, window.innerWidth - menu.offsetWidth - 6) + "px";
+    menu.style.top = Math.min(e.clientY, window.innerHeight - menu.offsetHeight - 6) + "px";
+    var first = menu.querySelector("button:not([disabled])"); if (first) first.focus();
+  });
+  document.addEventListener("mousedown", function (e) { if (menu && !menu.contains(e.target)) closeMenu(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeMenu(); });
+  window.addEventListener("scroll", closeMenu, true);
 
   /* ---------- ⚙ section settings popover ---------- */
   var SWATCH = { light: "#ffffff", muted: "#f3f4f6", dark: "#0f172a", brand: "#2563eb" };

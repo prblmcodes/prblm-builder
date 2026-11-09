@@ -102,7 +102,7 @@ as **one** dropdown each; the two stored fields stay (so no data migration).
       migration check. Tests + browser check of the show/hide.
 - [x] **Phase 3 — Section settings**: `builder_settings`, collapsed settings area in the Content
       tab, schema, ⚙ popover, live preview, save + validation. Tests + browser check.
-- [ ] **Phase 4 — Copy / paste + right-click menu** (same page). Browser check.
+- [x] **Phase 4 — Copy / paste + right-click menu** (same page). Browser check.
 - [ ] **Phase 5 — Sidebar tabs + header/footer dropdowns** (page-options hook). Tests +
       browser check.
 - [ ] **Phase 6 — Release**: README (settings, `builder_settings`, preview values, links,
@@ -131,3 +131,6 @@ as **one** dropdown each; the two stored fields stay (so no data migration).
   don't); (3) **Wagtail 8.1 auto-saves drafts** (`WAGTAIL_AUTOSAVE_INTERVAL`, default 500 ms)
   when the form changes — Layout-tab changes trigger it too, and reconcile handles repeated
   saves correctly.
+- Phase 4 done (136 tests; browser-checked: Copy in the toolbar → Paste button appears;
+  right-click → Paste below; Ctrl+C / Ctrl+V; undo; saved copies keep content + settings
+  with unique ids). Toolbar actions, shortcuts and the menu share one `act()` function.

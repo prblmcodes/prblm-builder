@@ -207,3 +207,21 @@ class SectionSettingsTests(TestCase):
         js = open(finders.find("prblm_builder/builder.js")).read()
         self.assertIn('data-act="settings"', js)
         self.assertIn("&settings=", js)
+
+
+class CopyPasteTests(TestCase):
+    def test_pasted_copy_gets_source_content_and_settings(self):
+        current = [{"type": "banner", "id": "b1", "value": {"title": "Original", "tone": "calm", "show_border": False}}]
+        layout = [{"type": "banner", "id": "b1"},
+                  {"type": "banner", "id": "c1", "copy_from": "b1", "settings": {"tone": "loud"}}]
+        out = reconcile(stream(), current, layout, ["b1"])
+        self.assertEqual([d["id"] for d in out], ["b1", "c1"])
+        self.assertEqual(out[1]["value"]["title"], "Original")
+        self.assertEqual(out[1]["value"]["tone"], "loud")
+        self.assertEqual(out[0]["value"]["tone"], "calm")
+
+    def test_builder_js_has_copy_paste_and_menu(self):
+        from django.contrib.staticfiles import finders
+        js = open(finders.find("prblm_builder/builder.js")).read()
+        for needle in ('data-act="copy"', '"paste-above"', "contextmenu", "prblm-builder:clip:"):
+            self.assertIn(needle, js)
