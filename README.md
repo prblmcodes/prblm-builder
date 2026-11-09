@@ -23,6 +23,8 @@ reusable **Headers & Footers** — fully self-contained, nothing extra to instal
 - [Settings reference](#settings-reference)
 - [Which blocks show up](#which-blocks-show-up)
   - [Hiding a block](#hiding-a-block)
+- [Section settings (⚙)](#section-settings-)
+- [Block previews and descriptions](#block-previews-and-descriptions)
 - [How it works](#how-it-works)
 - [Project structure](#project-structure)
 - [Development](#development)
@@ -44,17 +46,17 @@ Install from a GitHub release tag:
 
 ```bash
 # public repo
-pip install "prblm-builder @ git+https://github.com/prblmcodes/prblm-builder.git@v0.4.1"
+pip install "prblm-builder @ git+https://github.com/prblmcodes/prblm-builder.git@v0.5.0"
 
 # private repo (uses your GitHub SSH key)
-pip install "prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@v0.4.1"
+pip install "prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@v0.5.0"
 ```
 
-Or put the same `prblm-builder @ git+…@v0.4.1` line in `requirements.txt`. You can also
+Or put the same `prblm-builder @ git+…@v0.5.0` line in `requirements.txt`. You can also
 download the wheel attached to a GitHub release and
-`pip install prblm_builder-0.4.1-py3-none-any.whl`.
+`pip install prblm_builder-0.5.0-py3-none-any.whl`.
 
-To upgrade later, change the tag (e.g. `@v0.4.0` → `@v0.5.0`) and reinstall. See
+To upgrade later, change the tag (e.g. `@v0.5.0` → `@v0.6.0`) and reinstall. See
 [CHANGELOG.md](CHANGELOG.md) for what changed in each version.
 
 ## Quick setup
@@ -103,6 +105,15 @@ To upgrade later, change the tag (e.g. `@v0.4.0` → `@v0.5.0`) and reinstall. S
   it fills in **"Untitled page 23"** (rename it later) and saves. If a save fails (e.g. a
   required field is empty), your arrangement is kept.
 - **New page:** the Layout tab works before the first save — arrange, then save.
+- **Section settings (⚙):** sections with settings (e.g. background, anchor ID) have a ⚙
+  button in their toolbar. It opens a small panel; the canvas updates as you change
+  things, and the change saves with the page. See [Section settings](#section-settings-).
+- **Copy & paste:** copy a section from its toolbar (or select it and press Ctrl/⌘+C), then
+  use **Paste** on any section (or Ctrl/⌘+V) to paste it below — within the same page.
+  **Right-click** a section for Copy, Paste above/below, Duplicate, Settings, Move and
+  Delete. The ⧉ button still duplicates in one click.
+- **Page tab:** on page types that have page-level options (the built-in **Builder page**:
+  its header and footer), the Layout sidebar shows **Sections | Page** tabs.
 - **Fold groups:** in the Layout sidebar and the Block library, click the arrow next to a
   group (or *Built-in blocks* / *Your site's blocks*) to fold it. In the Block library,
   folding in the sidebar also hides those previews. Your browser remembers what's folded.
@@ -188,8 +199,12 @@ raises an error listing the available ones.
 
 Every section has a **background** choice (Light, Muted, Dark, Brand colour — all from
 the Theme) and an optional **anchor ID**, so menus and buttons can link to `#pricing`
-etc. Links everywhere accept a page on your site *or* a typed address (`https://…`,
-`/contact/`, `#section`).
+etc.
+
+**Links** (buttons, menus, cards…) have a **Label**, a **Link to** choice and only the field
+that choice needs: **Page on this site**, **Web address** (`https://…` or `/path/`),
+**Section on this page** (an anchor ID like `pricing`), **Document**, **Email address** or
+**Phone number**. Clear the label to hide a link.
 
 | Block | Name | What it's for |
 |---|---|---|
@@ -243,7 +258,7 @@ Which one shows where:
 
 | Where | Header / footer shown |
 |---|---|
-| **Builder page** | Its own choice (in the page's *Header & footer* panel): **Site default**, **Choose one** (a specific header/footer), **My site's own** (your `PRBLM_BUILDER_HEADER_TEMPLATE` / `_FOOTER_TEMPLATE`), or **None**. |
+| **Builder page** | Its own choice, in the **Layout** tab → sidebar **Page** tab (one dropdown each): **Site default**, any header/footer by name, **My site's own** (your `PRBLM_BUILDER_HEADER_TEMPLATE` / `_FOOTER_TEMPLATE`, shown only when set), or **None**. The canvas shows your choice right away. |
 | **Layout canvas of your other page types** | Your `PRBLM_BUILDER_HEADER/FOOTER_TEMPLATE` if set, otherwise the site default, otherwise nothing. |
 | **Your own templates** (optional) | Wherever you add the tags below. |
 
@@ -416,8 +431,60 @@ Blocks that error or show nothing with demo content are listed in a collapsed
 stay available in the Layout palette — hide them with one of the options above if they
 aren't sections.
 
+## Section settings (⚙)
+
+Some fields are about *how* a section looks rather than *what it says* — background,
+anchor ID, a "compact" switch. List them in the block's `Meta.builder_settings` and they
+get a **⚙ button** on the section in the Layout tab, with a small settings panel (choices,
+on/off switches and short text; background choices of light / muted / dark / brand show
+as colour swatches). The built-in blocks already do this for their background and anchor ID.
+
+```python
+from prblm_builder.mixins import BuilderSettingsMixin   # optional, see below
+
+class PromoBlock(BuilderSettingsMixin, blocks.StructBlock):
+    title = blocks.CharBlock()
+    text = blocks.TextBlock()
+    background = blocks.ChoiceBlock(choices=[("light", "Light"), ("dark", "Dark")], default="light")
+    compact = blocks.BooleanBlock(required=False)
+
+    class Meta:
+        template = "blocks/promo.html"
+        builder_settings = ["background", "compact"]   # ← shown in the ⚙ panel
+```
+
+- `builder_settings` alone gives you the ⚙ panel. Adding **`BuilderSettingsMixin`** also
+  moves those fields into Wagtail's collapsed **settings** area of the block in the Content
+  tab (Wagtail 8.1 `form_layout`), so editors aren't distracted by them there.
+- Changes save with the page. Only fields you changed in the ⚙ panel are sent; if the
+  same field was also changed in the Content tab, the Layout tab's change wins.
+- Each value is checked by its own field (e.g. an invalid anchor ID) — a bad value shows
+  as a normal error when saving, and your layout is kept.
+- Choosers, rich text and nested blocks aren't shown in the ⚙ panel — edit those in the
+  Content tab.
+
+## Block previews and descriptions
+
+If your blocks use Wagtail's own block-preview options (Wagtail 6.4+), the plugin uses
+them too:
+
+```python
+("promo", PromoBlock(
+    preview_value={"title": "Spring sale", "text": "20% off everything"},
+    description="A coloured band with a title and short text.",
+))
+```
+
+- **`preview_value`** is the first choice for the Block library, the sidebar thumbnails
+  and the starting content of a newly added section (before real site content or
+  generated text).
+- **`description`** shows under the block's name in the Block library and as a tooltip in
+  the Layout sidebar (and is searchable). The built-in blocks have descriptions.
+
 ## How it works
 
+- **Edits the draft.** Like Wagtail's own editor, the Layout tab shows and builds on the
+  page's latest draft (revision), not only what's published.
 - **No block list.** It asks each page model's StreamField which blocks it allows
   (`PRBLM_BUILDER_FIELD_NAMES`, default `body`). Models, templates and static files are
   found the normal Django/Wagtail way, so no paths need configuring.
@@ -449,6 +516,7 @@ prblm_builder/                  the installable Django app
   wagtail_hooks.py              admin URLs + the "Page builder" sidebar section
   settings.py                   reads every PRBLM_BUILDER_* setting (with defaults)
   checks.py                     startup warnings (e.g. removed settings)
+  mixins.py                     BuilderSettingsMixin (⚙ settings → Wagtail's settings area)
   chrome.py                     header/footer around the canvas (template setting / hooks)
   templates/prblm_builder/      builder.html (canvas), layout_panel.html (tab), demo.html (library)
   static/prblm_builder/         builder.js, builder.css, fold.js, vendor/sortable.min.js
@@ -464,7 +532,7 @@ prblm_builder/                  the installable Django app
     icons.py                    the built-in line icons
     templatetags/prblm_blocks.py  prblm_assets, prblm_header/footer, pbk_icon, pbk_image
     templates/prblm_builder/blocks/  one template per block + builder_page.html
-    static/prblm_builder/blocks/     blocks.css, blocks.js
+    static/prblm_builder/blocks/     blocks.css, blocks.js, link-block.js (link type switch)
     wagtail_hooks.py            Theme / Headers / Footers menu items, canvas header/footer
 tests/                          test project for this repo (not shipped)
   settings.py, urls.py          minimal Wagtail settings
@@ -472,6 +540,7 @@ tests/                          test project for this repo (not shipped)
   test_options.py               settings and Block library rules
   test_blocks*.py, test_site_chrome.py, test_builder_page.py   built-in blocks
   test_save_flow.py, test_page_options.py   save banner, folding, page placement, extra blocks
+  test_v05.py                   preview values, links, ⚙ settings, copy/paste, Page tab, drafts
 runtests.py                     runs all tests against tests/
 .github/workflows/test.yml      CI: tests on Python 3.12–3.14 + wheel build check
 docs/DEVELOPMENT_HISTORY.md     architecture, design decisions, bugs + lessons, roadmap
@@ -500,6 +569,17 @@ Releasing: bump `version` in `pyproject.toml`, add a `CHANGELOG.md` entry, commi
 from the tag (attach the wheel from `python -m build`).
 
 ## Upgrading
+
+**0.4 → 0.5**
+- Run `python manage.py migrate` (migration `0003_link_types` only updates the built-in
+  blocks' stored definitions — no content changes).
+- If you use `builder_blocks()` in your own page models, run `python manage.py
+  makemigrations` once: it records the new link fields as an "Alter field" (no data change).
+- Existing links keep working: their link type is worked out from what they contain.
+- Builder pages: the header/footer choice moved from the Content tab to the Layout
+  sidebar's **Page** tab.
+- Sections added with 0.4's example content may lose their "Not edited yet" badge (the
+  example links changed shape). Nothing else changes.
 
 **0.3 → 0.4**
 - Run `python manage.py migrate`. Your 0.3 **Header & footer** content moves
@@ -542,6 +622,10 @@ from the tag (attach the wheel from `python -m build`).
 | New sections don't appear in the Content tab | Save the page first (use **Save draft now** in the banner) — the Content tab only shows saved sections. |
 | `ImproperlyConfigured: PRBLM_BUILDER_PAGE_EXTRA_BLOCKS …` | A block path can't be imported, an entry isn't a `("name", "path")` pair, or a name clashes with a built-in block. The message says which. |
 | A "Snippets" menu appeared | Headers and Footers are stored as snippets; Wagtail lists them there too. |
+| No ⚙ button on my block's sections | List the fields in the block's `Meta.builder_settings` (only choice, on/off and short-text fields are shown). |
+| My block's settings still show in the Content tab | Add `BuilderSettingsMixin` to the block to move them into Wagtail's collapsed settings area. |
+| Paste is greyed out | Copy a section first — copy & paste work within the same page. |
+| `makemigrations` wants to alter my page's `body` after upgrading to 0.5 | Expected if you use `builder_blocks()`: the built-in link fields changed. Run it; no data changes. |
 | Warning `prblm_builder.W001` | Remove `PRBLM_BUILDER_SEED_NEW_BLOCKS` from your settings. |
 
 ## License

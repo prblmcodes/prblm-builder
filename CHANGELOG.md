@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.5.0 — unreleased
+
+**Added**
+- **Section settings (⚙):** fields listed in a block's `Meta.builder_settings` get a ⚙ button
+  on the section in the Layout tab — a small panel (choices, colour swatches for
+  backgrounds, on/off, short text); the canvas updates live; saved with the page.
+  `prblm_builder.mixins.BuilderSettingsMixin` moves those fields into Wagtail's collapsed
+  settings area in the Content tab. Built-in blocks use it for background + anchor ID.
+- **Copy & paste** sections within a page (toolbar, Ctrl/⌘+C / V) and a **right-click menu**
+  (Copy, Paste above/below, Duplicate, Settings, Move, Delete).
+- **Page tab** in the Layout sidebar (Sections | Page). Builder pages choose their header
+  and footer there — one dropdown each — instead of four fields in the Content tab.
+- Wagtail block **`preview_value`** is used first for previews and new sections;
+  **`description`** shows in the Block library and sidebar. All built-ins have descriptions.
+- **Simpler links** in built-in blocks: Label → *Link to* (page, web address, section on this
+  page, document, email, phone) → only that field. Old links keep working.
+- Developers: hooks `prblm_builder_page_options`; model attribute `builder_layout_panels`.
+
+**Fixed**
+- The Layout tab showed the **published** page instead of the **latest draft**; it now works
+  on the draft (canvas, previews, header/footer, standalone save), like Wagtail's editor.
+- "Not edited yet" disappeared after the first normal save (Wagtail stores empty text as
+  `""` and adds `data-block-key` to rich text) — now ignored.
+- The "Wider preview" button covered the first section's toolbar; it's now bottom-right.
+
+**Upgrade notes**
+- `migrate` (built-in block definitions only). Projects using `builder_blocks()` should run
+  `makemigrations` once (an "Alter field", no data change).
+
 ## 0.4.1 — 2026-11-09
 
 **Fixed**

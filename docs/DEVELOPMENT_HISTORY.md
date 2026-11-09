@@ -239,6 +239,19 @@ of the code only calls these (never `django.conf.settings` directly). See §6.
     raw (seed `form.initial` from a fresh instance); reset `_clean_subpage_models` to `None`,
     never delete it; browser-test JS flows with Playwright + system Chrome
     (`channel="chrome"`) against a throwaway dev server.
+12. **0.5 (plan in `plan.md`)** — easier editing in the Layout tab: Wagtail `preview_value` /
+    `description`; built-in links with a *Link to* switch (telepath `StructBlockDefinition`
+    subclass, `link-block.js`); ⚙ section settings (`Meta.builder_settings`, core
+    `BuilderSettingsMixin` → Wagtail 8.1 `form_layout` settings area; popover; `?settings=`
+    preview override; only changed keys sent; validated per field in `reconcile`);
+    same-page copy/paste + right-click menu; sidebar Sections | Page tabs
+    (`prblm_builder_page_options` hook, `builder_layout_panels` hidden fields). Bugs found:
+    the Layout tab used the **published row, not the latest draft** (the long-open question —
+    fixed with `get_latest_revision_as_object()` everywhere); "Not edited yet" broke after a
+    form save (`""` vs `None`, `data-block-key`). Lessons: block **default values are part
+    of the migration description** (changing defaults needs a migration, unlike adding child
+    fields to a StructBlock subclass); Wagtail 8.1 **auto-saves drafts** on form changes —
+    Layout changes trigger it; hide a StructBlock child via its `data-contentpath` element.
 
 ---
 
@@ -339,6 +352,10 @@ previews unstyled.
 | `PRBLM_BUILDER_PAGE_TYPE` | `True` | Built-in "Builder page" creatable (0.3, blocks app only) |
 | `PRBLM_BUILDER_PAGE_PARENTS` | `[]` | Page types allowed to hold Builder pages (0.4) |
 | `PRBLM_BUILDER_PAGE_EXTRA_BLOCKS` | `None` | Site blocks on the Builder page, no migration (0.4) |
+
+Block-level options (not settings): `Meta.builder = False` (hide), `Meta.builder_settings =
+[...]` (⚙ panel, 0.5), Wagtail's `preview_value` / `description` (0.5). Model attribute:
+`builder_layout_panels` (hidden Layout-tab fields for the Page tab, 0.5).
 | `PRBLM_BUILDER_CANVAS_WIDTH` | `1280` | Desktop width sections render at on the canvas (0.2) |
 | `PRBLM_BUILDER_PLACEHOLDER_IMAGES` | `True` | Allow creating placeholder images (0.2) |
 | `PRBLM_BUILDER_ADMIN_TWEAKS` | `True` | Full-width tab + header link (Wagtail internals) (0.2) |
@@ -365,9 +382,8 @@ A block can also opt out itself: `class Meta: builder = False`.
   `tests/testapp`, so it only runs in this repo). `python runtests.py` runs both.
 - "Not edited yet" can miss a section seeded from real site content that has since
   changed (shows as edited); it never flags a section an editor actually changed.
-- The Layout tab reads sections from the page's stored (live) row, not the latest draft
-  revision — unverified whether a page with unpublished draft changes shows stale
-  sections on the canvas. Check when testing in a second project.
+- ~~The Layout tab read the published row instead of the latest draft~~ — confirmed and
+  fixed in 0.5 (it now works on the latest revision, like Wagtail's editor).
 
 ---
 

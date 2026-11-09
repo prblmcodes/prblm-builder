@@ -26,13 +26,14 @@ site content where a block is used, else synthesis).
 - `prblm_builder/views.py` — builder / builder_new / preview / demo / save.
 - `prblm_builder/static/prblm_builder/builder.{js,css}` — the canvas (SortableJS, scaled iframes, undo/redo); `fold.js` — foldable groups.
 - `prblm_builder/chrome.py` — header/footer around the canvas (hooks → template setting → default).
+- `prblm_builder/mixins.py` — `BuilderSettingsMixin` (⚙ settings → Wagtail's settings area).
 - `prblm_builder/settings.py` — one reader per `PRBLM_BUILDER_*` setting (all optional).
   User-facing reference: README "Settings reference"; dev table: history doc §6.
 - `prblm_builder/blocks/` — **optional** app with the 21 built-in blocks (`sections/`), Theme
   + Headers/Footers (snippets) + Builder page (`models.py`, `fields.py`), `{% prblm_assets %}` etc.
   (`templatetags/prblm_blocks.py`), self-contained `blocks.css`/`blocks.js`. The core must
   never import it; it plugs in via hooks (`register_prblm_builder_menu_item`,
-  `prblm_builder_chrome`, `prblm_builder_chrome_for_page`).
+  `prblm_builder_chrome`, `prblm_builder_chrome_for_page`, `prblm_builder_page_options`).
 - `tests/` + `runtests.py` — the bundled test project (not shipped); CI in `.github/workflows/`.
 
 ## Conventions / gotchas (learned the hard way)
@@ -47,8 +48,6 @@ site content where a block is used, else synthesis).
 - Some full-width / header-link / preview-coexist features depend on **Wagtail admin
   classes** and degrade gracefully — they're the first things to check on a new Wagtail
   version (switchable via `PRBLM_BUILDER_ADMIN_TWEAKS`).
-- **Empty block values:** `block.get_default()` is `None` for text blocks and renders as
-  "None" — use `layout.empty_value()`.
 - **Adding a setting:** reader in `settings.py`, row in README "Settings reference" + history
   doc §6, CHANGELOG entry, a test in `tests/test_options.py`.
 - **Built-in blocks are a promise:** block names, field names and class *module paths*
@@ -57,7 +56,11 @@ site content where a block is used, else synthesis).
   `python runtests.py makemigrations prblm_builder_blocks` (BuilderPage records them).
 - **Wagtail quirks:** `ChoiceBlock` ignores `Meta.default` (set it in `__init__`); admin
   menus are built once (use `is_shown()` for setting-dependent items); list items get a
-  fresh random `id` on every save (strip ids before comparing content).
+  fresh random `id` on every save, empty text becomes `""` and rich text gains
+  `data-block-key` (compare content via `previews._canon`); block **defaults** are part of
+  the migration description; Wagtail 8.1 **auto-saves drafts** on form changes.
+- **Always work on the draft:** load pages for the builder with `views._editing_page`
+  (latest revision), never the published row.
 - **Check CSS / JS in a real browser** — screenshot blocks with headless Chrome, and drive
   admin flows with Playwright (`channel="chrome"`) against a throwaway dev server (see the
   history doc); Django tests can't run the JS or see layout.
@@ -66,10 +69,10 @@ site content where a block is used, else synthesis).
 `python runtests.py` runs `prblm_builder/tests/` against the bundled test project in
 `tests/` (settings + `tests.testapp.StandardPage` with a `body` StreamField). CI
 (`.github/workflows/test.yml`) runs it on Python 3.12–3.14 and checks the wheel builds.
-Target stack: **Wagtail 8.1+ (<9), Django 6.1+, Python 3.12+** (latest stable as of v0.3.0).
+Target stack: **Wagtail 8.1+ (<9), Django 6.1+, Python 3.12+** (latest stable as of v0.5.0).
 
 ## Current state
-Latest release **v0.4.1**. Next: **v0.5.0** planned on `feature/v0.5.0` — see `plan.md` (older plans in `docs/plans/`). Install in another project
+Latest release **v0.4.1**; **v0.5.0** ready on `feature/v0.5.0` — see `plan.md` (older plans in `docs/plans/`). Install in another project
 with `pip install "prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@<tag or branch>"`.
 Tests: `prblm_builder/tests/` (generic, shipped) + `tests/test_options.py` (needs the
 edge-case blocks in `tests/testapp`).

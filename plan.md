@@ -105,9 +105,15 @@ as **one** dropdown each; the two stored fields stay (so no data migration).
 - [x] **Phase 4 — Copy / paste + right-click menu** (same page). Browser check.
 - [x] **Phase 5 — Sidebar tabs + header/footer dropdowns** (page-options hook). Tests +
       browser check.
-- [ ] **Phase 6 — Release**: README (settings, `builder_settings`, preview values, links,
-      copy/paste), CHANGELOG, history doc, CLAUDE.md, version 0.5.0, upgrade test from 0.4.1,
-      merge + tag.
+- [ ] **Phase 6 — Release**
+  - [x] README (⚙ settings + `BuilderSettingsMixin`, preview values, links, copy/paste, Page
+        tab, upgrading 0.4 → 0.5, troubleshooting), CHANGELOG, history doc, CLAUDE.md,
+        version 0.5.0, CI wheel checks
+  - [x] Upgrade test: fresh site on 0.4.1 (Builder page with a chosen header + a page model
+        using `builder_blocks()`) → 0.5.0 wheel → `migrate` + one `makemigrations` (Alter
+        field) → old links work, Page tab pre-selects the header, admin pages load
+  - [ ] Owner tests in a real project
+  - [ ] Merge to `main`, tag `v0.5.0`
 
 ## 4. Progress log
 
@@ -146,3 +152,4 @@ as **one** dropdown each; the two stored fields stay (so no data migration).
   2. **"Not edited yet" disappeared after the first normal save**: Wagtail's form stores
      empty text as `""` (default `None`) and adds `data-block-key` to rich text. The
      comparison now ignores both.
+- Phase 6 docs + upgrade test done; 146 tests. Waiting for the owner's test.
