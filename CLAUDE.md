@@ -13,8 +13,8 @@ Adds a **Layout** tab to the Wagtail page editor to compose a page by dragging t
 own StreamField blocks onto a canvas. It discovers blocks by introspection, auto-attaches
 to every block-based page model (from `apps.ready()`), and the arrangement **rides along
 with the page's own Save/Publish** (hidden form fields → `LayoutBuilderForm.clean` →
-`layout.reconcile`). Ships a Block library (demo page) with realistic demo content (real
-site content where a block is used, else synthesis).
+`layout.reconcile`). Ships a Block library (demo page) with demo content chosen field by
+field (preview_value → real site content of the same block → default → neutral generated).
 
 ## Where things live
 - `prblm_builder/integration.py` + `panels.py` — auto-attaches the Layout tab + save form.
@@ -22,9 +22,10 @@ site content where a block is used, else synthesis).
   values (always demo content; "Not edited yet" detection lives in `previews.is_unedited`).
 - `prblm_builder/registry.py` — finds models/blocks; palette + Block library lists; hiding
   rules (`Meta: builder = False`, `PRBLM_BUILDER_EXCLUDE_BLOCKS`).
-- `prblm_builder/previews.py` — demo content engine (real-instance → synth → trim) + iframe frame.
+- `prblm_builder/demo.py` — demo content, field by field (preview_value → real → default → generated, then `clean()`); `models.py` `SeededSection` records the plugin's own demo sections.
+- `prblm_builder/previews.py` — iframe frame (+ preview template, asset tags), trimming, "Not edited yet"; `sites.py` — per-site preview settings.
 - `prblm_builder/views.py` — builder / builder_new / preview / demo / save.
-- `prblm_builder/static/prblm_builder/builder.{js,css}` — the canvas (SortableJS, scaled iframes, undo/redo); `fold.js` — foldable groups.
+- `prblm_builder/static/prblm_builder/builder.{js,css}` — the canvas (SortableJS, scaled iframes, undo/redo); `frames.js` — measuring preview frames (shared with the Block library); `fold.js` — foldable groups.
 - `prblm_builder/static/prblm_builder/form-columns.{js,css}` — two-column block forms
   (CSS does the layout; JS only marks unpaired fields; built-ins = `pbk-form` class, site
   blocks via `PRBLM_BUILDER_SITE_BLOCK_COLUMNS` + `form-columns-site.css`). Tab sync lives
@@ -76,10 +77,10 @@ site content where a block is used, else synthesis).
 `python runtests.py` runs `prblm_builder/tests/` against the bundled test project in
 `tests/` (settings + `tests.testapp.StandardPage` with a `body` StreamField). CI
 (`.github/workflows/test.yml`) runs it on Python 3.12–3.14 and checks the wheel builds.
-Target stack: **Wagtail 8.1+ (<9), Django 6.1+, Python 3.12+** (latest stable as of v0.6.0).
+Target stack: **Wagtail 8.1+ (<9), Django 6.1+, Python 3.12+** (latest stable as of v0.7.0).
 
 ## Current state
-Latest release **v0.6.0** (plans archived in `docs/plans/v0.6.0.md` + `v0.6.0-fixes.md`). Copy-paste usage examples:
+Latest release **v0.7.0** (plan in `docs/plans/v0.7.0.md`; earlier plans in `docs/plans/`). Copy-paste usage examples:
 `docs/EXAMPLES.md` — its code lives in `tests/examples/` (keep them identical). Install in another project
 with `pip install "prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@<tag or branch>"`.
 Tests: `prblm_builder/tests/` (generic, shipped) + `tests/test_options.py` (needs the

@@ -48,18 +48,21 @@ body.pb-embed.pb-expanded .pb-divider{display:none}
 /* The editor column is too narrow to render sections at their real width (they'd
    fall back to the mobile layout), so in the tab each section/chrome frame renders
    at a fixed DESKTOP width and is scaled to fit — you see the true desktop layout,
-   just smaller. JS sets each frame's width (PRBLM_BUILDER_CANVAS_WIDTH, default 1280) + scale and the host's height. */
-body.pb-embed .pb-sec,
-body.pb-embed .pb-chrome{overflow:hidden}
-body.pb-embed .pb-frame,
-body.pb-embed .pb-chrome-frame{position:absolute;top:0;left:0;transform-origin:top left}
+   just smaller. JS sets each frame's width (PRBLM_BUILDER_CANVAS_WIDTH, default 1280) + scale and the host's height.
+   Frames keep a viewport at least PRBLM_BUILDER_CANVAS_HEIGHT tall (for vh sizes); the
+   host shows only the measured part. */
+.pb-sec,
+.pb-chrome{overflow:hidden}
+.pb-frame,
+.pb-chrome-frame{position:absolute;top:0;left:0;transform-origin:top left}
+.pb-chrome.pb-chrome-empty{height:0 !important}
 
 /* While a section's preview loads, show a sized shimmer placeholder (not a bare
    stripe) and fade the frame in once it's rendered. The min-height only applies while
    loading, so a short section isn't padded out once its real height is set. */
 body.pb-embed .pb-frame{transition:opacity .25s ease}
-body.pb-embed .pb-sec-loading{min-height:120px;background:linear-gradient(100deg,#eceef1 30%,#f6f7f9 50%,#eceef1 70%);background-size:200% 100%;animation:pb-shim 1.1s linear infinite}
-body.pb-embed .pb-sec-loading .pb-frame{opacity:0}
+.pb-sec-loading{min-height:120px;background:linear-gradient(100deg,#eceef1 30%,#f6f7f9 50%,#eceef1 70%);background-size:200% 100%;animation:pb-shim 1.1s linear infinite}
+.pb-sec-loading .pb-frame{opacity:0}
 @keyframes pb-shim{0%{background-position:200% 0}100%{background-position:-200% 0}}
 
 /* Expand: hide the palette so the canvas uses the full tab width (a bigger,
@@ -189,6 +192,9 @@ body.pb-preview-mode .pb-exit-preview{display:inline-block;margin-left:12px}
 .pb-pop-label{display:block;font-weight:600;margin-bottom:5px}
 .pb-pop-field select,.pb-pop-field input[type=text]{width:100%;padding:7px 9px;border:1px solid var(--pb-line);border-radius:7px;font:inherit;font-size:13px}
 .pb-pop-field select:focus,.pb-pop-field input[type=text]:focus{outline:2px solid var(--pb-accent);outline-offset:0}
+.pb-pop-error{margin:4px 0 0;color:#b42318;font-size:12px;line-height:1.35}
+.pb-pop-field input[aria-invalid="true"]{border-color:#d92d20}
+.pb-pop-field input[type=number]{width:100%;padding:7px 9px;border:1px solid var(--pb-line);border-radius:7px;font:inherit;font-size:13px}
 .pb-pop-help{margin:4px 0 0;color:var(--pb-mute);font-size:12px;line-height:1.35}
 .pb-pop-check{display:flex;gap:7px;align-items:center;font-weight:600}
 .pb-pop-note{margin:10px 0 0;padding-top:8px;border-top:1px solid var(--pb-line);color:var(--pb-mute);font-size:11.5px}

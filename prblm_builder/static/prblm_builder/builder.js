@@ -4,7 +4,7 @@
   var wrap = document.querySelector(".pb-wrap");
   if (!wrap) return;
   var CFG = {
-    preview: wrap.dataset.previewUrl, save: wrap.dataset.saveUrl,
+    preview: wrap.dataset.previewUrl, save: wrap.dataset.saveUrl, check: wrap.dataset.checkUrl,
     context: wrap.dataset.context, csrf: wrap.dataset.csrf, edit: wrap.dataset.editUrl,
   };
   var canvas = document.getElementById("pb-canvas");   // the .pb-page
@@ -98,77 +98,96 @@
   // Embedded, the editor column is too narrow to render sections at real width, so
   // each frame renders at a fixed DESKTOP width and is scaled down to fit its host.
   var CANVAS_W = parseInt(wrap.dataset.canvasWidth, 10) || 1280;   // PRBLM_BUILDER_CANVAS_WIDTH
-  function scaleFit(frame, isChrome) {
+  // Frames keep a viewport at least this tall, so `vh` sizes (min-h-[70vh], h-screen)
+  // resolve as on a typical screen instead of against a frame sized to its content.
+  var CANVAS_H = parseInt(wrap.dataset.canvasHeight, 10) || 900;   // PRBLM_BUILDER_CANVAS_HEIGHT
+  var measure = window.prblmFrames.measure;   // frames.js
+
+  // Size a section / header / footer frame. Embedded, it renders at the desktop width
+  // and is scaled to fit its host; standalone, at the host's width. The iframe stays at
+  // least CANVAS_H tall (for vh) and is shifted so only the measured part shows.
+  function fitFrame(frame, chrome) {
     try {
       var host = frame.closest(".pb-sec") || frame.closest(".pb-chrome");
       var d = frame.contentDocument;
-      if (!host || !d || !d.body) return;
-      var avail = host.clientWidth || CANVAS_W;
-      var s = avail / CANVAS_W;
-      // For a section use body.scrollHeight (the real content height) — documentElement
-      // .scrollHeight can be inflated by decorative/absolute elements overflowing <html>,
-      // which left empty space at the bottom of the section. Chrome measures its visible
-      // elements only (see chromeHeight).
-      var h = isChrome ? chromeHeight(d)
-                       : (d.body.scrollHeight || d.documentElement.scrollHeight);
-      frame.style.width = CANVAS_W + "px";
-      // Give the iframe its full content height BEFORE scaling — otherwise it keeps the
-      // default 150px and clips everything below that (only the top of the section shows).
-      frame.style.height = h + "px";
-      frame.style.transform = "scale(" + s + ")";
-      host.style.height = Math.round(h * s) + "px";
+      if (!host || !d || !d.body || d.readyState === "loading") return;
+      var s = EMBED ? (host.clientWidth || CANVAS_W) / CANVAS_W : 1;
+      frame.style.width = EMBED ? CANVAS_W + "px" : "100%";
+      var cur = parseFloat(frame.style.height) || 0;
+      if (cur < CANVAS_H) { frame.style.height = CANVAS_H + "px"; cur = CANVAS_H; }
+      var m = measure(d, chrome);
+      if (chrome) {
+        // A header/footer with nothing visible (an empty template / hook) takes no space.
+        var blank = !m.height || (!(d.body.innerText || "").trim() &&
+                                  !d.body.querySelector("img,svg,picture,video,iframe,canvas"));
+        host.classList.toggle("pb-chrome-empty", blank);
+        if (blank) { host.style.height = "0px"; return; }
+      }
+      var want = Math.max(CANVAS_H, m.top + m.height);
+      // Content that grows with the frame (e.g. 100vh + more) would grow forever: allow
+      // only a few enlargements.
+      if (want > cur && (frame._pbGrow = (frame._pbGrow || 0) + 1) > 3) want = cur;
+      if (want !== cur) frame.style.height = want + "px";
+      frame.style.transform = "scale(" + s + ")" + (m.top ? " translateY(" + (-m.top) + "px)" : "");
+      host.style.height = Math.round(m.height * s) + "px";
     } catch (e) {}
   }
-  // Height of a header/footer frame: the bottom of its visible elements. Skips <link> /
-  // <style> / <script> (the built-in headers start with their stylesheet, which measured as
-  // 0 and fell back to the frame's default 150px — a gap under the header) and absolutely
-  // positioned / fixed ones (a hidden mobile-menu panel would inflate the height).
-  function chromeHeight(d) {
-    var bottom = 0;
-    Array.prototype.forEach.call(d.body.children, function (c) {
-      if (/^(LINK|STYLE|SCRIPT|META|NOSCRIPT|TEMPLATE)$/.test(c.tagName)) return;
-      var cs = d.defaultView.getComputedStyle(c);
-      if (cs.display === "none" || cs.position === "absolute" || cs.position === "fixed") return;
-      var r = c.getBoundingClientRect();
-      if (r.height) bottom = Math.max(bottom, r.bottom + (parseFloat(cs.marginBottom) || 0));
-    });
-    return Math.ceil(bottom) || d.body.scrollHeight || d.documentElement.scrollHeight;
-  }
-  function fit(frame) {
-    if (EMBED) return scaleFit(frame, false);
-    try {
-      var d = frame.contentDocument;
-      if (!d || !d.documentElement) return;
-      frame.style.height = "0px";
-      frame.style.height = d.documentElement.scrollHeight + "px";
-    } catch (e) {}
-  }
+  function fit(frame) { fitFrame(frame, false); }
+  function fitChrome(frame) { fitFrame(frame, true); }
   function refitAll() {
     canvas.querySelectorAll(".pb-frame").forEach(function (f) { fit(f); });
     document.querySelectorAll(".pb-chrome-frame").forEach(function (f) { fitChrome(f); });
+  }
+  // Re-fit until the height settles (fonts, late layout), then stop; capped at ~6s.
+  function settle(frame, fn) {
+    clearInterval(frame._pbSettle);
+    var host = frame.closest(".pb-sec") || frame.closest(".pb-chrome") || frame.closest(".pb-thumb");
+    var last = -1, stable = 0, n = 0;
+    fn(frame);
+    frame._pbSettle = setInterval(function () {
+      fn(frame);
+      var h = host ? host.offsetHeight : 0;
+      if (h === last) { if (++stable >= 2) clearInterval(frame._pbSettle); } else { stable = 0; last = h; }
+      if (++n > 24) clearInterval(frame._pbSettle);
+    }, 250);
+  }
+  // Keep a frame fitted after it loaded: size changes of the page, images finishing,
+  // web fonts, and DOM changes (Alpine x-show, carousels, accordions…), throttled.
+  function watchFrame(frame, fn) {
+    var d = frame.contentDocument, win = d && d.defaultView;
+    if (!d || !win) return;
+    var queued = false;
+    function later() {
+      if (queued) return; queued = true;
+      win.requestAnimationFrame(function () { queued = false; fn(frame); });
+    }
+    try {
+      if (window.ResizeObserver) {
+        var ro = new ResizeObserver(later);
+        ro.observe(d.documentElement); if (d.body) ro.observe(d.body);
+        var start = d.querySelector("template[data-prblm-start]");
+        if (start && start.parentElement) ro.observe(start.parentElement);
+      }
+      d.addEventListener("load", later, true);           // images (load doesn't bubble)
+      if (d.fonts && d.fonts.ready) d.fonts.ready.then(later);
+      if (window.MutationObserver && d.body) {
+        new MutationObserver(later).observe(d.body, { childList: true, subtree: true, attributes: true,
+                                                      attributeFilter: ["class", "style", "hidden", "open"] });
+      }
+    } catch (e) {}
   }
   var io = ("IntersectionObserver" in window) ? new IntersectionObserver(function (es) {
     es.forEach(function (e) { if (e.isIntersecting) { var f = e.target; if (!f.src && f.dataset.src) f.src = f.dataset.src; io.unobserve(f); } });
   }, { rootMargin: "600px 0px" }) : null;
 
   function wirePreview(frame) {
+    frame.style.height = CANVAS_H + "px";
     frame.addEventListener("load", function () {
       var host = frame.closest(".pb-sec");
-      fit(frame);
+      frame._pbGrow = 0;
+      settle(frame, fit);
       if (host) host.classList.remove("pb-sec-loading");   // reveal the rendered section
-      // Keep re-fitting until the measured height stabilises (fonts/late layout), then
-      // stop — avoids a section stuck clipped from the top with the wrong height.
-      var last = -1, stable = 0, n = 0;
-      var iv = setInterval(function () {
-        fit(frame);
-        var h = host ? host.offsetHeight : 0;
-        if (h === last) { if (++stable >= 2) clearInterval(iv); } else { stable = 0; last = h; }
-        if (++n > 24) clearInterval(iv);   // ~6s hard cap
-      }, 250);
-      try {
-        var b = frame.contentDocument && frame.contentDocument.body;
-        if (b && window.ResizeObserver) new ResizeObserver(function () { fit(frame); }).observe(b);
-      } catch (e) {}
+      watchFrame(frame, fit);
     });
     if (io) io.observe(frame); else frame.src = frame.dataset.src;
   }
@@ -601,10 +620,37 @@
       var cb = row.querySelector("input"); cb.checked = !!value;
       cb.addEventListener("change", function () { setSetting(sec, f.name, cb.checked); });
     } else {
-      row.innerHTML = label + '<input type="text" id="' + id + '">';
-      var inp = row.querySelector("input"); inp.value = value == null ? "" : value;
+      var num = f.kind === "number";
+      row.innerHTML = label + '<input type="' + (num ? "number" : "text") + '" id="' + id + '">' +
+                      '<p class="pb-pop-error" role="alert" hidden></p>';
+      var inp = row.querySelector("input"), err = row.querySelector(".pb-pop-error");
+      inp.value = value == null ? "" : value;
       if (f.max_length) inp.maxLength = f.max_length;
-      inp.addEventListener("change", function () { setSetting(sec, f.name, inp.value.trim()); });
+      if (num) {
+        if (f.min != null) inp.min = f.min;
+        if (f.max != null) inp.max = f.max;
+        inp.step = f.step || "any";
+      }
+      // Checked with the block's own rules as you type; only a valid value is applied.
+      var lastOk = true, tm = null, seq = 0;
+      function check(then) {
+        var v = inp.value.trim(), mine = ++seq;
+        if (!CFG.check) { lastOk = true; if (then) then(true); return; }
+        var url = CFG.check + "?" + CFG.context + "&block=" + encodeURIComponent(sec.dataset.type) +
+                  "&name=" + encodeURIComponent(f.name) + "&value=" + encodeURIComponent(v);
+        fetch(url, { credentials: "same-origin" }).then(function (r) { return r.json(); }).then(function (d) {
+          if (mine !== seq) return;
+          lastOk = !!d.ok;
+          err.textContent = d.ok ? "" : (d.error || "Enter a valid value.");
+          err.hidden = !!d.ok; inp.setAttribute("aria-invalid", d.ok ? "false" : "true");
+          if (then) then(lastOk);
+        }).catch(function () { if (then) then(true); });
+      }
+      inp.addEventListener("input", function () { clearTimeout(tm); tm = setTimeout(function () { check(); }, 300); });
+      inp.addEventListener("change", function () {
+        clearTimeout(tm);
+        check(function (ok) { if (ok) setSetting(sec, f.name, inp.value.trim()); });
+      });
       inp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); inp.blur(); } });
     }
     if (f.help) {
@@ -640,11 +686,17 @@
   window.addEventListener("resize", placeSettings);
 
   /* ---------- drag/drop ---------- */
+  var dragSig = null;
   new Sortable(canvas, {
     group: { name: "pb", put: true }, animation: 150, handle: ".pb-grab", draggable: ".pb-sec",
     forceFallback: true, fallbackOnBody: true,
-    onStart: function () { canvas.classList.add("pb-drop"); },
-    onEnd: function () { canvas.classList.remove("pb-drop"); dirtied = true; refresh(); pushHistory(); },
+    onStart: function () { canvas.classList.add("pb-drop"); dragSig = structureSig(collect()); },
+    onEnd: function () {
+      canvas.classList.remove("pb-drop");
+      // Dropped back where it was: not a change (no banner, no auto-saved draft).
+      if (structureSig(collect()) === dragSig) return;
+      dirtied = true; refresh(); pushHistory();
+    },
     onAdd: function (evt) {
       var el = evt.item;
       dirtied = true;
@@ -679,15 +731,16 @@
   function fitThumb(f) {
     try {
       var thumb = f.closest(".pb-thumb"), doc = f.contentDocument;
-      if (!thumb || !doc || !doc.documentElement) return;
+      if (!thumb || !doc || !doc.body) return;
       f.style.width = CANVAS_W + "px";
-      var h = doc.documentElement.scrollHeight;
-      f.style.height = h + "px";
+      if ((parseFloat(f.style.height) || 0) < CANVAS_H) f.style.height = CANVAS_H + "px";
+      var m = measure(doc, false);
+      if (m.top + m.height > parseFloat(f.style.height)) f.style.height = (m.top + m.height) + "px";
       var scale = thumb.clientWidth / CANVAS_W;
-      f.style.transform = "scale(" + scale + ")";
+      f.style.transform = "scale(" + scale + ")" + (m.top ? " translateY(" + (-m.top) + "px)" : "");
       // height fits the section's real (scaled) height — narrow sections get short
       // thumbnails — capped so a very tall section can't dominate the list.
-      thumb.style.height = Math.min(240, Math.max(44, Math.round(h * scale))) + "px";
+      thumb.style.height = Math.min(240, Math.max(44, Math.round(m.height * scale))) + "px";
     } catch (e) {}
   }
   document.querySelectorAll(".pb-thumb-frame").forEach(function (f) {
@@ -696,19 +749,9 @@
   });
 
   /* ---------- site header/footer chrome (fixed top/bottom of the page) ---------- */
-  function fitChrome(f) {
-    if (EMBED) return scaleFit(f, true);
-    try {
-      var doc = f.contentDocument;
-      if (!doc || !doc.body) return;
-      // Measure the header/footer ELEMENT, not documentElement.scrollHeight — the
-      // header's hidden mobile-menu panel is absolutely positioned and would
-      // otherwise inflate the height, leaving a big gap below the header.
-      f.style.height = chromeHeight(doc) + "px";
-    } catch (e) {}
-  }
   document.querySelectorAll(".pb-chrome-frame").forEach(function (f) {
-    f.addEventListener("load", function () { fitChrome(f); setTimeout(function () { fitChrome(f); }, 400); });
+    f.style.height = CANVAS_H + "px";
+    f.addEventListener("load", function () { f._pbGrow = 0; settle(f, fitChrome); watchFrame(f, fitChrome); });
     f.src = f.dataset.src;
   });
 
@@ -732,7 +775,10 @@
       deviceBtns.forEach(function (x) { x.classList.remove("active"); });
       b.classList.add("active");
       (canvas.closest(".pb-page") || canvas).setAttribute("data-device", b.dataset.device);
-      setTimeout(function () { document.querySelectorAll(".pb-frame,.pb-chrome-frame").forEach(fit); }, 240);
+      setTimeout(function () {
+        canvas.querySelectorAll(".pb-frame").forEach(function (f) { settle(f, fit); });
+        document.querySelectorAll(".pb-chrome-frame").forEach(function (f) { settle(f, fitChrome); });
+      }, 240);
     });
   });
 

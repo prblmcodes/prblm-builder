@@ -15,7 +15,7 @@
 [data-block-settings] > [data-contentpath]:has(textarea, .Draftail-Editor, [data-draftail-input], [data-streamfield-list-container], [data-streamfield-list-count], [data-streamfield-stream-container], [data-contentpath]),
 .struct-block > .pb-col-full,
 [data-block-settings] > .pb-col-full{grid-column:1 / -1 !important}
-@container (max-width: 559px){
+@container (max-width: 719px){
   .struct-block > *, [data-block-settings] > *{grid-column:1 / -1 !important}
 }
 

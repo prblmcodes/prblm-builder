@@ -163,18 +163,49 @@ def settings_schema(block):
                  "help": str(getattr(child.meta, "help_text", "") or "")}
         if isinstance(child, wb.ChoiceBlock):
             choices = [[str(k), str(v)] for k, v in child.field.choices if k not in ("", None)]
-            field.update(kind="choice", choices=choices, required=bool(child.required),
-                         swatches={k for k, _v in choices} <= BACKGROUND_KEYS)
+            default = child.get_default()
+            # A dropdown with a default doesn't offer an empty "—" choice.
+            field.update(kind="choice", choices=choices, swatches={k for k, _v in choices} <= BACKGROUND_KEYS,
+                         required=bool(child.required) or default not in (None, ""))
         elif isinstance(child, wb.BooleanBlock):
             field.update(kind="boolean")
-        elif isinstance(child, (wb.CharBlock, wb.TextBlock, wb.URLBlock, wb.EmailBlock,
-                                wb.IntegerBlock)):
+        elif isinstance(child, (wb.IntegerBlock, wb.FloatBlock, wb.DecimalBlock)):
+            field.update(kind="number", required=bool(child.required),
+                         min=_number(getattr(child.field, "min_value", None)),
+                         max=_number(getattr(child.field, "max_value", None)),
+                         step="1" if isinstance(child, wb.IntegerBlock) else "any")
+        elif isinstance(child, (wb.CharBlock, wb.TextBlock, wb.URLBlock, wb.EmailBlock)):
             field.update(kind="text", max_length=getattr(child.field, "max_length", None),
                          required=bool(child.required))
         else:
             continue  # choosers, rich text, nested blocks: edit those in the Content tab
         out.append(field)
     return out
+
+
+def _number(value):
+    try:
+        return None if value is None else float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def check_setting(block, name, raw):
+    """``None`` if ``raw`` is a valid value for ⚙ setting ``name`` of ``block``, else the
+    error message (the block's own validation)."""
+    from django.core.exceptions import ValidationError
+
+    from .mixins import builder_setting_names
+    if name not in builder_setting_names(block):
+        return "Unknown setting."
+    child = block.child_blocks[name]
+    try:
+        child.clean(child.to_python(raw))
+    except ValidationError as exc:
+        return " ".join(exc.messages)
+    except (TypeError, ValueError):
+        return "Enter a valid value."
+    return None
 
 
 def settings_values(block, raw_value):
@@ -204,11 +235,17 @@ def palette_sections(stream_block):
 
 def _library_stream_blocks():
     """The StreamBlocks the Block library draws from (``PRBLM_BUILDER_LIBRARY_SCOPE``)."""
+    for _model, _field, stream_block in _library_sources():
+        yield stream_block
+
+
+def _library_sources():
+    """``(model, field_name, stream_block)`` the Block library draws from."""
     if cfg.library_scope() == "all":
         for model in django_apps.get_models():
             for field in model._meta.get_fields():
                 if isinstance(field, StreamField):
-                    yield field.stream_block
+                    yield model, field.name, field.stream_block
         return
     # "builder": exactly what the Layout palettes offer — top-level blocks of the
     # builder-enabled page fields. Blocks only used nested inside others (links,
@@ -218,9 +255,9 @@ def _library_stream_blocks():
     models = sorted(enabled_page_models(),
                     key=lambda m: m.__module__.startswith(BUILTIN_MODULE))
     for model in models:
-        _name, stream_block = stream_block_for(model)
+        name, stream_block = stream_block_for(model)
         if stream_block is not None:
-            yield stream_block
+            yield model, name, stream_block
 
 
 def library_blocks():
@@ -229,15 +266,26 @@ def library_blocks():
     ``hero`` (used on different page types) both appear. The same block used on several
     page types under different names (see ``block_key``) is listed once, under the first
     name found."""
+    return {k: block for k, (block, _origin) in _library_found().items()}
+
+
+def _library_found():
     found, seen = {}, set()
-    for stream_block in _library_stream_blocks():
+    for model, field, stream_block in _library_sources():
         for name, block in stream_block.child_blocks.items():
             key = block_key(name, block)
             if key in seen or not previewable(name, block):
                 continue
             seen.add(key)
-            found.setdefault((name, is_builtin(block)), block)
+            origin = f"{model._meta.app_label} · {model._meta.verbose_name}"
+            found.setdefault((name, is_builtin(block)), (block, origin))
     return found
+
+
+def library_origins():
+    """``{(name, is_builtin): "app · Model"}`` — where each Block library entry comes from
+    (shown with ``PRBLM_BUILDER_LIBRARY_SCOPE = "all"``, where names repeat across apps)."""
+    return {k: origin for k, (_block, origin) in _library_found().items()}
 
 
 def all_blocks():

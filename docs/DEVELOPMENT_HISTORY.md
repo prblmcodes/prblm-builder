@@ -94,32 +94,60 @@ Pure introspection, no site-specific code.
   `?page=` / `?model=` return 404.
 - It's decorated `@xframe_options_sameorigin` because admin responses default to
   `X-Frame-Options: DENY`, which would blank the iframes.
-- `previews.frame()` wraps the block HTML in a minimal document that loads the host's
-  front-end CSS/JS (`PRBLM_BUILDER_PREVIEW_CSS/JS`) and **strips `loading="lazy"`** from
-  images (see bug notes — lazy images never enter a scaled/offscreen frame).
-- `builder.js` renders each section iframe at a **desktop width** (`PRBLM_BUILDER_CANVAS_WIDTH`,
-  default 1280, passed as `data-canvas-width`; palette thumbnails use it too) and scales it
-  to fit the canvas column (`scaleFit`), so the editor column's narrow width doesn't force
-  the mobile layout. It sets the iframe's **own height** and the host's height from
-  `body.scrollHeight`.
+- `previews.frame(html, request, page=None, site=None)` wraps the block HTML in a page:
+  either the site's own **preview template** (`PRBLM_BUILDER_PREVIEW_TEMPLATE` / the site's
+  `template`, section inserted as `{{ prblm_section }}` between
+  `<template data-prblm-start/end>` markers) or a minimal shell with the configured CSS / JS
+  (`css_tags` / `js_tags`: strings or dicts with `defer`, `type`, `integrity`, inline code,
+  import maps) and body class. The shell forces `html,body{height:auto}`. It **strips
+  `loading="lazy"`** (lazy images never enter a scaled/offscreen frame). Static paths are
+  root-relative (`/static/…`): Wagtail's own preview uses a fake request with the Site's
+  host. Which CSS / template applies comes from `sites.config(page, request, site)`
+  (global settings, overridden per Wagtail Site by `PRBLM_BUILDER_PREVIEW_SITES`).
+- `frames.js` (`prblmFrames.measure(doc, chrome)`) measures the visible, in-flow elements
+  of a frame (or those between the markers), margins included; skips `link`/`style`/
+  `script`, hidden and absolutely positioned elements; counts a **fixed** element only for
+  a header/footer at the top of the frame; looks inside zero-size wrappers. Returns
+  `{top, height}`.
+- `builder.js` renders each frame at a **desktop width** (`PRBLM_BUILDER_CANVAS_WIDTH`) and a
+  viewport at least `PRBLM_BUILDER_CANVAS_HEIGHT` tall (so `vh` resolves like a real screen),
+  scales it to the column (`fitFrame`), shifts it by `top` and sets the host's height to the
+  measured part. It re-fits until stable, and on size changes, image loads, web fonts and
+  DOM mutations (throttled). An empty header/footer frame collapses (`pb-chrome-empty`).
+  The Block library uses the same measuring.
 
-### Demo content engine — `previews.py`
-Three layers, best-first:
-1. **Real instance** — `real_instance_for(name, block)` returns the most-filled real
-   instance of a block used anywhere on the site, plus the page it lives on (so hero-style
-   blocks that read page fields render fully). Built once into a cached index
-   (`instance_index`, ~60s), capped at `PRBLM_BUILDER_INDEX_SCAN_LIMIT` pages/model.
-   Keyed by `registry.block_key`: the block's **class** (Wagtail's generic classes fall
-   back to the name), so the same block under two names shares content — and the Block
-   library dedupes by the same key (0.6.0 fixes).
-2. **Synthesis** — `synth_demo(block, name)` = `synth_value` (a deterministic value from
-   the block's structure, realistic copy pools; links fill exactly one destination; URL /
-   phone / anchor fields get valid values; snippet choosers the first snippet) then checked
-   with the block's own `clean()`: failing fields are reset to empty (and, on a second
-   failure, the struct's dropdowns), so third-party blocks always get a saveable value.
-3. **Trim for display** — `trim_for_demo()` shortens long rich-text (~80 words) and long
-   text (~360 chars) for the Block library and palette thumbnails (`&trim=1`). The canvas
-   shows a new section untrimmed — exactly what's saved.
+### Demo content engine — `demo.py` (0.7)
+`demo.build(block, name, real=True) -> (value, page)`, used for new sections
+(`layout.new_block_value`), canvas / thumbnail / library previews and the ⚙ defaults.
+Built-in blocks keep their own explanatory `default`. For every other block, **per field**
+(`_pick`, recursing through Struct / List / Stream blocks):
+1. **`preview_value`** as the developer wrote it (`block.meta.preview_value`, may be partial).
+2. **Real content** — `real_instance(name, block)`: the best-filled instance of the same
+   block (`registry.block_key`: the class path; Wagtail's generic classes fall back to the
+   name) on **live** pages, skipping sections the plugin seeded and nobody changed, and
+   only if it passes `clean()`. Also returns its page (context for blocks reading page
+   fields). The index (`_index`, cached 60s, `PRBLM_BUILDER_INDEX_SCAN_LIMIT` pages/model)
+   also gives `usage(name, block)` for the Block library. Empty fields fall through.
+3. **The field's default** (a `ListBlock`'s made-up default of empty items doesn't count).
+4. **Generated** (`generate`): neutral text from help text (when it's a short name for the
+   field) or label, sized by block type / `max_length`, numbered in lists; images by role
+   (`_image_role`: wide / square / photo) and shape from the library (`_image_catalog`:
+   size, SVG, transparency), else a role-shaped placeholder in the "Builder placeholders"
+   collection; link-like structs (`_link_choice`: a ChoiceBlock whose choices name sibling
+   destination fields) get one type + its value (a live page, else `/`); lists 3 items or
+   `min_num`, ≤ `max_num`; required documents a PDF / any / an example file.
+Then `validated()` runs `clean()`; failing fields fall back (generated → empty → the
+struct's dropdowns reset). `problem()` names the failing field for the Block library.
+
+**Seeded sections.** `layout.reconcile` records each seeded section (and copies of untouched
+ones) in `SeededSection(section_id, value_hash)` — `content_hash` ignores ⚙ settings, ids and
+rich-text keys. `previews.is_unedited` compares against the recorded hash; sections seeded
+before 0.7 fall back to `legacy_unedited` (default / preview value / 0.6's generator, kept in
+`previews.py` only for this).
+
+**Trim for display** — `previews.trim_for_demo()` shortens long rich text (~80 words) and
+text (~360 chars) for the Block library and palette thumbnails (`&trim=1`). The canvas shows
+a new section untrimmed — exactly what's saved.
 
 ### Block library (demo page) — `views.demo` + `demo.html`
 An admin-only page (`/admin/page-builder/demo/`) listing every previewable block grouped,
@@ -129,9 +157,12 @@ is an admin tweak — off with `PRBLM_BUILDER_ADMIN_TWEAKS = False`). Gated by
 `PRBLM_BUILDER_DEMO`.
 
 Since 0.2 the view test-renders each block server-side (`views._preview_problem`); blocks
-that raise or render no text/media (`_is_blank`) are listed in a collapsed
-"Couldn't preview" section with the reason instead of as an empty/red card. They stay in
-the palette.
+that raise, render no text/media (`_is_blank`) or whose demo content fails their own
+validation (0.7) are listed in a collapsed "Couldn't preview" section with the reason
+instead of as an empty/red card. They stay in the palette. Since 0.7 each card shows
+"Used on N pages" (live pages, `demo.usage`) with an All / Used / Not used filter; search
+covers descriptions; with several `PRBLM_BUILDER_PREVIEW_SITES` a site switcher adds
+`&site=<hostname>` to the previews.
 
 ### Admin section — `wagtail_hooks.py`
 A **Page builder** sidebar section (`SubmenuMenuItem`) whose items come from the
@@ -300,6 +331,34 @@ of the code only calls these (never `django.conf.settings` directly). See §6.
     fields and snippet choosers get sensible values. Reproduced on a sandbox copy of the
     host site's DB (never the real one).
 
+14. **0.7 (plan in `docs/plans/v0.7.0.md`) — safe demo content, previews that match the
+    site, editor polish.** From testing 0.6 in a multi-site project (Tailwind + Alpine, fixed
+    header, ~30 StructBlocks, wagtail-link-block). **Demo content** moved to `demo.py` and
+    is chosen **per field**: partial `preview_value` → real content of the same block class
+    from **live** pages (skipping the plugin's own untouched demo sections, validated) →
+    field default → neutral generated text sized by field type / `max_length`, role-based
+    images (wide raster for banners, square / SVG / transparent for logos; placeholders of
+    the right shape in a "Builder placeholders" collection), one consistent link per
+    link-like struct (a ChoiceBlock whose choices name sibling fields), list sizes from
+    `min_num` / `max_num`; then `clean()` with per-field fallback. **`SeededSection`** (the
+    core app's first model) records each seeded section's content hash: "Not edited yet"
+    and the no-self-borrowing rule use it; 0.6 seeds fall back to comparing with 0.6's
+    generator (kept in `previews.py` for that only). **Previews:** shared `frames.js`
+    measures visible in-flow children (fixed elements count for chrome at the top; zero-size
+    wrappers are looked into), frames keep a `PRBLM_BUILDER_CANVAS_HEIGHT` viewport (vh) and
+    the host clips to the measured part (translateY when a preview template adds space
+    around the section — `<template data-prblm-start/end>` markers); empty chrome hides; refit
+    on images / fonts / DOM changes. `sites.py` = per-site settings; `PREVIEW_TEMPLATE`
+    renders sections inside the site's own base template; dict entries for CSS/JS. Builder
+    pages pad `<main>` by a fixed header's height. **Editor:** drop-in-place isn't a change;
+    ⚙ number inputs + as-you-type checks (`check-setting/` endpoint); no empty choice with a
+    default; publish warning for "Untitled page N"; Block library used / not-used filter and
+    "Used on N pages"; forms one column below 720px. Lessons: Wagtail gives a `ListBlock` a
+    made-up default (one item of empty fields) — treat an all-blank default as none; a site
+    rule `html,body{height:100%}` made every section as tall as the frame once frames kept a
+    tall viewport (the plain shell forces `height:auto`); a built-in header frame starts
+    with its `<link>` (measure visible children, not the first one).
+
 ---
 
 ## 4. Key decisions (and why)
@@ -414,9 +473,12 @@ previews unstyled.
 | `PRBLM_BUILDER_PAGE_PARENTS` | `[]` | Page types allowed to hold Builder pages (0.4) |
 | `PRBLM_BUILDER_PAGE_EXTRA_BLOCKS` | `None` | Site blocks on the Builder page, no migration (0.4) |
 | `PRBLM_BUILDER_CANVAS_WIDTH` | `1280` | Desktop width sections render at on the canvas (0.2) |
-| `PRBLM_BUILDER_PLACEHOLDER_IMAGES` | `True` | Allow creating placeholder images (0.2) |
+| `PRBLM_BUILDER_PLACEHOLDER_IMAGES` | `True` | Allow creating placeholder images (0.2; role-shaped, own collection 0.7) |
 | `PRBLM_BUILDER_ADMIN_TWEAKS` | `True` | Full-width tab + header link (Wagtail internals) (0.2) |
 | `PRBLM_BUILDER_SITE_BLOCK_COLUMNS` | `False` | Two-column forms for the site's own blocks too (0.6; built-ins always) |
+| `PRBLM_BUILDER_CANVAS_HEIGHT` | `900` | Viewport height preview frames keep at least, for `vh` sizes (0.7) |
+| `PRBLM_BUILDER_PREVIEW_TEMPLATE` | `""` | Site template previews render sections inside (`{{ prblm_section }}`) (0.7) |
+| `PRBLM_BUILDER_PREVIEW_SITES` | `{}` | Per-Site overrides (css, js, body_class, header/footer_template, template) (0.7) |
 
 Block-level options (not settings): `Meta.builder = False` (hide), `Meta.builder_settings =
 [...]` (⚙ panel, 0.5), Wagtail's `preview_value` / `description` (0.5). Model attribute:
@@ -442,8 +504,15 @@ A block can also opt out itself: `class Meta: builder = False`.
   test project or inside a host project via `manage.py test prblm_builder`) and
   `tests/test_options.py` (settings + Block-library rules; needs the edge-case blocks in
   `tests/testapp`, so it only runs in this repo). `python runtests.py` runs both.
-- "Not edited yet" can miss a section seeded from real site content that has since
-  changed (shows as edited); it never flags a section an editor actually changed.
+- "Not edited yet": exact for sections seeded by 0.7+ (recorded hash). For older ones it
+  compares with what 0.6 could have seeded, so it can miss one (shows as edited); it never
+  flags a section an editor actually changed.
+- The canvas can't reproduce everything a live page does: sections are separate frames,
+  so CSS that relies on neighbouring sections (`section + section`, negative margins
+  overlapping the previous section) or on page-level JS state looks different. A preview
+  template (`PRBLM_BUILDER_PREVIEW_TEMPLATE`) covers `<body>` attributes and head scripts.
+- Auto-save conflicts (`invalid_revision`, e.g. another tab saved first) can't be fixed by
+  the plugin; the save banner says a manual Save draft is needed.
 - ~~The Layout tab read the published row instead of the latest draft~~ — confirmed and
   fixed in 0.5 (it now works on the latest revision, like Wagtail's editor).
 
@@ -457,20 +526,31 @@ prblm_builder/                the installable app (what the wheel ships)
   integration.py     auto-attach the Layout tab + base_form_class to enabled models
   panels.py          LayoutBuilderPanel (embeds the builder in the Layout tab)
   forms.py           LayoutBuilderForm (reconciles the arrangement on save)
-  layout.py          reconcile(…), new_block_value(), empty_value()
-  registry.py        block/model introspection; hidden(), previewable(), library scope
-  views.py           builder, builder_new, preview, demo, save, page_preview
-  previews.py        demo content engine: real_instance_for, synth_value, trim_for_demo, frame
+  layout.py          reconcile(…), new_block_value(); records seeded sections
+  registry.py        block/model introspection; block_key; hidden(), previewable(),
+                     library scope + origins; ⚙ settings schema + check_setting
+  views.py           builder, builder_new, preview, demo, save, page_preview, check_setting
+  demo.py            demo content field by field; real-content index + usage; placeholders
+  previews.py        frame (shell or preview template), css/js tags, trim, is_unedited,
+                     0.6's generator (legacy "Not edited yet" only)
+  sites.py           per-site preview settings (PRBLM_BUILDER_PREVIEW_SITES)
+  models.py          SeededSection (+ migrations/0001_seeded_sections.py)
+  chrome.py          header/footer around the canvas (hooks → site template → default)
+  mixins.py          BuilderSettingsMixin
+  assets.py          installed version for ?v= on static URLs
   settings.py        PRBLM_BUILDER_* readers (all optional)
-  wagtail_hooks.py   admin URLs + "Block library" Settings menu item
+  wagtail_hooks.py   admin URLs, Page builder menu, form-columns assets, publish warning
   templates/prblm_builder/  builder.html, layout_panel.html, demo.html
-  static/prblm_builder/     builder.css, builder.js, vendor/sortable.min.js
+  static/prblm_builder/     builder.css, builder.js, frames.js, fold.js, form-columns.*,
+                            vendor/sortable.min.js
   tests/test_builder.py     generic integration + reconcile tests
 tests/                        test project (repo only, not shipped)
   settings.py, urls.py      minimal Wagtail settings
   testapp/                  StandardPage (+ opted-out, broken, empty and link blocks),
                             FooterSettings (a non-page StreamField)
   test_options.py           settings + Block-library rule tests
+  test_v05.py … test_v07.py   per-release behaviour (v07: demo chain, sites, template, ⚙)
+  examples/, test_examples.py the code from docs/EXAMPLES.md
 runtests.py                   test runner (also `runtests.py makemigrations`)
 .github/workflows/test.yml    CI: Python 3.12–3.14 + wheel build check
 README.md                     user docs: install, settings reference, troubleshooting
@@ -508,7 +588,8 @@ block's default content into one HTML file and screenshotting it with headless C
 4. **HTTP-level test** for the ride-along save (hidden field → form `clean`), not just the
    `reconcile` unit tests.
 5. **Optional default-content editor** — an admin UI to override each block's demo/default
-   content (synthesis stays the fallback). This was scoped but deferred.
+   content (synthesis stays the fallback). Scoped again for 0.7 ("Use as demo content" on a
+   real section) and deferred by choice.
 6. **Publish to PyPI** so other projects `pip install prblm-builder`.
 7. ~~**Install into another Wagtail project**~~ — done after 0.1.0; led to the 0.2 changes.
    Still to verify there: whether the Layout tab shows a page's unpublished draft

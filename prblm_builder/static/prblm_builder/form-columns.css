@@ -38,7 +38,7 @@
 .pbk-form .pb-col-full, .w-panel.pbk-form .pb-col-full{grid-column:1 / -1 !important}
 
 /* Narrow forms: one column. */
-@container (max-width: 559px){
+@container (max-width: 719px){
   .pbk-form > *, .pbk-form .struct-block > *, .pbk-form [data-block-settings] > *,
   .w-panel.pbk-form > .w-panel__content > *{grid-column:1 / -1 !important}
 }

@@ -51,4 +51,10 @@ class LayoutBuilderPanel(Panel):
                 ctx["builder_url"] = (
                     reverse("prblm_builder:builder_new") + f"?model={label}&embed=1"
                 )
+                # The parent page tells which Site the new page belongs to (per-site previews).
+                request = getattr(self, "request", None)
+                match = getattr(request, "resolver_match", None)
+                parent = (match.kwargs.get("parent_page_id") if match else None)
+                if parent:
+                    ctx["builder_url"] += f"&parent={int(parent)}"
             return ctx

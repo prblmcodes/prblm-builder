@@ -43,7 +43,7 @@ class PreviewValueTests(TestCase):
         page = StandardPage(title="Real", slug="real-" + uuid.uuid4().hex[:5])
         page.body = json.dumps([{"type": "promo", "value": {"title": "Real site promo", "text": ""}, "id": "r1"}])
         Page.objects.get(depth=1).add_child(instance=page)
-        previews._INDEX["data"] = None
+        __import__("prblm_builder.demo").demo.reset_caches()
         self.assertEqual(previews.demo_value(stream().child_blocks["promo"], "promo")["title"],
                          "Preview promo title")
 
@@ -306,7 +306,9 @@ class PageOptionsTests(TestCase):
         r = self.client.get(base + "&options=" + json.dumps({"header": f"id:{self.campaign.pk}"}))
         self.assertContains(r, "Campaign Header")
         r = self.client.get(base + "&options=" + json.dumps({"header": "none"}))
-        self.assertEqual(r.status_code, 404)
+        # An empty frame (the canvas hides it), not an error page.
+        self.assertEqual(r.status_code, 200)
+        self.assertNotIn("Header", r.content.decode().split("<body", 1)[1])
 
     def test_choice_saves_through_the_edit_form(self):
         from prblm_builder.blocks.models import BuilderPage

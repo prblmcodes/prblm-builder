@@ -54,7 +54,7 @@ class CanvasShowsFullTextTests(TestCase):
         Page.objects.get(depth=2).add_child(instance=StandardPage(
             title="Long", slug="long", body=json.dumps([
                 {"type": "rich_text", "value": f"<p>{self.words}</p>", "id": "rt1"}])))
-        previews._INDEX["data"] = None    # the real-content index is cached briefly
+        __import__("prblm_builder.demo").demo.reset_caches()    # the real-content index is cached briefly
 
     def get(self, extra=""):
         url = reverse("prblm_builder:preview") + "?model=testapp.StandardPage&block=rich_text&demo=1" + extra
@@ -96,7 +96,7 @@ class MatchByClassTests(TestCase):
             title="L", slug="l", body=json.dumps([{"type": "card", "id": "c1", "value": {
                 "title": "Real card title", "text": "", "link": {"label": "Go", "link_type": "url",
                                                                  "url": "https://example.com"}}}])))
-        previews._INDEX["data"] = None
+        __import__("prblm_builder.demo").demo.reset_caches()
         value, page = previews.real_instance_for("site_card", self.builder_block("site_card"))
         self.assertEqual(value["title"], "Real card title")
         self.assertEqual(page.title, "L")
@@ -136,7 +136,11 @@ class ValidDemoValueTests(TestCase):
         b = self.block()
         value = previews.demo_value(b, "hero_test")
         b.clean(value)                                    # raises if invalid
-        self.assertEqual(value["button"]["custom_url"], "https://example.com")
+        # One consistent link (0.7): the type and only its field.
+        kind = value["button"]["link_to"]
+        self.assertIn(kind, ("page", "custom_url"))
+        self.assertTrue(value["button"][kind])
+        self.assertFalse(value["button"]["custom_url" if kind == "page" else "page"])
         self.assertTrue(value["heading"])                 # the rest of the demo stays
 
     def test_unknown_validated_field_is_emptied(self):
@@ -156,8 +160,8 @@ class ValidDemoValueTests(TestCase):
 class ChromeHeightWiringTests(TestCase):
     def test_header_frame_measures_visible_content(self):
         from pathlib import Path
-        js = (Path(__file__).resolve().parent.parent / "prblm_builder" / "static" /
-              "prblm_builder" / "builder.js").read_text()
-        self.assertIn("function chromeHeight", js)
-        self.assertIn("isChrome ? chromeHeight(d)", js)
+        static = Path(__file__).resolve().parent.parent / "prblm_builder" / "static" / "prblm_builder"
+        self.assertIn("function measure(d, chrome)", (static / "frames.js").read_text())
+        js = (static / "builder.js").read_text()
+        self.assertIn("window.prblmFrames.measure", js)
         self.assertNotIn("el.offsetHeight) || d.documentElement.scrollHeight", js)

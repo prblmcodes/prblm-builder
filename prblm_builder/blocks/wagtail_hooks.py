@@ -85,9 +85,10 @@ def builder_page_options(request, page, model):
     if cls is None or not isinstance(cls, type):
         return []
     if issubclass(cls, BuilderPage):
-        return [chrome.page_option("header", page), chrome.page_option("footer", page)]
+        return [chrome.page_option("header", page, request), chrome.page_option("footer", page, request)]
     # The site's own page types: information only (their template decides).
-    return [info for info in (chrome.page_info("header"), chrome.page_info("footer")) if info]
+    return [info for info in (chrome.page_info("header", page, request),
+                              chrome.page_info("footer", page, request)) if info]
 
 
 @hooks.register("prblm_builder_swatch_colors")

@@ -178,15 +178,8 @@ def _demo_value(block_name, block, trim=True):
     exactly what will be saved (``layout.new_block_value``)."""
     def done(value):
         return previews.trim_for_demo(block, value) if trim else value
-    preview = previews.explicit_preview_value(block)
-    if preview is not None:
-        return done(preview), None
-    if registry.is_builtin(block):
-        # Built-ins always show their own explanatory example content.
-        return block.get_default(), None
-    value, src_page = previews.real_instance_for(block_name, block)
-    if value is None:
-        value = previews.demo_value(block, block_name, prefer_real=False)
+    from . import demo
+    value, src_page = demo.build(block, block_name)
     return done(value), src_page
 
 
@@ -194,12 +187,16 @@ def _preview_problem(block_name, block, request):
     """Why a block can't be previewed on its own (``None`` if it can): it errors, or
     renders nothing with demo content (e.g. a link/button fragment)."""
     try:
-        value, src_page = _demo_value(block_name, block)
-        html = _render_block(block, value, request, src_page)
+        value, src_page = _demo_value(block_name, block, trim=False)
+        html = _render_block(block, previews.trim_for_demo(block, value), request, src_page)
     except Exception as exc:
         return f"Error while rendering ({type(exc).__name__})"
     if _is_blank(html):
         return "Shows no text or images with demo content"
+    from . import demo
+    issue = demo.problem(block, value)
+    if issue:
+        return f"Its demo content doesn't pass the block's validation ({issue})"
     return None
 
 
@@ -223,17 +220,17 @@ def _page_options(request, page=None, model=None):
     taken = {opt.get("name") for opt in out}
     for kind in ("header", "footer"):
         if kind not in taken:
-            out.append(_chrome_info(kind))
+            out.append(_chrome_info(kind, page, request))
     for opt in out:
         for choice in opt.get("choices", []):
             choice["set_json"] = json.dumps(choice.get("set", {}))
     return out
 
 
-def _chrome_info(kind):
+def _chrome_info(kind, page=None, request=None):
     """An information-only "Page" tab entry: where this page type's header/footer come from."""
     noun = kind
-    tmpl = chrome.template_name(kind)
+    tmpl = chrome.template_name(kind, page, request)
     if tmpl:
         text = (f"Comes from your site's template for this page type. The canvas shows "
                 f"{tmpl}.")
@@ -246,7 +243,9 @@ def _chrome_info(kind):
 
 # ----------------------------------------------------------------- site header / footer
 def _has_chrome(kind, request, page=None, model=None):
-    return bool(chrome.html(kind, request, page, model))
+    """Whether the header/footer shows anything (an empty template or hook result, e.g.
+    ``""`` or an empty StreamField, takes no space on the canvas)."""
+    return not _is_blank(chrome.html(kind, request, page, model))
 
 
 # ----------------------------------------------------------------- per-page builder
@@ -271,6 +270,7 @@ def builder(request, page_id):
         "chrome_base": reverse("prblm_builder:preview") + f"?page={page.id}",
         "show_kinds": len(_palette(stream_block)) > 1,
         "preview_url": reverse("prblm_builder:preview"),
+        "check_url": reverse("prblm_builder:check_setting"),
         "save_url": reverse("prblm_builder:save", args=[page.id]),
         "context_param": f"page={page.id}",
         "header_src": (reverse("prblm_builder:preview") + f"?page={page.id}&chrome=header")
@@ -281,6 +281,7 @@ def builder(request, page_id):
         "preview_page_url": reverse("prblm_builder:page_preview", args=[page.id]),
         "back_url": reverse("wagtailadmin_explore", args=[page.get_parent().id]),
         "canvas_width": cfg.canvas_width(),
+        "canvas_height": cfg.canvas_height(),
     })
 
 
@@ -292,6 +293,8 @@ def builder_new(request):
     is written to the edit form's hidden layout fields and seeded on the first save.
     """
     label = request.GET.get("model") or ""
+    parent = request.GET.get("parent") or ""
+    scope = f"model={label}" + (f"&parent={int(parent)}" if parent.isdigit() else "")
     try:
         app_label, model_name = label.split(".")
         model = django_apps.get_model(app_label, model_name)
@@ -312,19 +315,21 @@ def builder_new(request):
         "settings_schema": _settings_schema(stream_block, request),
         "page_options": (page_options := _page_options(request, model=model)),
         "page_options_editable": any(o.get("choices") for o in page_options),
-        "chrome_base": reverse("prblm_builder:preview") + f"?model={label}",
+        "chrome_base": reverse("prblm_builder:preview") + f"?{scope}",
         "show_kinds": len(_palette(stream_block)) > 1,
         "preview_url": reverse("prblm_builder:preview"),
+        "check_url": reverse("prblm_builder:check_setting"),
         "save_url": "",
-        "context_param": f"model={label}",
-        "header_src": (reverse("prblm_builder:preview") + f"?model={label}&chrome=header")
+        "context_param": scope,
+        "header_src": (reverse("prblm_builder:preview") + f"?{scope}&chrome=header")
         if _has_chrome("header", request, model=model) else "",
-        "footer_src": (reverse("prblm_builder:preview") + f"?model={label}&chrome=footer")
+        "footer_src": (reverse("prblm_builder:preview") + f"?{scope}&chrome=footer")
         if _has_chrome("footer", request, model=model) else "",
         "edit_url": "",
         "preview_page_url": "",
         "back_url": "",
         "canvas_width": cfg.canvas_width(),
+        "canvas_height": cfg.canvas_height(),
     })
 
 
@@ -334,8 +339,20 @@ def demo(request):
     if not cfg.demo_enabled():
         raise Http404("The block library is disabled (PRBLM_BUILDER_DEMO).")
     from django.utils.text import slugify
+
+    from . import demo as demo_mod
+    from . import sites
     groups, unpreviewable, kinds = [], [], []
     sections = registry.library_sections()
+    origins = registry.library_origins() if cfg.library_scope() == "all" else {}
+    # Several sites with their own preview settings: a switcher picks whose CSS is used.
+    site_choices = sites.choices()
+    site_host = ""
+    if site_choices:
+        wanted = request.GET.get("site")
+        known = [h for h, _l in site_choices]
+        current = sites.site_for(request=request)
+        site_host = wanted if wanted in known else (current.hostname if current else known[0])
     for kind, kind_groups in sections:
         kkey = registry.KIND_KEYS[kind]
         kind_entry = {"kind": kind, "key": kkey, "groups": []}
@@ -347,8 +364,14 @@ def demo(request):
                 if problem:
                     unpreviewable.append({"name": name, "label": label, "reason": problem})
                 else:
+                    pages = demo_mod.usage(name, block)
                     ok.append({"name": name, "label": label, "builtin": builtin,
-                               "description": registry.block_description(block)})
+                               "description": registry.block_description(block),
+                               "origin": origins.get((name, builtin), ""),
+                               "used": len(pages),
+                               "pages": [{"title": p.title,
+                                          "url": reverse("wagtailadmin_pages:edit", args=[p.pk])}
+                                         for p in pages[:12]]})
             if ok:
                 entry = {"kind": kind, "group": g, "key": f"{kkey}:{slugify(g)}", "blocks": ok}
                 groups.append(entry)
@@ -363,6 +386,10 @@ def demo(request):
         "total": sum(len(g["blocks"]) for g in groups),
         "unpreviewable": unpreviewable,
         "preview_url": reverse("prblm_builder:preview"),
+        "site_choices": site_choices,
+        "site": site_host,
+        "site_param": f"&site={site_host}" if site_host else "",
+        "canvas_height": cfg.canvas_height(),
     })
 
 
@@ -405,9 +432,9 @@ def preview(request):       # builder frames this from the same origin, so allow
                 raise PermissionDenied
         request.is_preview = True
         html = chrome.html(chrome_kind, request, chrome_page, chrome_model)
-        if not html:
-            raise Http404
-        return HttpResponse(previews.frame(html, request))
+        # Nothing to show → an empty frame (the canvas hides it), not an error page.
+        return HttpResponse(previews.frame("" if _is_blank(html) else html, request,
+                                           page=chrome_page))
 
     page = None
     stream_block = field_name = None
@@ -430,7 +457,7 @@ def preview(request):       # builder frames this from the same origin, so allow
             if str(child.id) == section_id:
                 value = _apply_settings_preview(child.block, child.value, request)
                 html = _render_block_safe(child.block, value, request, page)
-                return HttpResponse(previews.frame(html, request))
+                return HttpResponse(previews.frame(html, request, page=page))
 
     block_name = request.GET.get("block")
     # Scoped to a page/model → that field's block; otherwise (demo) resolve anywhere.
@@ -446,7 +473,30 @@ def preview(request):       # builder frames this from the same origin, so allow
     value, src_page = _demo_value(block_name, block, trim=request.GET.get("trim") == "1")
     value = _apply_settings_preview(block, value, request)
     html = _render_block_safe(block, value, request, src_page or page)
-    return HttpResponse(previews.frame(html, request))
+    return HttpResponse(previews.frame(html, request, page=page))
+
+
+# ----------------------------------------------------------------- ⚙ check
+def check_setting(request):
+    """Check one ⚙ setting value as the editor types: ``?page=<id>`` or ``?model=<app.Model>``,
+    ``&block=<name>&name=<field>&value=…`` → ``{"ok": true}`` or ``{"ok": false, "error": …}``."""
+    stream_block = None
+    if request.GET.get("page"):
+        page = _editing_page(request.GET["page"])
+        if not _can_edit(page, request.user):
+            raise PermissionDenied
+        _f, stream_block = registry.stream_block_for(type(page))
+    elif request.GET.get("model"):
+        try:
+            model = django_apps.get_model(*request.GET["model"].split("."))
+        except (ValueError, LookupError):
+            raise Http404("Unknown page model.")
+        _f, stream_block = registry.stream_block_for(model)
+    block = stream_block.child_blocks.get(request.GET.get("block")) if stream_block else None
+    if block is None:
+        raise Http404("Unknown block.")
+    error = registry.check_setting(block, request.GET.get("name", ""), request.GET.get("value", ""))
+    return JsonResponse({"ok": error is None, "error": error or ""})
 
 
 # ----------------------------------------------------------------- save

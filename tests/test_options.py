@@ -123,7 +123,7 @@ class OptionsTests(TestCase):
 
     def test_real_source_section_is_not_flagged(self):
         """The section the demo content is *taken from* must not count as unedited."""
-        previews._INDEX["data"] = None              # rebuild the real-content index
+        __import__("prblm_builder.demo").demo.reset_caches()              # rebuild the real-content index
         secs = self._sections(self.page)            # 'h1' is the only heading on the site
         self.assertFalse(secs["h1"]["unedited"])
 

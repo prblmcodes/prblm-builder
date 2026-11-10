@@ -11,7 +11,7 @@ from importlib import metadata
 
 from django import template
 from django.templatetags.static import static
-from django.utils.html import format_html, format_html_join
+from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
 from .. import icons
@@ -139,43 +139,40 @@ def _page(context):
     return getattr(page, "specific", page) if page is not None else None
 
 
-def _site_urls(request, paths):
-    from prblm_builder.previews import asset_urls
-    return asset_urls(paths)
-
-
 @register.simple_tag(takes_context=True)
 def prblm_site_css(context):
     """On a Builder page that needs them (see ``chrome.needs_site_assets``), the site's own
-    stylesheets (``PRBLM_BUILDER_PREVIEW_CSS``). Put it *before* ``{% prblm_assets %}`` so
-    the built-in blocks' styles win any tie."""
-    from prblm_builder import settings as cfg
+    stylesheets (``PRBLM_BUILDER_PREVIEW_CSS``, or the page's site's ``css``). Put it
+    *before* ``{% prblm_assets %}`` so the built-in blocks' styles win any tie."""
+    from prblm_builder.previews import css_tags
+    from prblm_builder.sites import config
     from .. import chrome
     page, request = context.get("page"), context.get("request")
     if page is None or not chrome.needs_site_assets(page, request):
         return ""
-    return format_html_join("", '<link rel="stylesheet" href="{}">',
-                            ((u,) for u in _site_urls(request, cfg.preview_css())))
+    return mark_safe(css_tags(config(page, request)["css"]))
 
 
 @register.simple_tag(takes_context=True)
 def prblm_site_js(context):
-    """The site's own scripts (``PRBLM_BUILDER_PREVIEW_JS``), when the page needs them."""
-    from prblm_builder import settings as cfg
+    """The site's own scripts (``PRBLM_BUILDER_PREVIEW_JS`` / the site's ``js``), when the
+    page needs them."""
+    from prblm_builder.previews import js_tags
+    from prblm_builder.sites import config
     from .. import chrome
     page, request = context.get("page"), context.get("request")
     if page is None or not chrome.needs_site_assets(page, request):
         return ""
-    return format_html_join("", '<script src="{}"></script>',
-                            ((u,) for u in _site_urls(request, cfg.preview_js())))
+    return mark_safe(js_tags(config(page, request)["js"]))
 
 
 @register.simple_tag(takes_context=True)
 def prblm_site_body_class(context):
-    """``PRBLM_BUILDER_PREVIEW_BODY_CLASS``, when the page needs the site's assets."""
-    from prblm_builder import settings as cfg
+    """``PRBLM_BUILDER_PREVIEW_BODY_CLASS`` (or the site's ``body_class``), when the page
+    needs the site's assets."""
+    from prblm_builder.sites import config
     from .. import chrome
     page, request = context.get("page"), context.get("request")
     if page is None or not chrome.needs_site_assets(page, request):
         return ""
-    return cfg.preview_body_class()
+    return config(page, request)["body_class"]

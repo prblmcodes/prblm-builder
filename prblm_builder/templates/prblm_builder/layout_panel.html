@@ -80,7 +80,28 @@ opened again (the builder updates these same inputs when it is).{% endcomment %}
   if (document.readyState === "complete") setTimeout(openErrorTab, 0);
   else window.addEventListener("load", function () { setTimeout(openErrorTab, 0); });
   // The builder iframe fires this on the editor document after any layout change.
-  document.addEventListener("prblm-builder:dirty", function () { banner.hidden = false; });
+  var layoutChanged = false, bannerText = banner.querySelector("[data-pb-banner-text]");
+  document.addEventListener("prblm-builder:dirty", function () { banner.hidden = false; layoutChanged = true; });
+  // Wagtail's auto-save can be refused (e.g. another tab saved a newer version): say plainly
+  // that the layout isn't saved yet.
+  document.addEventListener("w-autosave:error", function () {
+    if (!layoutChanged || !bannerText) return;
+    banner.hidden = false;
+    bannerText.innerHTML = "<strong>Couldn't save automatically.</strong> Your layout isn't saved yet — " +
+      "click <strong>Save draft</strong> to keep it.";
+  });
+  // Publishing a page still called "Untitled page 12" (the placeholder "Save draft now"
+  // fills in): ask first.
+  var placeholder = /^Untitled page \d+$/;
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest && e.target.closest('button[name="action-publish"]');
+    if (!btn) return;
+    var t = (btn.form || document).querySelector('[name="title"]');
+    if (t && placeholder.test(t.value.trim()) &&
+        !window.confirm("This page is still called \u201c" + t.value.trim() + "\u201d. Publish it with this title?")) {
+      e.preventDefault(); e.stopImmediatePropagation();
+    }
+  }, true);
   function slugify(s) {
     return s.toLowerCase().normalize("NFKD").replace(/[^\w\s-]/g, "").trim().replace(/[\s_-]+/g, "-");
   }

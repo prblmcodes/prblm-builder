@@ -11,19 +11,20 @@ Resolution order for a page (``kind`` is "header" or "footer"):
 from django.template.loader import render_to_string
 from wagtail import hooks
 
-from . import settings as cfg
 
 PAGE_HOOK = "prblm_builder_chrome_for_page"
 DEFAULT_HOOK = "prblm_builder_chrome"
 
 
-def template_name(kind):
-    return cfg.header_template() if kind == "header" else cfg.footer_template()
+def template_name(kind, page=None, request=None):
+    """The site's own header/footer template for this page's site (``""`` if none)."""
+    from .sites import config
+    return config(page, request)[f"{kind}_template"]
 
 
 def template_html(kind, request, page=None):
     """The site's own header/footer template, rendered (``""`` if not configured)."""
-    tmpl = template_name(kind)
+    tmpl = template_name(kind, page, request)
     if not tmpl:
         return ""
     ctx = {"page": page, "self": page} if page is not None else {}

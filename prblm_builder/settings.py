@@ -11,6 +11,9 @@ previews at its own front-end CSS/JS so sections look like production.
     PRBLM_BUILDER_FIELD_NAMES = ["body"]                 # which StreamField to build
     PRBLM_BUILDER_PAGE_MODELS = ["home.StandardPage"]    # None = auto-detect
     PRBLM_BUILDER_EXCLUDE_BLOCKS = ["link"]              # hide by name or class path
+    PRBLM_BUILDER_CANVAS_HEIGHT = 900                    # vh in previews
+    PRBLM_BUILDER_PREVIEW_TEMPLATE = "prblm_preview.html"  # previews inside your base.html
+    PRBLM_BUILDER_PREVIEW_SITES = {"shop.example.com": {"css": [...]}}  # per Wagtail Site
 
 See the README for the full list.
 """
@@ -96,6 +99,15 @@ def canvas_width():
         return 1280
 
 
+def canvas_height():
+    """Viewport height (px) preview frames keep at least, so ``vh`` sizes in sections
+    (``min-height: 70vh``, ``h-screen``) resolve as on a typical screen."""
+    try:
+        return max(300, int(_get("PRBLM_BUILDER_CANVAS_HEIGHT", 900)))
+    except (TypeError, ValueError):
+        return 900
+
+
 def placeholder_images():
     """Whether the plugin may create gradient placeholder images in the image library
     when the site has no images to use for demo content."""
@@ -114,6 +126,18 @@ def site_block_columns():
     built-in blocks and the plugin's own forms (``False``, default). The built-in blocks
     always use two columns, whatever this is."""
     return bool(_get("PRBLM_BUILDER_SITE_BLOCK_COLUMNS", False))
+
+
+def preview_sites():
+    """Per-site preview settings, keyed by Wagtail Site hostname (see ``sites.py``)."""
+    value = _get("PRBLM_BUILDER_PREVIEW_SITES", {}) or {}
+    return value if isinstance(value, dict) else {}
+
+
+def preview_template():
+    """A template of the site's own that preview frames render sections inside (it
+    extends the site's base.html; the section is ``{{ prblm_section }}``), or ``""``."""
+    return _get("PRBLM_BUILDER_PREVIEW_TEMPLATE", "") or ""
 
 
 def page_parents():

@@ -12,6 +12,7 @@ urlpatterns = [
     path("layout-new/", views.builder_new, name="builder_new"),
     path("demo/", views.demo, name="demo"),
     path("preview/", views.preview, name="preview"),
+    path("check-setting/", views.check_setting, name="check_setting"),
     path("page/<int:page_id>/", views.builder, name="builder"),
     path("page/<int:page_id>/save/", views.save, name="save"),
     path("page/<int:page_id>/preview/", views.page_preview, name="page_preview"),
@@ -89,3 +90,15 @@ def form_columns_js():
     return format_html('<script src="{}?v={}" data-site-blocks="{}" defer></script>',
                        static("prblm_builder/form-columns.js"), version(),
                        "1" if cfg.site_block_columns() else "0")
+
+
+@hooks.register("after_publish_page")
+def warn_placeholder_title(request, page):
+    """A page published while still called "Untitled page 12" (the placeholder "Save draft
+    now" fills in) gets a reminder to rename it."""
+    import re
+
+    from django.contrib import messages
+    if request is not None and re.fullmatch(r"Untitled page \d+", (page.title or "").strip()):
+        messages.warning(request, f"\u201c{page.title}\u201d was published with its placeholder "
+                                  f"title. Rename it in the Content tab.")

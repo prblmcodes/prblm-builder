@@ -1,5 +1,63 @@
 # Changelog
 
+## 0.7.0 — 2026-11-11
+
+**Demo content**
+- Chosen **field by field**: the block's `preview_value` (it may now leave fields out — e.g.
+  images, which can't be portable), real content of the same block, the field's default,
+  then generated content. The result always passes the block's own validation, so a new
+  section can always be saved.
+- Real content is borrowed only from **published** pages, only from sections someone
+  edited (never the plugin's own untouched demo sections), and only if it validates.
+- Generated text is **neutral and labelled** ("Section heading", "Button label",
+  "Short description … — replace this with one or two sentences of your own"), sized to
+  the field (headings a few words, text a sentence, rich text a paragraph; `max_length`
+  respected), numbered in lists, never repeated within a section.
+- **Images fit the field**: wide photos for banners / heroes / backgrounds (never SVG or
+  transparent images), square / SVG / transparent ones for logos and icons, taking turns
+  in lists. When nothing fits, a labelled placeholder of the right shape is created once
+  in a **Builder placeholders** collection.
+- **Links**: one consistent link (its type and only that field), to a real page — works for
+  the built-in link block and third-party ones such as wagtail-link-block.
+- Lists use 3 items, or `min_num` if more, capped at `max_num`; a developer-set `default`
+  is used. Documents stay empty unless required.
+
+**Previews**
+- `PRBLM_BUILDER_CANVAS_HEIGHT` (default 900): sections sized in `vh` look as on a real
+  screen.
+- A **fixed site header** is measured correctly on the canvas; published **Builder pages**
+  start their sections below it (overridable with `--prblm-header-offset`).
+- An empty header/footer takes no space on the canvas.
+- Section heights are measured more robustly (collapsed margins, images, web fonts, DOM
+  changes, device switching).
+- `PRBLM_BUILDER_PREVIEW_TEMPLATE`: render previews inside your own base template (body
+  attributes like Alpine's `x-data`, inline scripts, wrappers).
+- `PRBLM_BUILDER_PREVIEW_SITES`: CSS / JS / body class / header / footer / template per
+  Wagtail Site; the Block library gets a site switcher.
+- `PRBLM_BUILDER_PREVIEW_CSS` / `_JS` accept dicts: `defer`, `async`, `type="module"`,
+  `integrity`, `crossorigin`, `media`, inline code, import maps.
+
+**Editor**
+- Dropping a section back where it was no longer counts as a change.
+- ⚙ settings: number fields get a number box with their limits; values are checked as you
+  type; dropdowns with a default have no empty choice.
+- Publishing a page still titled "Untitled page N" asks first (and warns after).
+- When Wagtail's auto-save fails after a layout change, the banner says the layout isn't
+  saved yet.
+- Block library: **All / Used on pages / Not used yet** filter and "Used on N pages" with
+  links; search includes descriptions; with `LIBRARY_SCOPE = "all"` each block shows where
+  it comes from.
+- Two-column forms switch to one column below 720px of form width.
+
+**Docs**
+- README: setup for previews (load order, preview template, several sites, `vh`, fixed
+  headers, the `prblm_builder_chrome_for_page` hook), where demo content comes from, links
+  that work outside GitHub.
+
+**Upgrade notes**
+- Run `python manage.py migrate` (new table `prblm_builder_seededsection`).
+- See README → Upgrading → 0.6 → 0.7.
+
 ## 0.6.0 — 2026-11-10
 
 **Added**

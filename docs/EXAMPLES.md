@@ -16,6 +16,7 @@ For installation and the full settings list, see the [README](../README.md).
 - [8. Header and footer in your base template](#8-header-and-footer-in-your-base-template)
 - [9. A different field name, or only some page types](#9-a-different-field-name-or-only-some-page-types)
 - [10. Checklist: why isn't my block in the palette?](#10-checklist-why-isnt-my-block-in-the-palette)
+- [11. Previews that match your site](#11-previews-that-match-your-site)
 
 ---
 
@@ -78,8 +79,11 @@ class HeadingBlock(blocks.CharBlock):
 - **`description`** (Wagtail 6.4+) shows in the Block library and as a tooltip in the
   Layout sidebar, and is searchable.
 - **`preview_value`** (Wagtail 6.4+) is the content used for the sidebar thumbnail, the
-  Block library, and as the starting content when the block is added to a page. Without it
-  the plugin uses real content from elsewhere on the site, else generated text.
+  Block library, and as the starting content when the block is added to a page. It may
+  leave fields out (the `PromoBlock` below has no image): missing fields come from real
+  content of the same block on a published page, the field's default, or neutral generated
+  text — and the result always passes the block's validation. Leave images out of
+  `preview_value`: image IDs differ between databases.
 
 ## 3. A block that isn't a section (hidden from the palette)
 
@@ -350,3 +354,38 @@ Demo content looks different from what you expect? A new section takes, in order
 block's `preview_value` (set it for a fixed demo), the fullest real use of the same block
 class on your site, or generated content (choosers get the first page / image / document /
 snippet; anything the block's own validation rejects is left empty).
+
+## 11. Previews that match your site
+
+The canvas renders each section in its own small page. If your sections need more than
+your CSS / JS files — Alpine's `x-data` on `<body>`, inline scripts, wrapper elements — let
+previews use your own base template:
+
+```django
+{# templates/prblm_preview.html #}
+{% extends "base.html" %}
+{% block header %}{% endblock %}
+{% block footer %}{% endblock %}
+{% block content %}{{ prblm_section }}{% endblock %}
+```
+
+```python
+# settings.py
+PRBLM_BUILDER_PREVIEW_TEMPLATE = "prblm_preview.html"
+PRBLM_BUILDER_CANVAS_HEIGHT = 900            # vh sizes resolve against this screen height
+
+# Several sites, each with its own build (anything not set falls back to the global settings):
+PRBLM_BUILDER_PREVIEW_SITES = {
+    "shop.example.com": {"css": ["shop/css/main.css"], "header_template": "shop/header.html",
+                         "template": "shop/prblm_preview.html"},
+}
+
+# Load order and options: list order is load order; dicts for defer / modules / inline code.
+PRBLM_BUILDER_PREVIEW_JS = [
+    {"inline": "window.siteConfig = {lang: 'en'};"},
+    {"src": "js/alpine.min.js", "defer": True},
+]
+```
+
+Details and more options: README → *Previews that match your site*.
+

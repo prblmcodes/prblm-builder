@@ -88,7 +88,7 @@ def needs_site_assets(page, request=None):
     from prblm_builder.registry import is_builtin
     for kind in ("header", "footer"):
         value = _override(kind, request) or option_value(kind, page)
-        if value == "site" and template_name(kind):
+        if value == "site" and template_name(kind, page, request):
             return True
     for child in (getattr(page, "body", None) or []):
         try:
@@ -99,14 +99,14 @@ def needs_site_assets(page, request=None):
     return False
 
 
-def page_info(kind):
+def page_info(kind, page=None, request=None):
     """Information-only "Page" tab entry for the site's own page types when a plugin
     site-default header/footer is what the canvas shows (``None`` otherwise — the core
     then explains the template setting)."""
     from django.urls import reverse
 
     from prblm_builder.chrome import template_name
-    if template_name(kind):
+    if template_name(kind, page, request):
         return None
     current = default(kind)
     if current is None:
@@ -125,7 +125,7 @@ def page_info(kind):
     }
 
 
-def page_option(kind, page=None):
+def page_option(kind, page=None, request=None):
     """The "Page" tab dropdown for a Builder page's header or footer."""
     from django.urls import reverse
 
@@ -141,7 +141,7 @@ def page_option(kind, page=None):
          "set": {**clear, f"{kind}_choice": "default"}},
         {"value": "none", "label": f"No {noun}", "set": {**clear, f"{kind}_choice": "none"}},
     ]
-    if template_name(kind):
+    if template_name(kind, page, request):
         choices.append({"value": "site", "label": f"My site's own {noun}",
                         "set": {**clear, f"{kind}_choice": "site"}})
     for obj in Model.objects.order_by("name"):

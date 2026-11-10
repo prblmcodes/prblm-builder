@@ -15,7 +15,7 @@ pricing, FAQ, footer, …), a ready-made **Builder page** type, a **Theme** page
 reusable **Headers & Footers** — fully self-contained, nothing extra to install. See
 [Built-in blocks](#built-in-blocks-optional).
 
-**New here?** [docs/EXAMPLES.md](docs/EXAMPLES.md) has copy-paste page models and blocks
+**New here?** [docs/EXAMPLES.md](https://github.com/prblmcodes/prblm-builder/blob/main/docs/EXAMPLES.md) has copy-paste page models and blocks
 for every feature (each one is checked by the test suite).
 
 - [Requirements](#requirements)
@@ -28,8 +28,10 @@ for every feature (each one is checked by the test suite).
 - [Which blocks show up](#which-blocks-show-up)
   - [Hiding a block](#hiding-a-block)
 - [Section settings (⚙)](#section-settings-)
+- [Previews that match your site](#previews-that-match-your-site)
 - [Block previews and descriptions](#block-previews-and-descriptions)
-- [Examples](docs/EXAMPLES.md)
+  - [Where demo content comes from](#where-demo-content-comes-from)
+- [Examples](https://github.com/prblmcodes/prblm-builder/blob/main/docs/EXAMPLES.md)
 - [How it works](#how-it-works)
 - [Project structure](#project-structure)
 - [Development](#development)
@@ -51,30 +53,30 @@ Install from a GitHub release tag, inside your project's virtual environment:
 
 ```bash
 # public repo
-pip install "prblm-builder @ git+https://github.com/prblmcodes/prblm-builder.git@v0.6.0"
+pip install "prblm-builder @ git+https://github.com/prblmcodes/prblm-builder.git@v0.7.0"
 
 # private repo (uses your GitHub SSH key)
-pip install "prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@v0.6.0"
+pip install "prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@v0.7.0"
 ```
 
-Or put the same `prblm-builder @ git+…@v0.6.0` line in `requirements.txt`. You can also
+Or put the same `prblm-builder @ git+…@v0.7.0` line in `requirements.txt`. You can also
 download the wheel attached to a GitHub release and
-`pip install prblm_builder-0.6.0-py3-none-any.whl`.
+`pip install prblm_builder-0.7.0-py3-none-any.whl`.
 
 Check it worked: `pip show prblm-builder` shows the version.
 
-**Upgrading** to a new release: change the tag (e.g. `@v0.5.0` → `@v0.6.0`), reinstall,
+**Upgrading** to a new release: change the tag (e.g. `@v0.6.0` → `@v0.7.0`), reinstall,
 run `python manage.py migrate`, and restart the server. If pip says the version is
 *already installed* (e.g. you installed the same version from a wheel or a branch before),
 force it:
 
 ```bash
-pip install --force-reinstall --no-deps "prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@v0.6.0"
+pip install --force-reinstall --no-deps "prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@v0.7.0"
 ```
 
 The plugin's CSS/JS are version-stamped, so browsers load the new files without a hard
 refresh. See [Upgrading](#upgrading) for per-version notes and
-[CHANGELOG.md](CHANGELOG.md) for what changed.
+[CHANGELOG.md](https://github.com/prblmcodes/prblm-builder/blob/main/CHANGELOG.md) for what changed.
 
 ## Quick setup
 
@@ -134,11 +136,14 @@ PRBLM_BUILDER_PAGE_EXTRA_BLOCKS = [                   # 5. your blocks on the Bu
     ("hero_home", "home.blocks.HeroSectionHome"),
 ]
 # PRBLM_BUILDER_SITE_BLOCK_COLUMNS = True             # 6. two-column forms for your blocks too
+# PRBLM_BUILDER_PREVIEW_TEMPLATE = "prblm_preview.html"  # 7. previews inside your base.html
+# PRBLM_BUILDER_PREVIEW_SITES = {…}                   # 8. several sites: CSS/header per site
 ```
 
 Then:
 
-1. `python manage.py migrate` (creates the Builder page, Theme, Headers and Footers tables).
+1. `python manage.py migrate` (the plugin's small demo-content table, plus the Builder
+   page, Theme, Headers and Footers tables).
 2. **Built-in blocks in your own page types** (optional): add `builder_blocks()` to their
    StreamField, run `makemigrations` + `migrate`, and add `{% prblm_assets %}` to your
    `base.html` so they're styled on the live site — see
@@ -153,13 +158,16 @@ Good to know:
   They're linked as `/static/…`, so they load in the canvas, Wagtail's preview panel and on
   Builder pages whatever host name your Wagtail **Site** record has.
 - **Your blocks need a `template`** to appear in the Layout palette and Block library.
-- **Demo content** for a new section comes from, in order: the block's `preview_value`, a
-  real use of the block elsewhere on your site (with its images, snippets and pages), or
-  generated text. Set `preview_value` if you want the same demo everywhere — see
-  [Block previews and descriptions](#block-previews-and-descriptions).
+- **Demo content** for a new section is chosen field by field: the block's
+  `preview_value` (it may leave fields out), real content of the same block on a published
+  page, the field's default, then neutral placeholder text ("Section heading"). See
+  [Where demo content comes from](#where-demo-content-comes-from).
 - **Third-party blocks work too** (e.g. [wagtail-link-block](https://pypi.org/project/wagtail-link-block/)):
-  generated demo content is checked against each block's own validation, so new sections
-  always save.
+  demo content is checked against each block's own validation, so new sections always save.
+- **Sections using `vh` heights** (`min-h-[70vh]`, `h-screen`) render as on a 900px-tall
+  screen (`PRBLM_BUILDER_CANVAS_HEIGHT`). **A fixed site header** is measured on the canvas,
+  and Builder pages leave room for it. **Alpine / inline scripts / `<body>` attributes** from
+  your `base.html`: use a [preview template](#your-own-preview-template).
 
 ## Use
 
@@ -178,10 +186,13 @@ Good to know:
   where you dropped it — on a long page that may be below what the preview shows, so
   scroll the preview to see it.
 - **Demo text:** the Block library and sidebar thumbnails shorten long text; a section on
-  the canvas shows its full text, exactly as it will be saved.
+  the canvas shows its full text, exactly as it will be saved. Generated demo text is
+  neutral and says what goes where ("Section heading", "Button label"), so it's easy to
+  spot before publishing.
 - **New page (not saved yet):** the Layout tab works before the first save. Sections you
   add show in the Content tab **after you save** — a banner says so, with a **Save draft
-  now** button; without a title it fills in **"Untitled page 23"** (rename it later). With
+  now** button; without a title it fills in **"Untitled page 23"** (rename it later — Publish
+  asks first while the page still has that title). With
   Wagtail's auto-save turned off (`WAGTAIL_AUTOSAVE_INTERVAL = 0`) every page works this
   way. If a save fails (e.g. a required field is empty), your arrangement is kept and the
   editor opens the tab with the error.
@@ -193,7 +204,8 @@ Good to know:
   you click it.
 - **Section settings (⚙):** sections with settings (e.g. background, anchor ID) have a ⚙
   button in their toolbar. It opens a small panel; the canvas updates as you change
-  things, and the change saves with the page. See [Section settings](#section-settings-).
+  things, and the change saves with the page. Values are checked as you type (numbers get
+  a number box with their limits). See [Section settings](#section-settings-).
 - **Copy & paste:** copy a section with its toolbar's **Copy** button (or select it and
   press Ctrl/⌘+C). To paste, **right-click** a section → **Paste above** / **Paste below**,
   or press Ctrl/⌘+V to paste below the selected one — within the same page. The
@@ -208,8 +220,10 @@ Good to know:
   folding in the sidebar also hides those previews. Your browser remembers what's folded.
 - **Page builder menu:** the plugin adds a **Page builder** section to the admin sidebar:
   - **Block library** — every block with a live preview, grouped into *Built-in blocks*
-    and *Your site's blocks*. Address: `/admin/page-builder/demo/` (use your own admin
-    prefix if it isn't `admin/`). Also linked from the editor header.
+    and *Your site's blocks*. Filter **All / Used on pages / Not used yet**; each block says
+    which published pages use it (handy for spotting blocks nobody uses). Searches names and
+    descriptions. Address: `/admin/page-builder/demo/` (use your own admin prefix if it
+    isn't `admin/`). Also linked from the editor header.
   - **Theme**, **Headers** and **Footers** — only when the built-in blocks app is installed.
 
 ## Built-in blocks (optional)
@@ -373,7 +387,7 @@ built-in set of ~50 line icons, picked from a dropdown.
 Your own blocks can use the built-in link block (Label → *Link to* → the one field that
 type needs): `from prblm_builder.blocks import LinkBlock`, then `link = LinkBlock()` in
 your StructBlock and `{{ value.link.href }}` in its template. Full example:
-[docs/EXAMPLES.md — Reuse the built-in link block](docs/EXAMPLES.md#5-reuse-the-built-in-link-block).
+[docs/EXAMPLES.md — Reuse the built-in link block](https://github.com/prblmcodes/prblm-builder/blob/main/docs/EXAMPLES.md#5-reuse-the-built-in-link-block).
 
 ### Styles stay separate
 
@@ -381,7 +395,7 @@ The built-in blocks' CSS only styles the blocks, and the blocks are shielded fro
 site's global CSS (Tailwind's reset, `p`/`ul`/`a`/`header` rules…), so they look the same on
 any site. Builder pages load your site's CSS/JS only when they show your site's header or
 footer or contain your own blocks. Details:
-[docs/EXAMPLES.md — Header and footer](docs/EXAMPLES.md#8-header-and-footer-in-your-base-template).
+[docs/EXAMPLES.md — Header and footer](https://github.com/prblmcodes/prblm-builder/blob/main/docs/EXAMPLES.md#8-header-and-footer-in-your-base-template).
 
 ### Theme
 
@@ -442,12 +456,15 @@ StreamField and renders previews unstyled. After changing a setting, restart the
 
 | Setting | Default | What it does |
 |---|---|---|
-| `PRBLM_BUILDER_PREVIEW_CSS` | `[]` | CSS files loaded into every preview. Static paths (`"css/main.css"`) or full URLs. |
-| `PRBLM_BUILDER_PREVIEW_JS` | `[]` | JS files loaded into every preview (e.g. sliders, accordions). |
+| `PRBLM_BUILDER_PREVIEW_CSS` | `[]` | CSS files loaded into every preview. Static paths (`"css/main.css"`) or full URLs, in load order. Also dicts for options (`media`, `integrity`, inline CSS) — see [Scripts and stylesheets](#scripts-and-stylesheets). |
+| `PRBLM_BUILDER_PREVIEW_JS` | `[]` | JS files loaded into every preview (e.g. sliders, accordions), in load order. Also dicts for `defer`, `type="module"`, `integrity`, inline scripts, import maps. |
 | `PRBLM_BUILDER_PREVIEW_BODY_CLASS` | `""` | Classes for the preview `<body>`. Copy them from the `<body class="…">` in your `base.html` if your CSS relies on them (fonts, colours). Leave empty if your `<body>` has no classes. |
 | `PRBLM_BUILDER_HEADER_TEMPLATE` | `""` | Template of your site header, shown above the canvas. Gets `page` / `self` (the page being edited; not set on a brand-new unsaved page). |
 | `PRBLM_BUILDER_FOOTER_TEMPLATE` | `""` | Same, for the footer, shown below the canvas. |
 | `PRBLM_BUILDER_CANVAS_WIDTH` | `1280` | Desktop width (px) sections render at before being scaled to fit the editor. Set it to your design width (e.g. `1440`). |
+| `PRBLM_BUILDER_CANVAS_HEIGHT` | `900` | Screen height (px) previews pretend to have, so sections sized in `vh` (`min-h-[70vh]`, `h-screen`) look as on a real screen. Minimum 300. |
+| `PRBLM_BUILDER_PREVIEW_TEMPLATE` | `""` | A template of yours that previews render each section inside — it extends your `base.html`, so the canvas gets your real `<head>`, `<body>` attributes and inline scripts. See [Your own preview template](#your-own-preview-template). |
+| `PRBLM_BUILDER_PREVIEW_SITES` | `{}` | Several sites with different CSS / headers: per-site overrides of the settings above, keyed by Wagtail Site hostname. See [Several sites](#several-sites). |
 
 ### Which pages get the Layout tab
 
@@ -471,8 +488,8 @@ A block can also hide itself — see [Hiding a block](#hiding-a-block).
 
 | Setting | Default | What it does |
 |---|---|---|
-| `PRBLM_BUILDER_PLACEHOLDER_IMAGES` | `True` | Only matters when your Wagtail **image library is empty**. Demo previews normally use real images from your library; if there are none, the plugin creates a few grey gradient images titled "Builder placeholder …". `False` = never create them (demos then have no image). On a site that already has images, changing this does nothing visible. |
-| `PRBLM_BUILDER_INDEX_SCAN_LIMIT` | `500` | Pages per model scanned to find real content to use in demos (newest first). Lower it on very large sites. |
+| `PRBLM_BUILDER_PLACEHOLDER_IMAGES` | `True` | Demo content picks library images that fit each image field (wide photos for banners, square or transparent images for logos). When none fits, the plugin creates a labelled placeholder of the right shape ("Banner · 1600×900", "Logo / icon · 400×400", "Photo · 1200×800"), once, in a **Builder placeholders** collection. `False` = never create them (the field stays empty if it's optional). |
+| `PRBLM_BUILDER_INDEX_SCAN_LIMIT` | `500` | Published pages per model scanned to find real content for demos and the Block library's "Used on" counts (newest first). Lower it on very large sites. |
 
 ### Admin integration
 
@@ -608,10 +625,119 @@ class PromoBlock(BuilderSettingsMixin, blocks.StructBlock):
   tab (Wagtail 8.1 `form_layout`), so editors aren't distracted by them there.
 - Changes save with the page. Only fields you changed in the ⚙ panel are sent; if the
   same field was also changed in the Content tab, the Layout tab's change wins.
-- Each value is checked by its own field (e.g. an invalid anchor ID) — a bad value shows
-  as a normal error when saving, and your layout is kept.
+- Each value is checked by its own field as you type (e.g. an invalid anchor ID, a number
+  above its `max_value`) and the message shows under it; only valid values are applied.
+  Number fields (`IntegerBlock`, `DecimalBlock`, `FloatBlock`) get a number box with their
+  limits. A dropdown with a `default` has no empty choice.
 - Choosers, rich text and nested blocks aren't shown in the ⚙ panel — edit those in the
   Content tab.
+
+## Previews that match your site
+
+Each section on the canvas (and in the Block library and thumbnails) renders in its own
+small page. These options make that page behave like your real ones.
+
+### Scripts and stylesheets
+
+`PRBLM_BUILDER_PREVIEW_CSS` / `_JS` load in **list order** — CSS in `<head>`, scripts at the
+end of `<body>`. Put libraries first and your own files after them (a CSS framework listed
+*after* your CSS overrides it; Alpine plugins go before Alpine itself). Entries are static
+paths, full URLs, or dicts for options:
+
+```python
+PRBLM_BUILDER_PREVIEW_CSS = [
+    "css/main.css",
+    {"href": "https://cdn.example.com/lib.css", "integrity": "sha384-…", "crossorigin": "anonymous"},
+    {"href": "css/print.css", "media": "print"},
+    {"inline": ".cookie-banner{display:none}"},            # preview-only tweaks
+]
+PRBLM_BUILDER_PREVIEW_JS = [
+    {"inline": "window.siteConfig = {lang: 'en'};"},        # runs before the files below
+    {"src": "js/alpine-collapse.min.js", "defer": True},
+    {"src": "js/alpine.min.js", "defer": True},
+    {"src": "js/app.js", "type": "module"},
+    {"importmap": {"imports": {"lib": "/static/js/lib.js"}}},
+]
+```
+
+Script options: `defer`, `async`, `nomodule`, `type`, `integrity`, `crossorigin`,
+`referrerpolicy`. Stylesheet options: `media`, `integrity`, `crossorigin`, `rel` (+ `as`
+for preloads).
+
+### Your own preview template
+
+Your `base.html` may provide more than files: `<body>` attributes (`x-data` for Alpine,
+`data-theme`), inline scripts, wrapper elements your CSS relies on. To give previews all of
+it, write a small template that extends your base template and drops the section in — a
+developer-only setting; editors see nothing different:
+
+```django
+{# templates/prblm_preview.html #}
+{% extends "base.html" %}
+{% block header %}{% endblock %}
+{% block footer %}{% endblock %}
+{% block content %}{{ prblm_section }}{% endblock %}
+```
+
+```python
+PRBLM_BUILDER_PREVIEW_TEMPLATE = "prblm_preview.html"
+```
+
+The template gets `page` (the page being edited, when there is one) and `request`. The
+canvas measures only the section, so padding or wrappers around it in your template don't
+add space. With a preview template, `PRBLM_BUILDER_PREVIEW_CSS` / `_JS` / `_BODY_CLASS` aren't
+needed for previews (Builder pages still use them for your header/footer and blocks).
+
+### Several sites
+
+A project with several Wagtail sites (each with its own CSS build, fonts, header) sets what
+differs per site, by the Site's hostname; anything not set comes from the settings above:
+
+```python
+PRBLM_BUILDER_PREVIEW_SITES = {
+    "shop.example.com": {
+        "css": ["shop/css/main.css"],
+        "js": ["shop/js/app.js"],
+        "body_class": "font-shop",
+        "header_template": "shop/header.html",
+        "footer_template": "shop/footer.html",
+        "template": "shop/prblm_preview.html",
+    },
+}
+```
+
+The canvas uses the edited page's site (for a new page, its parent's). The Block library
+gets a **Site** switcher.
+
+### `vh` heights and fixed headers
+
+- Sections sized in `vh` render against a screen `PRBLM_BUILDER_CANVAS_HEIGHT` tall (900px
+  by default), so `min-h-[70vh]` is 630px on the canvas, as on a typical screen.
+- A site header with `position: fixed` is measured at its real height above the canvas.
+  On a published **Builder page** showing your site's own header, the sections start below
+  it: the page measures a fixed header and pads the sections by its height. Set
+  `--prblm-header-offset` (e.g. `:root{--prblm-header-offset:128px}`) to choose it yourself.
+- A header or footer that renders nothing takes no space on the canvas.
+
+### Choosing the header/footer per page type in code
+
+The `prblm_builder_chrome_for_page` hook decides which header/footer HTML the canvas shows
+for a page (the built-in Builder page uses it). Return a string — `""` means "no header" —
+or `None` to leave it to the settings:
+
+```python
+# yourapp/wagtail_hooks.py
+from django.template.loader import render_to_string
+from wagtail import hooks
+
+@hooks.register("prblm_builder_chrome_for_page")
+def landing_page_header(kind, request, page, model):
+    if (model or type(page)).__name__ != "LandingPage":
+        return None                                   # not mine
+    if kind == "header":
+        return render_to_string("landing/header.html", {"page": page}, request=request)
+    return ""                                         # no footer on landing pages
+```
 
 ## Block previews and descriptions
 
@@ -626,16 +752,38 @@ them too:
 ```
 
 - **`preview_value`** is the first choice for the Block library, the sidebar thumbnails
-  and the starting content of a newly added section (before real site content or
-  generated text).
+  and the starting content of a newly added section. It may leave fields out — they're
+  filled from the rest of the chain below. **Leave images out**: image IDs differ between
+  databases, so a portable `preview_value` can't name one; the plugin picks a fitting image.
 - **`description`** shows under the block's name in the Block library and as a tooltip in
   the Layout sidebar (and is searchable). The built-in blocks have descriptions.
 
-Without a `preview_value`, the plugin uses the fullest real use of the block on your site
-(the same block class, whatever it's called on each page type), else generated content:
-text from realistic sample copy, link / URL fields get `https://example.com`, choosers get
-the first page, document, image or snippet there is, and the result is checked against the
-block's own validation (anything it rejects is left empty).
+### Where demo content comes from
+
+Every field of a new section (and of the previews) is filled by the first of these that
+has something:
+
+1. **The block's `preview_value`** — what the developer chose; it may be partial.
+2. **Real content of the same block** — the fullest use of the same block class on a
+   **published** page (whatever it's called on that page type). Only sections someone
+   actually edited, never the plugin's own untouched demo sections, and only content that
+   passes the block's validation. Fields that section left empty fall through.
+3. **The field's own `default`** (e.g. a `ChoiceBlock`'s default).
+4. **Generated content**, neutral and obviously placeholder:
+   - text from the field's label or help text, sized to the field: "Section heading" for
+     a heading, a sentence for a `TextBlock`, a short paragraph for rich text (two for
+     body-like fields), within `max_length`; list items numbered ("Feature 1, 2, 3");
+   - images that fit the field (by name / label / help text: `background`, `hero`,
+     `banner` → a wide photo; `logo`, `icon`, `avatar` → square, SVG or transparent),
+     taking turns in lists, else a labelled placeholder of the right shape;
+   - links: one consistent link — the type and only its field — to a real page, else `/`.
+     Works for any link block whose dropdown names its fields (the built-in one,
+     wagtail-link-block…);
+   - lists: 3 items, or `min_num` if more, never above `max_num`;
+   - documents: optional ones stay empty; snippet and page choosers get an existing one.
+
+Finally the whole value is checked with the block's own `clean()`; a field that fails falls
+back a step, so a new section can always be saved.
 
 ## How it works
 
@@ -648,17 +796,18 @@ block's own validation (anything it rejects is left empty).
   and wraps its form, so your models need no code changes.
 - **Ride-along save.** The Layout tab writes the arrangement into hidden fields on the
   edit form; on Save/Publish the form rebuilds the StreamField in that order. Existing
-  blocks keep their content; new ones get demo content (flagged "Not edited yet" until changed); duplicates copy
-  their source. Blocks added or deleted in the Content tab are respected.
-- **Real demo content.** Previews prefer a real instance of each block used elsewhere on
-  the site (real images + copy, with its page as context), falling back to generated
-  content. Blocks are matched by class, so a block reused under another name shares its
-  demo content. Generated content is checked against the block's own validation. Long text
-  is shortened in the Block library and sidebar thumbnails only — the canvas shows what
-  will be saved.
+  blocks keep their content; new ones get demo content; duplicates copy their source.
+  Blocks added or deleted in the Content tab are respected.
+- **Remembers its own demo content.** Each section it fills is recorded (a small table)
+  with a fingerprint of its content: until someone changes it, it shows "Not edited yet"
+  and it's never borrowed as "real content" for other demos.
+- **Demo content, field by field** — see [Where demo content comes from](#where-demo-content-comes-from).
+  Blocks are matched by class, so a block reused under another name shares its content.
+  Long text is shortened in the Block library and sidebar thumbnails only — the canvas
+  shows what will be saved.
 - **Scaled previews.** Each section renders in its own iframe at desktop width
-  (`PRBLM_BUILDER_CANVAS_WIDTH`) and is scaled down to fit, so you see the desktop layout
-  even in a narrow editor column.
+  (`PRBLM_BUILDER_CANVAS_WIDTH`) and a screen height of `PRBLM_BUILDER_CANVAS_HEIGHT`, and is
+  scaled down to fit, so you see the desktop layout even in a narrow editor column.
 
 ## Project structure
 
@@ -670,7 +819,10 @@ prblm_builder/                  the installable Django app
   forms.py                      LayoutBuilderForm — applies the arrangement on Save/Publish
   layout.py                     reconcile() — merges arrangement + content; new-block values
   registry.py                   finds page models + blocks; palette/library lists; hiding rules
-  previews.py                   demo content (real → generated → trimmed) + preview HTML frame
+  demo.py                       demo content, field by field (preview_value → real → default → generated)
+  previews.py                   preview HTML frame, asset tags, trimming, "Not edited yet"
+  sites.py                      per-site preview settings (PRBLM_BUILDER_PREVIEW_SITES)
+  models.py, migrations/        SeededSection — sections the plugin filled with demo content
   views.py                      builder, builder_new, preview, demo (Block library), save
   wagtail_hooks.py              admin URLs + the "Page builder" sidebar section
   settings.py                   reads every PRBLM_BUILDER_* setting (with defaults)
@@ -681,7 +833,8 @@ prblm_builder/                  the installable Django app
   templates/prblm_builder/      builder.html (canvas), layout_panel.html (tab), demo.html (library)
   templatetags/prblm_builder_tags.py   {% prblm_static %} — static URL + ?v=<version>
   static/prblm_builder/         builder.js, builder.css, fold.js, vendor/sortable.min.js,
-                                form-columns.js/.css (two-column forms), form-columns-site.css
+                                frames.js (measuring preview frames), form-columns.js/.css
+                                (two-column forms), form-columns-site.css
   tests/test_builder.py         generic tests — also runnable inside a host project
   blocks/                       optional app "prblm_builder.blocks" (built-in blocks)
     __init__.py                 builder_blocks() helper
@@ -704,6 +857,7 @@ tests/                          test project for this repo (not shipped)
   test_save_flow.py, test_page_options.py   save banner, folding, page placement, extra blocks
   test_v05.py                   preview values, links, ⚙ settings, copy/paste, Page tab, drafts
   test_v06.py, test_v06_fixes.py   tab order/sync, forms, site assets, demo content matching
+  test_v07.py                   demo content chain, per-site previews, preview template, ⚙ checks
   examples/, test_examples.py   the code from docs/EXAMPLES.md, checked
 runtests.py                     runs all tests against tests/
 .github/workflows/test.yml      CI: tests on Python 3.12–3.14 + wheel build check
@@ -724,6 +878,7 @@ python runtests.py                                   # all tests
 python runtests.py tests.test_options                # one module
 python runtests.py makemigrations                    # after changing tests/testapp/models.py
 python runtests.py makemigrations prblm_builder_blocks   # after changing the built-in blocks
+python runtests.py makemigrations prblm_builder          # after changing prblm_builder/models.py
 ```
 
 Inside a host project you can also run the generic tests against its own models:
@@ -735,6 +890,23 @@ Releasing: bump `version` in `pyproject.toml`, add a `CHANGELOG.md` entry, commi
 from the tag (attach the wheel from `python -m build`).
 
 ## Upgrading
+
+**0.6 → 0.7**
+- Run `python manage.py migrate` — the plugin now has one small table (`SeededSection`) to
+  remember which sections hold its own demo content.
+- New sections get **neutral** demo text ("Section heading", "Button label") instead of
+  sample marketing copy, and images that fit each field. Sections already saved keep their
+  content; ones 0.6 seeded and nobody edited are still recognised as "Not edited yet".
+- Demo content is only borrowed from **published** pages now (not drafts), and never from
+  untouched demo sections.
+- A "Builder placeholders" image collection may appear (placeholders shaped for banners,
+  logos and photos, created only when no library image fits). Turn it off with
+  `PRBLM_BUILDER_PLACEHOLDER_IMAGES = False`.
+- Builder pages wrap the header in `<div class="prblm-header-slot">` and pad `<main>` by a
+  fixed header's height. If you override `builder_page.html`, copy that part.
+- Two-column forms switch to one column below 720px of form width (was 560px).
+- Optional new settings: `PRBLM_BUILDER_CANVAS_HEIGHT`, `PRBLM_BUILDER_PREVIEW_TEMPLATE`,
+  `PRBLM_BUILDER_PREVIEW_SITES`; dict entries in `PRBLM_BUILDER_PREVIEW_CSS` / `_JS`.
 
 **0.5 → 0.6**
 - No migrations, no setting changes needed — just install the new version (with
@@ -814,10 +986,23 @@ from the tag (attach the wheel from `python -m build`).
 | My header / own blocks unstyled in Wagtail's **preview panel** but fine on the canvas | Fixed in 0.6.0 (the site's CSS was linked with the Wagtail Site's host name). Upgrade. |
 | Wagtail's preview doesn't seem to show a new section | It was added where you dropped it — scroll the preview. On a long page it's often below the visible part. |
 | The same block appears twice in the Block library, or looks different on the Builder page | Fixed in 0.6.0 (blocks are now matched by class, not name). Upgrade. |
-| The page won't save after adding a section with a third-party block (e.g. wagtail-link-block), no error visible | Fixed in 0.6.0 (demo content now passes the block's own validation). Upgrade; remove the section added before and add it again. |
-| A gap between the header and the first section on the canvas | Fixed in 0.6.0. Upgrade. |
+| The page won't save after adding a section (e.g. with wagtail-link-block or a `preview_value` missing a required field), no error visible | Fixed in 0.6.0 / 0.7.0 (demo content always passes the block's own validation). Upgrade; remove the section added before and add it again. |
+| A new section copies content from a forgotten draft or demo page | Fixed in 0.7.0: real content comes only from published pages and edited sections. |
+| A gap between the header and the first section on the canvas | Fixed in 0.6.0 (and for fixed headers in 0.7.0). Upgrade. |
+| "Layout changed" appears after dragging a section and dropping it in the same place | Fixed in 0.7.0. |
+| "Couldn't save automatically — your layout isn't saved yet" | Wagtail's auto-save was refused (often another tab saved a newer version). Click **Save draft**; reload first if Wagtail says the page changed. |
 | `pip install` leaves the old version | Same version number already installed → add `--force-reinstall --no-deps`. |
+| A tall section (`min-h-[70vh]`, `h-screen`) looks short or very tall on the canvas | Set `PRBLM_BUILDER_CANVAS_HEIGHT` to the screen height you design for (default 900). |
+| The first section is hidden under my fixed header on a Builder page | It's padded automatically; if your header appears late (e.g. built by JS), set `:root{--prblm-header-offset:128px}` in your CSS. |
+| Alpine errors (`showModal is not defined`) or missing `<body>` attributes in previews | Use a [preview template](#your-own-preview-template) that extends your `base.html`. |
+| Several sites, but previews use one site's CSS | Set per-site CSS / templates in [`PRBLM_BUILDER_PREVIEW_SITES`](#several-sites). |
+| A library or CDN script must load before mine / with `defer` / as a module | Order the list (it's the load order) and use dict entries — see [Scripts and stylesheets](#scripts-and-stylesheets). |
+| Demo content shows "Section heading", "Button label"… | Expected when the block isn't used on any published page yet: neutral text so placeholder copy is easy to spot. Set `preview_value`, or publish a page that uses the block. |
+| A "Builder placeholders" image collection appeared | Placeholder images shaped for banners / logos / photos, created when no library image fits a demo field. Delete them any time, or set `PRBLM_BUILDER_PLACEHOLDER_IMAGES = False`. |
+| My `preview_value` has no image and the section still saves | Expected — missing fields are filled from real content or generated (images: a fitting library image or placeholder). |
+| A block is listed under "Couldn't preview … doesn't pass the block's validation" | Even with the gaps filled, its demo content fails one of its own rules (the field is named). Usually a required field the plugin can't fill (e.g. a required image with placeholders off). |
+| "Publish it with this title?" when publishing | The page still has the placeholder title "Untitled page N" from **Save draft now** — rename it in the Content tab. |
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](https://github.com/prblmcodes/prblm-builder/blob/main/LICENSE).

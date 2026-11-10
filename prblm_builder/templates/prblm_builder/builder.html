@@ -7,6 +7,7 @@
   <meta name="robots" content="noindex, nofollow">
   <link rel="stylesheet" href="{% prblm_static 'prblm_builder/builder.css' %}">
   <script src="{% prblm_static 'prblm_builder/vendor/sortable.min.js' %}"></script>
+  <script src="{% prblm_static 'prblm_builder/frames.js' %}" defer></script>
   <script src="{% prblm_static 'prblm_builder/builder.js' %}" defer></script>
   <script src="{% prblm_static 'prblm_builder/fold.js' %}" defer></script>
 </head>
@@ -36,12 +37,12 @@
   {% endif %}
 
   <div class="pb-wrap"
-       data-preview-url="{{ preview_url }}"
+       data-preview-url="{{ preview_url }}" data-check-url="{{ check_url }}"
        data-save-url="{{ save_url }}"
        data-context="{{ context_param }}"
        data-edit-url="{{ edit_url }}"
        data-csrf="{{ csrf_token }}"
-       data-canvas-width="{{ canvas_width }}"
+       data-canvas-width="{{ canvas_width }}" data-canvas-height="{{ canvas_height }}"
        data-field-name="{{ field_name }}">
     {{ sections|json_script:"pb-sections" }}
     {{ settings_schema|json_script:"pb-settings-schema" }}

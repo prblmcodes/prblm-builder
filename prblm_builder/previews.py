@@ -1,12 +1,10 @@
-"""Realistic demo content + live preview for any block — site-agnostic.
+"""Preview frames, trimming for display, and "Not edited yet" detection.
 
-Values are built from each block's *type* and field name, using a small library of
-real-sounding copy and the host site's own images, so a freshly-built section looks
-like a real page (and the saved block gives the editor a usable starting point).
-
-Deterministic: the same block always yields the same demo value, so the canvas
-preview, the palette thumbnail and the saved content all agree.
+New demo content is built by ``demo.py``. The realistic-copy generator below
+(``synth_value`` / ``synth_demo``) is 0.6's: it's kept only to recognise sections that
+0.6 seeded and nobody has edited since.
 """
+import json
 import random
 import re
 from datetime import date, timedelta
@@ -127,12 +125,18 @@ def _button_label(block):
 _IMG_CACHE = {}
 
 
+_NO_NEW_IMAGES = {"on": False}
+
+
 def placeholder_image(width=1200, height=800):
-    """A reusable soft-gradient placeholder Wagtail Image (fallback when the site has
-    no images of its own). Returns None when ``PRBLM_BUILDER_PLACEHOLDER_IMAGES`` is
-    off — the demo then simply has no image."""
+    """0.6's soft-gradient placeholder Wagtail Image — kept so sections seeded by 0.6 are
+    still recognised as "Not edited yet". New demo content uses ``demo.placeholder_image``
+    (labelled, shaped by role). ``None`` when ``PRBLM_BUILDER_PLACEHOLDER_IMAGES`` is off."""
     if not cfg.placeholder_images():
         return None
+    if _NO_NEW_IMAGES["on"]:
+        from wagtail.images import get_image_model
+        return get_image_model().objects.filter(title=f"{PLACEHOLDER_PREFIX} {width}x{height}").first()
     key = (width, height)
     if key in _IMG_CACHE:
         return _IMG_CACHE[key]
@@ -337,71 +341,11 @@ def synth_demo(block, name=""):
 # page fields (title / header_image / excerpt) render fully in a preview. Site-agnostic
 # — it just walks every page model's StreamFields. Cached briefly so a page of previews
 # doesn't rescan per block.
-import time
-
-_INDEX = {"at": 0.0, "data": None}
-
-
-def _build_instance_index():
-    from django.apps import apps
-    from wagtail.fields import StreamField
-    from wagtail.models import Page
-
-    from .registry import block_key
-
-    # block_key -> (score, value, page, block id). Keyed by the block's class, so the same
-    # block shares content across page types whatever each calls it, and a site block and
-    # a built-in one that share a name never lend each other content.
-    best = {}
-    for model in apps.get_models():
-        if not (issubclass(model, Page) and model is not Page):
-            continue
-        sfs = [f.name for f in model._meta.get_fields() if isinstance(f, StreamField)]
-        if not sfs:
-            continue
-        try:
-            # Newest first, capped — bounds the cost on very large sites.
-            pages = list(model.objects.order_by("-pk")[: cfg.index_scan_limit()])
-        except Exception:
-            continue
-        for page in pages:
-            for fname in sfs:
-                try:
-                    value = getattr(page, fname)
-                except Exception:
-                    continue
-                for child in value:
-                    try:
-                        score = len(str(child.block.get_prep_value(child.value)))
-                    except Exception:
-                        score = 0
-                    key = block_key(child.block_type, child.block)
-                    cur = best.get(key)
-                    if cur is None or score > cur[0]:
-                        best[key] = (score, child.value, page, str(child.id))
-    return {key: (v, p, bid) for key, (s, v, p, bid) in best.items()}
-
-
-def instance_index(max_age=60):
-    now = time.time()
-    if _INDEX["data"] is None or now - _INDEX["at"] > max_age:
-        try:
-            _INDEX["data"] = _build_instance_index()
-        except Exception:
-            _INDEX["data"] = {}
-        _INDEX["at"] = now
-    return _INDEX["data"]
-
-
 def real_instance_for(name, block):
-    """``(value, page)`` of the most-filled real instance of ``block`` (called ``name`` here)
-    on the site, or ``(None, None)``. The page is the context for blocks that read page
-    fields. Built-in blocks never borrow content (they show their own examples)."""
-    from .registry import block_key, is_builtin
-    if not name or block is None or is_builtin(block):
-        return None, None
-    value, page, _bid = instance_index().get(block_key(name, block), (None, None, None))
-    return value, page
+    """``(value, page)``: the best real instance of ``block`` on a live page (see
+    ``demo.real_instance``), or ``(None, None)``."""
+    from . import demo
+    return demo.real_instance(name, block)
 
 
 def real_value_for(name, block):
@@ -499,39 +443,63 @@ def _prep(block, value):
         return None
 
 
-def is_unedited(block, name, stored_prep, page_id=None, section_id=None):
-    """True if a stored section still holds the demo content it was seeded with — i.e. an
-    editor hasn't changed it yet. Compares against the block's own default, the
-    synthesised demo value, and the real instance used as demo (unless this section *is*
-    that real instance). Can miss a section seeded from content that has since changed
-    (a false "edited"), never the other way round."""
-    if stored_prep is None:
-        return False
-    # ⚙ settings (background, anchor…) aren't content: changing them doesn't "edit" a section.
+def _content(block, data):
+    """Canonical content for comparing: ⚙ settings left out (changing background or anchor
+    doesn't "edit" a section)."""
     from .mixins import builder_setting_names
     skip = set(builder_setting_names(block))
+    data = _canon(data)
+    if skip and isinstance(data, dict):
+        return {k: v for k, v in data.items() if k not in skip}
+    return data
 
-    def content(data):
-        data = _canon(data)
-        if skip and isinstance(data, dict):
-            return {k: v for k, v in data.items() if k not in skip}
-        return data
-    stored_prep = content(stored_prep)
-    candidates = [_prep(block, block.get_default())]
-    preview = explicit_preview_value(block)
-    if preview is not None:
-        candidates.append(_prep(block, preview))
-    try:
-        candidates.append(_prep(block, synth_demo(block, name)))
-    except Exception:
-        pass
+
+_LEGACY = {}
+
+
+def legacy_unedited(block, name, stored_prep, extra=()):
+    """For sections seeded before 0.7 (no seeded-section record): does the content still
+    equal what the plugin could have seeded — the block's default, its preview value, or
+    0.6's generated content? ``extra`` adds more candidates (prep values)."""
+    if stored_prep is None:
+        return False
     from .registry import block_key
-    value, src_page, src_id = instance_index().get(block_key(name, block), (None, None, None))
-    is_source = (src_page is not None and str(getattr(src_page, "pk", "")) == str(page_id)
-                 and src_id == str(section_id))
-    if value is not None and not is_source:
-        candidates.append(_prep(block, value))
-    return any(c is not None and content(c) == stored_prep for c in candidates)
+    key = block_key(name, block)
+    if key not in _LEGACY:
+        cands = [_prep(block, block.get_default())]
+        preview = explicit_preview_value(block)
+        if preview is not None:
+            cands.append(_prep(block, preview))
+        try:
+            _NO_NEW_IMAGES["on"] = True
+            cands.append(_prep(block, synth_demo(block, name)))
+        except Exception:
+            pass
+        finally:
+            _NO_NEW_IMAGES["on"] = False
+        _LEGACY[key] = [_content(block, c) for c in cands if c is not None]
+    stored = _content(block, stored_prep)
+    others = [_content(block, c) for c in extra if c is not None]
+    return any(c == stored for c in _LEGACY[key] + others)
+
+
+def is_unedited(block, name, stored_prep, page_id=None, section_id=None):
+    """True if a stored section still holds the demo content it was seeded with — i.e. an
+    editor hasn't changed it yet. Sections seeded by 0.7+ are recorded (``SeededSection``):
+    their content is compared with the recorded hash. Older ones are compared with what
+    the plugin could have seeded (``legacy_unedited``), plus the real content it may have
+    copied (unless this section *is* that real content)."""
+    if stored_prep is None:
+        return False
+    from . import demo
+    recorded = demo.seeded_hash(section_id)
+    if recorded is not None:
+        return demo.content_hash(block, stored_prep) == recorded
+    extra = []
+    value, src_page = real_instance_for(name, block)
+    if value is not None and str(getattr(src_page, "pk", "")) != str(page_id):
+        extra.append(_prep(block, value))
+    return legacy_unedited(block, name, stored_prep, extra)
 
 
 def explicit_preview_value(block):
@@ -547,51 +515,133 @@ def explicit_preview_value(block):
 
 
 def demo_value(block, name="", prefer_real=True):
-    """A deterministic demo value for a top-level block.
-
-    1. The block's own Wagtail ``preview_value``, if the developer set one.
-    2. Built-in blocks (``prblm_builder.blocks``): their explanatory default content.
-    3. A real instance of the block used somewhere on the site (real images + copy).
-    4. Synthesised content. Pass ``prefer_real=False`` to skip step 3.
-    """
-    preview = explicit_preview_value(block)
-    if preview is not None:
-        return preview
-    from .registry import is_builtin
-    if is_builtin(block):
-        return block.get_default()
-    if prefer_real:
-        real = real_value_for(name, block)
-        if real is not None:
-            return real
-    return synth_demo(block, name)
+    """Demo content for a new section of ``block`` — see ``demo.build`` (field by field:
+    preview_value → real content of the same block → defaults → neutral generated content).
+    ``prefer_real=False`` skips real content."""
+    from . import demo
+    return demo.build(block, name, real=prefer_real)[0]
 
 
 # ---------------------------------------------------------------- iframe frame
+def _url(path):
+    return path if path.startswith(("http://", "https://", "//", "/")) else static(path)
+
+
 def asset_urls(items):
     """URLs for ``PRBLM_BUILDER_PREVIEW_CSS`` / ``_JS`` entries: full URLs as given, static
     paths as root-relative ``/static/…``. Never absolute with the request's host: Wagtail's
     preview renders with a fake request using the Site's hostname / port, which isn't
     necessarily the address the editor is browsing (the files would fail to load)."""
-    return [it if it.startswith(("http://", "https://", "//")) else static(it) for it in items]
+    out = []
+    for it in items:
+        if isinstance(it, dict):
+            src = it.get("href") or it.get("src")
+            if src:
+                out.append(_url(src))
+        elif it:
+            out.append(_url(str(it)))
+    return out
 
 
-def frame(block_html, request):
-    parts = [
-        '<!doctype html><html><head><meta charset="utf-8">',
-        '<meta name="viewport" content="width=device-width, initial-scale=1">',
-    ]
-    for url in asset_urls(cfg.preview_css()):
-        parts.append(f'<link rel="stylesheet" href="{url}">')
-    # No body padding: on the builder canvas sections stack flush, like a real page.
-    parts.append("<style>html,body{margin:0;background:#fff}</style>")
-    parts.append(f'</head><body class="{cfg.preview_body_class()}">')
+_BOOL_ATTRS = {"defer", "async", "nomodule"}
+_SCRIPT_ATTRS = ("type", "integrity", "crossorigin", "referrerpolicy", "nonce", "id")
+_LINK_ATTRS = ("media", "integrity", "crossorigin", "referrerpolicy", "id", "as", "type")
+
+
+def _attrs(entry, names):
+    from django.utils.html import format_html_join
+    pairs = [(k, entry[k]) for k in names if entry.get(k) not in (None, "", False)]
+    html = format_html_join("", ' {}="{}"', pairs)
+    flags = "".join(f" {k}" for k in sorted(_BOOL_ATTRS) if entry.get(k) is True)
+    return str(html) + flags
+
+
+def css_tags(items):
+    """``<link>`` / ``<style>`` tags for ``PRBLM_BUILDER_PREVIEW_CSS`` entries. An entry is a
+    static path or URL, or a dict: ``{"href": …, "media": "print", "integrity": …,
+    "crossorigin": "anonymous"}``, ``{"href": …, "rel": "preload", "as": "font"}`` or
+    ``{"inline": "body{…}"}``."""
+    from django.utils.html import escape
+    out = []
+    for it in items:
+        if isinstance(it, dict):
+            if it.get("inline"):
+                out.append(f"<style>{it['inline']}</style>")
+                continue
+            href = it.get("href") or it.get("src")
+            if not href:
+                continue
+            rel = escape(it.get("rel") or "stylesheet")
+            out.append(f'<link rel="{rel}" href="{escape(_url(href))}"{_attrs(it, _LINK_ATTRS)}>')
+        elif it:
+            out.append(f'<link rel="stylesheet" href="{escape(_url(str(it)))}">')
+    return "".join(out)
+
+
+def js_tags(items):
+    """``<script>`` tags for ``PRBLM_BUILDER_PREVIEW_JS`` entries, in list order (= load
+    order). An entry is a static path or URL, or a dict: ``{"src": …, "defer": True,
+    "type": "module", "integrity": …, "crossorigin": "anonymous"}``, ``{"inline": "…"}``
+    (runs in place — e.g. config a library needs first) or ``{"importmap": {…}}``."""
+    from django.utils.html import escape
+    out = []
+    for it in items:
+        if isinstance(it, dict):
+            if it.get("importmap"):
+                out.append('<script type="importmap">' + json.dumps(it["importmap"]) + "</script>")
+            elif it.get("inline"):
+                kind = f' type="{escape(it["type"])}"' if it.get("type") else ""
+                out.append(f"<script{kind}>{it['inline']}</script>")
+            elif it.get("src"):
+                out.append(f'<script src="{escape(_url(it["src"]))}"{_attrs(it, _SCRIPT_ATTRS)}></script>')
+        elif it:
+            out.append(f'<script src="{escape(_url(str(it)))}"></script>')
+    return "".join(out)
+
+
+def _strip_lazy(html):
     # Previews are scaled/offscreen, so lazy images never enter the frame's viewport and
     # would load partially — then the measured height is wrong (the section shows as a
     # thin stripe). Strip loading="lazy" so every image loads eagerly: the iframe's load
     # event waits for them, so the height is correct in a single measure.
-    parts.append(re.sub(r'\sloading=(["\'])lazy\1', " ", str(block_html)))
-    for url in asset_urls(cfg.preview_js()):
-        parts.append(f'<script src="{url}"></script>')
-    parts.append("</body></html>")
+    return re.sub(r'\sloading=(["\'])lazy\1', " ", str(html))
+
+
+# Marks where the section starts and ends inside a site's own preview template, so the
+# canvas measures just the section (not the template's wrappers or padding).
+SECTION_START = "<template data-prblm-start></template>"
+SECTION_END = "<template data-prblm-end></template>"
+
+
+def frame(block_html, request, page=None, site=None):
+    """A whole HTML page showing one section (or header/footer) for a preview iframe.
+
+    With ``PRBLM_BUILDER_PREVIEW_TEMPLATE`` (or a site's ``template``) the section is
+    rendered inside the site's own template, so it gets the site's real <head>, <body>
+    attributes, inline scripts and wrappers. Otherwise a plain page with the configured
+    CSS / JS and body class."""
+    from django.template.loader import render_to_string
+    from django.utils.safestring import mark_safe
+
+    from .sites import config
+    conf = config(page, request, site)
+    section = _strip_lazy(block_html)
+    if conf["template"]:
+        ctx = {"page": page, "self": page, "request": request,
+               "prblm_section": mark_safe(SECTION_START + section + SECTION_END)}
+        return _strip_lazy(render_to_string(conf["template"], ctx, request=request))
+    parts = [
+        '<!doctype html><html><head><meta charset="utf-8">',
+        '<meta name="viewport" content="width=device-width, initial-scale=1">',
+        css_tags(conf["css"]),
+        # No body padding: on the builder canvas sections stack flush, like a real page.
+        # Height auto: the frame keeps a tall viewport (for vh sizes), and a site rule like
+        # `html, body {height: 100%}` would otherwise make every section that tall.
+        "<style>html,body{margin:0;background:#fff;height:auto!important;"
+        "min-height:0!important}</style>",
+        f'</head><body class="{conf["body_class"]}">',
+        section,
+        js_tags(conf["js"]),
+        "</body></html>",
+    ]
     return "".join(parts)

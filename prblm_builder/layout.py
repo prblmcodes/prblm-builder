@@ -19,12 +19,12 @@ realistic demo content (so a built-and-published page is never blank); a duplica
 """
 import uuid
 
-from . import previews
+from . import demo, previews
 
 
 def new_block_value(block, name):
-    """Stored (prep) value for a block just added in the Layout tab: demo content (a real
-    instance used on the site, else the block's defaults / synthesised content)."""
+    """Stored (prep) value for a block just added in the Layout tab: demo content (see
+    ``demo.build``)."""
     return block.get_prep_value(previews.demo_value(block, name))
 
 
@@ -85,6 +85,10 @@ def reconcile(stream_block, current_raw, layout, initial_ids=None):
         if copy_from and str(copy_from) in raw_by_id:
             src = dict(raw_by_id[str(copy_from)])
             src["id"] = sid
+            # A copy of untouched demo content is untouched demo content too.
+            recorded = demo.seeded_hash(copy_from)
+            if recorded is not None and demo.content_hash(block, src.get("value")) == recorded:
+                demo.record_seeded(sid, block, src.get("value"))
             add(src, block, item, t)
             continue
 
@@ -100,7 +104,9 @@ def reconcile(stream_block, current_raw, layout, initial_ids=None):
         # content was deleted elsewhere, so it falls through here only when flagged
         # new; an unflagged vanished id is simply dropped.
         if item.get("new") or copy_from:
-            add({"type": t, "value": new_block_value(block, t), "id": sid}, block, item, t)
+            value = new_block_value(block, t)
+            demo.record_seeded(sid, block, value)     # never borrowed; "Not edited yet"
+            add({"type": t, "value": value, "id": sid}, block, item, t)
 
     # Sections added in the normal editor that the Layout tab never knew about are
     # kept (appended after the arranged ones). Ones the Layout tab *did* know and

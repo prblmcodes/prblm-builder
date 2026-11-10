@@ -15,11 +15,39 @@
   {% comment %}A standalone page: the site-wide header, the page's sections, the site-wide
   footer. Override this template (same path, in your own templates folder) to render
   Builder pages inside your site's base layout instead.{% endcomment %}
-  {% prblm_header %}
-  <main id="main">
+  <div class="prblm-header-slot">{% prblm_header %}</div>
+  {% comment %}A site header with position:fixed doesn't take space, so the first section
+  would start underneath it: the sections are padded by its height (measured below).
+  Set --prblm-header-offset in your CSS to choose it yourself.{% endcomment %}
+  <main id="main" style="padding-top:var(--prblm-header-offset,0px)">
     {% for block in page.body %}{% include_block block %}{% endfor %}
   </main>
   {% prblm_footer %}
   {% prblm_site_js %}
+  <script>
+  (function () {
+    var root = document.documentElement, slot = document.querySelector(".prblm-header-slot");
+    if (!slot || getComputedStyle(root).getPropertyValue("--prblm-header-offset").trim()) return;
+    function fixedHeader(el, depth) {
+      for (var i = 0; i < el.children.length; i++) {
+        var c = el.children[i], cs = getComputedStyle(c);
+        if (cs.display === "none") continue;
+        if (cs.position === "fixed") {
+          var r = c.getBoundingClientRect();
+          if (r.top <= 1 && r.height && r.height < innerHeight * 0.9) return c;
+        } else if (depth < 3) { var f = fixedHeader(c, depth + 1); if (f) return f; }
+      }
+      return null;
+    }
+    function update() {
+      var h = fixedHeader(slot, 0);
+      root.style.setProperty("--prblm-header-offset", h ? Math.round(h.getBoundingClientRect().height) + "px" : "0px");
+    }
+    update();
+    addEventListener("load", update);
+    addEventListener("resize", update);
+    if (window.ResizeObserver) new ResizeObserver(update).observe(slot);
+  })();
+  </script>
 </body>
 </html>

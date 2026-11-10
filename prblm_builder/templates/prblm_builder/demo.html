@@ -6,6 +6,7 @@
   <title>Block library</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="stylesheet" href="{% prblm_static 'prblm_builder/builder.css' %}">
+  <script src="{% prblm_static 'prblm_builder/frames.js' %}" defer></script>
   <script src="{% prblm_static 'prblm_builder/fold.js' %}" defer></script>
   <style>
     .bl-main{padding:22px 26px 100px}  /* full width of the available area */
@@ -19,8 +20,18 @@
     .bl-card-head{flex-wrap:wrap}
     .bl-card-desc{flex-basis:100%;margin:2px 0 0;font-size:13px;color:var(--pb-mute)}
     .bl-card-head code{font-size:11px;color:var(--pb-mute);background:#f3f3f6;padding:2px 7px;border-radius:5px}
-    .bl-frame-wrap{background:#fff;padding:0}
-    .bl-frame{display:block;width:100%;border:0;background:#fff}
+    .bl-frame-wrap{position:relative;overflow:hidden;background:#fff;padding:0;min-height:40px}
+    .bl-frame{position:absolute;top:0;left:0;display:block;width:100%;border:0;background:#fff;transform-origin:top left}
+    .bl-usage{flex-basis:100%;margin:2px 0 0;font-size:12.5px;color:var(--pb-mute)}
+    .bl-usage summary{cursor:pointer;color:var(--pb-accent)}
+    .bl-usage ul{margin:4px 0 2px;padding-left:18px}
+    .bl-usage a{color:var(--pb-accent)}
+    .bl-unused{color:#8a4b00}
+    .bl-origin{font-size:11px;color:var(--pb-mute)}
+    .bl-filter{display:inline-flex;gap:2px;margin:12px 0 0;padding:3px;background:#f1f2f6;border-radius:9px}
+    .bl-filter button{border:0;background:transparent;padding:6px 11px;border-radius:7px;font:inherit;font-size:12.5px;font-weight:600;color:#55555c;cursor:pointer}
+    .bl-filter button[aria-pressed="true"]{background:#fff;color:var(--pb-ink);box-shadow:0 1px 3px rgba(20,20,40,.12)}
+    .bl-site{margin-left:12px;padding:6px 9px;border:1px solid var(--pb-line);border-radius:8px;font:inherit;font-size:13px;background:#fff}
     .nav-link{display:block;padding:6px 10px;border-radius:7px;font-size:13.5px;color:#55555c;text-decoration:none}
     .nav-link:hover{background:#f6f1ee;color:var(--pb-ink)}
     .nav-link.active{background:rgba(43,108,176,.12);color:var(--pb-accent);font-weight:600}
@@ -47,14 +58,22 @@
   <header class="pb-bar">
     <a class="pb-back" href="/admin/" title="Back">&larr;</a>
     <div class="pb-title"><span class="pb-kicker">Page builder</span><h1>Block library</h1></div>
-    <div class="pb-devices" id="bl-devices" role="group" aria-label="Preview width">
+    {% if site_choices %}
+    <form method="get" style="margin-left:auto">
+      <label class="pb-kicker" for="bl-site">Site</label>
+      <select class="bl-site" id="bl-site" name="site" onchange="this.form.submit()">
+        {% for host, name in site_choices %}<option value="{{ host }}"{% if host == site %} selected{% endif %}>{{ name }}</option>{% endfor %}
+      </select>
+    </form>
+    {% endif %}
+    <div class="pb-devices" id="bl-devices" role="group" aria-label="Preview width"{% if site_choices %} style="margin-left:12px"{% endif %}>
       <button type="button" data-device="desktop" class="active" title="Desktop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="1.5"/><path d="M8 20h8M12 17v3"/></svg></button>
       <button type="button" data-device="tablet" title="Tablet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2.5" width="14" height="19" rx="2"/><path d="M10.5 18.5h3"/></svg></button>
       <button type="button" data-device="mobile" title="Mobile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M10.5 18.5h3"/></svg></button>
     </div>
   </header>
 
-  <div class="pb-wrap" data-preview-url="{{ preview_url }}">
+  <div class="pb-wrap" data-preview-url="{{ preview_url }}" data-canvas-height="{{ canvas_height }}">
     <aside class="pb-palette">
       <p class="pb-palette-title">Sections</p>
       <input type="search" id="bl-search" class="pb-search" placeholder="Search sections…" autocomplete="off">
@@ -68,7 +87,8 @@
               <div data-fold-body="{{ group.key }}">
               {% for b in group.blocks %}
                 <a class="nav-link" href="#bl-{% if b.builtin %}builtin-{% endif %}{{ b.name }}" data-target="bl-{% if b.builtin %}builtin-{% endif %}{{ b.name }}"
-                   data-search="{{ b.label|lower }} {{ b.name }}">{{ b.label }}</a>
+                   data-used="{% if b.used %}1{% else %}0{% endif %}"
+                   data-search="{{ b.label|lower }} {{ b.name }} {{ b.description|lower }}">{{ b.label }}</a>
               {% endfor %}
               </div>
             </div>
@@ -82,6 +102,11 @@
       <div class="bl-head">
         <h2>Block library</h2>
         <p>{{ total }} section{{ total|pluralize }} you can drop onto a page — shown with demo content. Use these in the <strong>Layout</strong> builder.</p>
+        <div class="bl-filter" role="group" aria-label="Show">
+          <button type="button" data-filter="all" aria-pressed="true">All</button>
+          <button type="button" data-filter="used" aria-pressed="false">Used on pages</button>
+          <button type="button" data-filter="unused" aria-pressed="false">Not used yet</button>
+        </div>
       </div>
       {% for kind in kinds %}
         {% if show_kinds %}<div class="pb-fold-head bl-kind-head"><h2 class="bl-kind-title">{{ kind.kind }}</h2>{% include "prblm_builder/_fold_button.html" with key=kind.key label=kind.kind %}</div>{% endif %}
@@ -90,10 +115,19 @@
           <div class="pb-fold-head bl-group-head"><h2 class="bl-group-title">{{ group.group }}</h2>{% include "prblm_builder/_fold_button.html" with key=group.key label=group.group %}</div>
           <div data-fold-body="{{ group.key }}">
           {% for b in group.blocks %}
-            <article class="bl-card" id="bl-{% if b.builtin %}builtin-{% endif %}{{ b.name }}" data-search="{{ b.label|lower }} {{ b.name }}">
-              <div class="bl-card-head"><h3>{{ b.label }}</h3><code>{{ b.name }}</code>{% if b.description %}<p class="bl-card-desc">{{ b.description }}</p>{% endif %}</div>
+            <article class="bl-card" id="bl-{% if b.builtin %}builtin-{% endif %}{{ b.name }}" data-used="{% if b.used %}1{% else %}0{% endif %}"
+                     data-search="{{ b.label|lower }} {{ b.name }} {{ b.description|lower }}">
+              <div class="bl-card-head"><h3>{{ b.label }}</h3><code>{{ b.name }}</code>{% if b.origin %}<span class="bl-origin">{{ b.origin }}</span>{% endif %}
+                {% if b.description %}<p class="bl-card-desc">{{ b.description }}</p>{% endif %}
+                {% if b.used %}
+                  <details class="bl-usage"><summary>Used on {{ b.used }} page{{ b.used|pluralize }}</summary>
+                    <ul>{% for p in b.pages %}<li><a href="{{ p.url }}" target="_blank" rel="noopener">{{ p.title }}</a></li>{% endfor %}
+                    {% if b.used > b.pages|length %}<li>…{{ b.used }} pages in all</li>{% endif %}</ul>
+                  </details>
+                {% else %}<p class="bl-usage bl-unused">Not used on any published page yet — the preview shows example content.</p>{% endif %}
+              </div>
               <div class="bl-frame-wrap"><iframe class="bl-frame" scrolling="no" loading="lazy" title="{{ b.label }}"
-                   data-src="{{ preview_url }}?block={{ b.name }}&demo=1&trim=1{% if b.builtin %}&builtin=1{% endif %}"></iframe></div>
+                   data-src="{{ preview_url }}?block={{ b.name }}&demo=1&trim=1{% if b.builtin %}&builtin=1{% endif %}{{ site_param }}"></iframe></div>
             </article>
           {% endfor %}
           </div>
@@ -121,25 +155,45 @@
   <script>
     (function () {
       var main = document.getElementById("bl-main");
-      function fit(f){ try{ var d=f.contentDocument; if(d&&d.documentElement){ f.style.height="0px"; f.style.height=d.documentElement.scrollHeight+"px"; } }catch(e){} }
+      // Same measuring as the canvas (frames.js): the frame keeps a viewport at least
+      // PRBLM_BUILDER_CANVAS_HEIGHT tall (vh sizes), the card shows the measured part.
+      var VH = parseInt(document.querySelector(".pb-wrap").dataset.canvasHeight, 10) || 900;
+      function fit(f){ try{
+        var d=f.contentDocument, wrap=f.parentNode; if(!d||!d.body||!window.prblmFrames) return;
+        if((parseFloat(f.style.height)||0) < VH) f.style.height = VH + "px";
+        var m = window.prblmFrames.measure(d, false);
+        if(m.top + m.height > parseFloat(f.style.height) && (f._g = (f._g||0) + 1) <= 3) f.style.height = (m.top + m.height) + "px";
+        f.style.transform = m.top ? "translateY(" + (-m.top) + "px)" : "";
+        wrap.style.height = m.height + "px";
+      }catch(e){} }
       var io = ("IntersectionObserver" in window) ? new IntersectionObserver(function(es){ es.forEach(function(e){ if(e.isIntersecting){ var f=e.target; if(!f.src&&f.dataset.src) f.src=f.dataset.src; io.unobserve(f); } }); }, {rootMargin:"500px 0px"}) : null;
       document.querySelectorAll(".bl-frame").forEach(function(f){
-        f.addEventListener("load", function(){ fit(f); setTimeout(function(){fit(f);},400);
-          try{ var b=f.contentDocument&&f.contentDocument.body; if(b&&window.ResizeObserver) new ResizeObserver(function(){fit(f);}).observe(b); }catch(e){} });
+        f.style.height = VH + "px";
+        f.addEventListener("load", function(){ f._g = 0; fit(f); setTimeout(function(){fit(f);},400);
+          try{ var d=f.contentDocument; if(window.ResizeObserver){ var ro=new ResizeObserver(function(){fit(f);}); ro.observe(d.documentElement); if(d.body) ro.observe(d.body); }
+               d.addEventListener("load", function(){ fit(f); }, true); if(d.fonts&&d.fonts.ready) d.fonts.ready.then(function(){ fit(f); }); }catch(e){} });
         if(io) io.observe(f); else f.src=f.dataset.src;
       });
       document.addEventListener("prblm-builder:fold", function(e){ if(!e.detail.folded) setTimeout(function(){ main.querySelectorAll(".bl-frame").forEach(fit); },60); });
       /* device toggle */
       var db=document.querySelectorAll("#bl-devices button");
       db.forEach(function(b){ b.addEventListener("click", function(){ db.forEach(function(x){x.classList.remove("active");}); b.classList.add("active"); main.setAttribute("data-device", b.dataset.device); setTimeout(function(){ main.querySelectorAll(".bl-frame").forEach(fit); },240); }); });
-      /* search */
-      var s=document.getElementById("bl-search"), none=document.getElementById("bl-none");
-      if(s) s.addEventListener("input", function(){ var q=s.value.trim().toLowerCase(), any=false; document.body.classList.toggle("pb-searching", !!q);
-        document.querySelectorAll(".bl-card").forEach(function(c){ var hit=!q||c.dataset.search.indexOf(q)!==-1; c.style.display=hit?"":"none"; if(hit)any=true; });
-        document.querySelectorAll(".nav-link").forEach(function(l){ l.style.display=(!q||l.dataset.search.indexOf(q)!==-1)?"":"none"; });
+      /* search + used / not used filter */
+      var s=document.getElementById("bl-search"), none=document.getElementById("bl-none"), filter="all";
+      function shows(el, q){ var used = el.dataset.used === "1";
+        return (!q || el.dataset.search.indexOf(q) !== -1) && (filter === "all" || (filter === "used") === used); }
+      function apply(){ var q=s ? s.value.trim().toLowerCase() : "", any=false;
+        document.body.classList.toggle("pb-searching", !!q || filter !== "all");
+        document.querySelectorAll(".bl-card").forEach(function(c){ var hit=shows(c, q); c.style.display=hit?"":"none"; if(hit)any=true; });
+        document.querySelectorAll(".nav-link").forEach(function(l){ l.style.display=shows(l, q)?"":"none"; });
         document.querySelectorAll(".nav-group").forEach(function(g){ g.style.display=g.querySelectorAll('.nav-link:not([style*="display: none"])').length?"":"none"; });
-        document.querySelectorAll(".bl-group-title").forEach(function(h){ });
-        none.style.display=any?"none":"block"; setTimeout(function(){ main.querySelectorAll(".bl-frame").forEach(fit); },50); });
+        none.textContent = q ? "No sections match your search." : "No sections here.";
+        none.style.display=any?"none":"block"; setTimeout(function(){ main.querySelectorAll(".bl-frame").forEach(fit); },50); }
+      if(s) s.addEventListener("input", apply);
+      document.querySelectorAll(".bl-filter button").forEach(function(b){ b.addEventListener("click", function(){
+        filter = b.dataset.filter;
+        document.querySelectorAll(".bl-filter button").forEach(function(x){ x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
+        apply(); }); });
       /* device widths via a class on main */
       var st=document.createElement("style");
       // Resize the whole card (white container + title) and keep it centred, so the
