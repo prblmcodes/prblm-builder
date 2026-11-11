@@ -625,12 +625,38 @@ def _repair(block, name, value, error, stage, ctx):
             return block.normalize(items)
     except Exception:
         pass
-    if stage == 0 and not isinstance(block, (blocks.StructBlock, blocks.ListBlock, blocks.StreamBlock)):
-        try:
-            return block.normalize(generate(block, name, ctx))
-        except Exception:
-            pass
+    if stage <= 1 and not isinstance(block, (blocks.StructBlock, blocks.ListBlock, blocks.StreamBlock)):
+        if stage == 0:
+            try:
+                value = block.normalize(generate(block, name, ctx))
+                block.clean(value)
+                return value
+            except Exception:
+                pass
+        shaped = _pattern_value(block)          # e.g. a field that must look like "/path/"
+        if shaped is not MISSING:
+            return shaped
     return block.normalize(block.get_default())
+
+
+# Common shapes tried, in order, for text fields with a pattern (RegexBlock, validators).
+PATTERN_CANDIDATES = ["/", "/page/", "https://example.com/", "example", "Example", "123",
+                      "#section", "example-1", "name@example.com", "+10000000000", "2026"]
+
+
+def _pattern_value(block):
+    """The first common value that passes a text field's own validation, or MISSING."""
+    if not isinstance(block, (blocks.CharBlock, blocks.RegexBlock, blocks.TextBlock, blocks.URLBlock,
+                              blocks.FieldBlock)) or isinstance(block, (blocks.ChooserBlock, blocks.ChoiceBlock)):
+        return MISSING
+    for candidate in PATTERN_CANDIDATES:
+        try:
+            value = block.normalize(candidate)
+            block.clean(value)
+            return value
+        except Exception:
+            continue
+    return MISSING
 
 
 def validated(block, name, value):
@@ -709,6 +735,48 @@ def seeded_hash(section_id):
         return None
 
 
+def _score(block, prep):
+    """How well-filled a real section is: (filled fields, images, stored length). Filled
+    fields count nested lists and structs, so a section with every field set beats one
+    with a single long text."""
+    counts = [0, 0]
+
+    def walk(b, v, depth=0):
+        if depth > 10:
+            return
+        if isinstance(b, blocks.StructBlock):
+            if isinstance(v, dict):
+                for cname, child in b.child_blocks.items():
+                    walk(child, v.get(cname), depth + 1)
+            return
+        if isinstance(b, blocks.ListBlock):
+            for item in v or []:
+                if isinstance(item, dict) and "value" in item and "type" in item:
+                    item = item["value"]
+                walk(b.child_block, item, depth + 1)
+            return
+        if isinstance(b, blocks.StreamBlock):
+            for item in v or []:
+                if isinstance(item, dict):
+                    child = b.child_blocks.get(item.get("type"))
+                    if child is not None:
+                        walk(child, item.get("value"), depth + 1)
+            return
+        if _is_empty(v) or v is False:
+            return
+        if isinstance(b, blocks.RichTextBlock) and isinstance(v, str) and not strip_tags(v).strip():
+            return
+        counts[0] += 1
+        if isinstance(b, ImageChooserBlock):
+            counts[1] += 1
+
+    try:
+        walk(block, prep)
+    except Exception:
+        pass
+    return (counts[0], counts[1], len(json.dumps(prep, default=str)))
+
+
 def _index():
     """``{"candidates": {block_key: [(value, page), …]}, "usage": {block_key: {page_id: page}}}``
     from live pages (newest first, ``PRBLM_BUILDER_INDEX_SCAN_LIMIT`` per model). Candidates
@@ -751,10 +819,10 @@ def _index():
                                 continue                      # the plugin's own, never edited
                         elif legacy_unedited(child.block, child.block_type, prep):
                             continue
-                        score = len(json.dumps(prep, default=str))
+                        score = _score(child.block, prep)
                         cands.setdefault(key, []).append((score, child.value, page))
         for key in cands:
-            cands[key].sort(key=lambda t: -t[0])
+            cands[key].sort(key=lambda t: t[0], reverse=True)
             cands[key] = [(v, p) for _s, v, p in cands[key][:8]]
         return {"candidates": cands, "usage": usage}
     return _cached("index", build) or {"candidates": {}, "usage": {}}

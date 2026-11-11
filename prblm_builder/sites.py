@@ -31,7 +31,7 @@ logger = logging.getLogger("prblm_builder")
 _WARNED = set()
 
 KEYS = ("css", "js", "body_class", "body_attrs", "html_attrs", "header_template",
-        "footer_template", "template")
+        "footer_template", "template", "canvas_overlap")
 
 
 def site_for(page=None, request=None, hostname=None):
@@ -79,6 +79,7 @@ def config(page=None, request=None, site=None):
         "header_template": cfg.header_template(), "footer_template": cfg.footer_template(),
         "template": cfg.preview_template(),
         "body_attrs": cfg.preview_body_attrs(), "html_attrs": cfg.preview_html_attrs(),
+        "canvas_overlap": cfg.canvas_overlap(),
     }
     sites = cfg.preview_sites()
     if not sites:
@@ -136,17 +137,26 @@ def _merge_class(out):
 ALL = "all"
 
 
+def multi_site():
+    """Whether the project has more than one Wagtail Site."""
+    try:
+        from wagtail.models import Site
+        return Site.objects.count() > 1
+    except Exception:
+        return False
+
+
 def choices():
-    """``[(hostname, label)]`` for the Block library's site switcher, ending with
-    ``("all", "All sites")`` — ``[]`` when the project has one Site and no per-site preview
-    settings. With ``PRBLM_BUILDER_PREVIEW_SITES``, sites no entry matches say so."""
+    """``[(hostname, label)]`` for the Block library's "Preview as" site tabs, ending with
+    ``("all", "All sites")`` — ``[]`` when the project has only one Site (whatever the
+    settings say). With ``PRBLM_BUILDER_PREVIEW_SITES``, sites no entry matches say so."""
     sites = cfg.preview_sites()
     try:
         from wagtail.models import Site
         all_sites = list(Site.objects.order_by("-is_default_site", "hostname"))
     except Exception:
         return []
-    if len(all_sites) < 2 and not sites:
+    if len(all_sites) < 2:
         return []
     out = []
     for s in all_sites:
@@ -156,3 +166,14 @@ def choices():
         out.append((s.hostname, label))
     out.append((ALL, "All sites"))
     return out
+
+
+SITE_TABS_MAX = 5
+
+
+def library_choices():
+    """``[(hostname, name, note)]`` for the Block library's "Preview as" tabs (``note`` says
+    when a site uses the default preview settings) — ``[]`` with one Site."""
+    note = " — uses the default preview settings"
+    return [(host, label.split(note)[0], note.strip(" —") if note in label else "")
+            for host, label in choices()]

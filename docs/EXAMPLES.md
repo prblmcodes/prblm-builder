@@ -4,7 +4,8 @@ Copy-paste examples for using the plugin with **your own** page models and block
 example here is real code: it lives in [`tests/examples/`](../tests/examples/) and is
 checked by [`tests/test_examples.py`](../tests/test_examples.py), so it keeps working.
 
-For installation and the full settings list, see the [README](../README.md).
+Install first with the [Quick start](../README.md#quick-start); every setting is in
+[SETTINGS.md](SETTINGS.md), and each feature is explained in the [Feature guide](GUIDE.md).
 
 - [1. A page model the builder picks up](#1-a-page-model-the-builder-picks-up)
 - [2. A simple block: template, description, preview value](#2-a-simple-block-template-description-preview-value)
@@ -110,7 +111,7 @@ class ButtonLinkBlock(blocks.StructBlock):
 Blocks used **only** inside other blocks never appear anyway — `builder = False` is for
 the ones that are also offered at the top level. You can also hide blocks from settings:
 `PRBLM_BUILDER_EXCLUDE_BLOCKS = ["button", "myapp.blocks.ButtonLinkBlock"]` (by name, or by
-full class path — see the README's *Hiding a block*).
+full class path — see [Hiding a block](GUIDE.md#hiding-a-block)).
 
 ## 4. A section with layout settings (⚙)
 
@@ -392,6 +393,6 @@ Without a preview template, put `<body>` / `<html>` state in settings instead:
 hostnames, site names (`"Main"`) or wildcards (`"landing.*"`). Animated elements: every
 preview has `class="prblm-canvas"` on `<html>`.
 
-Step by step: [docs/PREVIEWS.md](PREVIEWS.md). All options: README → *Previews that match
-your site*.
+Step by step: [PREVIEWS.md](PREVIEWS.md). All options:
+[Previews that match your site](GUIDE.md#6-previews-that-match-your-site).
 

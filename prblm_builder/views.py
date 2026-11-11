@@ -10,15 +10,13 @@ import re
 from django.apps import apps as django_apps
 from django.core.exceptions import PermissionDenied
 from django.http import Http404, HttpResponse, JsonResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.html import strip_tags
 from django.views.decorators.clickjacking import xframe_options_sameorigin
-from django.views.decorators.http import require_POST
 from wagtail.models import Page
 
 from . import chrome
-from . import layout as layout_mod
 from . import previews, registry
 from . import settings as cfg
 
@@ -128,12 +126,22 @@ def _apply_settings_preview(block, value, request):
         return value
 
 
-def _palette(stream_block):
+def _usage_site(site):
+    """The site whose pages count for usage order — only when the project has several."""
+    from . import sites
+    return site if site is not None and sites.multi_site() else None
+
+
+def _palette(stream_block, site=None):
     """The builder sidebar: ``[{kind, key, groups: [{group, key, blocks: [{type, label}]}]}]``
-    — kinds (built-in / site) and groups each foldable by their ``key``."""
+    — kinds (built-in / site) and groups each foldable by their ``key``, ordered by usage
+    on ``site``'s pages (``PRBLM_BUILDER_BLOCK_ORDER``)."""
     from django.utils.text import slugify
+
+    from . import demo as demo_mod
     out = []
     for kind, groups in registry.palette_sections(stream_block):
+        groups = registry.order_by_usage(groups, lambda n, b: len(demo_mod.usage(n, b, site)))
         kkey = registry.KIND_KEYS[kind]
         out.append({"kind": kind, "key": kkey, "short": registry.KIND_SHORT[kind], "groups": [
             {"group": g, "key": f"{kkey}:{slugify(g)}",
@@ -147,6 +155,7 @@ def _render_block(block, value, request, page=None):
     # Mark the request as a preview so blocks that fill themselves with sample data
     # under preview (the common Wagtail convention) show demo content on the canvas.
     request.is_preview = True
+    request.is_prblm_preview = True
     ctx = {"request": request, "sample_fill": True}
     if page is not None:
         ctx["page"] = page
@@ -274,37 +283,42 @@ def _has_chrome(kind, request, page=None, model=None):
 # ----------------------------------------------------------------- per-page builder
 @xframe_options_sameorigin  # so it can be framed by the editor's Layout tab (same origin)
 def builder(request, page_id):
+    """The Layout tab's canvas (embedded in the page editor with ``?embed=1``). Opened on
+    its own, the address sends you to the page editor — pages are only saved through
+    Wagtail's Save draft / Publish."""
     page = _editing_page(page_id)
     if not _can_edit(page, request.user):
         raise PermissionDenied
+    if not request.GET.get("embed"):
+        return redirect("wagtailadmin_pages:edit", page.pk)
     field_name, stream_block = registry.stream_block_for(type(page))
     if not stream_block:
         raise Http404("This page type has no builder-enabled StreamField.")
+    from .sites import config as site_config, site_for
+    site = site_for(page, request)
+    palette = _palette(stream_block, _usage_site(site))
     return render(request, "prblm_builder/builder.html", {
         "mode": "page",
-        "embed": bool(request.GET.get("embed")),
+        "embed": True,
         "page": page,
         "field_name": field_name,
         "sections": _sections(page, field_name),
-        "palette": _palette(stream_block),
+        "palette": palette,
         "settings_schema": _settings_schema(stream_block, request),
-        "page_options": (page_options := _page_options(request, page=page) if request.GET.get("embed") else []),
+        "page_options": (page_options := _page_options(request, page=page)),
         "page_options_editable": any(o.get("choices") for o in page_options),
         "chrome_base": reverse("prblm_builder:preview") + f"?page={page.id}",
-        "show_kinds": len(_palette(stream_block)) > 1,
+        "show_kinds": len(palette) > 1,
         "preview_url": reverse("prblm_builder:preview"),
         "check_url": reverse("prblm_builder:check_setting"),
-        "save_url": reverse("prblm_builder:save", args=[page.id]),
         "context_param": f"page={page.id}",
         "header_src": (reverse("prblm_builder:preview") + f"?page={page.id}&chrome=header")
         if _has_chrome("header", request, page) else "",
         "footer_src": (reverse("prblm_builder:preview") + f"?page={page.id}&chrome=footer")
         if _has_chrome("footer", request, page) else "",
-        "edit_url": reverse("wagtailadmin_pages:edit", args=[page.id]),
-        "preview_page_url": reverse("prblm_builder:page_preview", args=[page.id]),
-        "back_url": reverse("wagtailadmin_explore", args=[page.get_parent().id]),
         "canvas_width": cfg.canvas_width(),
         "canvas_height": cfg.canvas_height(),
+        "canvas_overlap": bool(site_config(site=site)["canvas_overlap"]),
     })
 
 
@@ -328,31 +342,31 @@ def builder_new(request):
     field_name, stream_block = registry.stream_block_for(model)
     if not stream_block:
         raise Http404("This page type has no builder-enabled StreamField.")
+    from .sites import config as site_config, site_for
+    site = site_for(None, request)
+    palette = _palette(stream_block, _usage_site(site))
     return render(request, "prblm_builder/builder.html", {
         "mode": "new",
         "embed": True,
         "page": None,
         "field_name": field_name,
         "sections": [],
-        "palette": _palette(stream_block),
+        "palette": palette,
         "settings_schema": _settings_schema(stream_block, request),
         "page_options": (page_options := _page_options(request, model=model)),
         "page_options_editable": any(o.get("choices") for o in page_options),
         "chrome_base": reverse("prblm_builder:preview") + f"?{scope}",
-        "show_kinds": len(_palette(stream_block)) > 1,
+        "show_kinds": len(palette) > 1,
         "preview_url": reverse("prblm_builder:preview"),
         "check_url": reverse("prblm_builder:check_setting"),
-        "save_url": "",
         "context_param": scope,
         "header_src": (reverse("prblm_builder:preview") + f"?{scope}&chrome=header")
         if _has_chrome("header", request, model=model) else "",
         "footer_src": (reverse("prblm_builder:preview") + f"?{scope}&chrome=footer")
         if _has_chrome("footer", request, model=model) else "",
-        "edit_url": "",
-        "preview_page_url": "",
-        "back_url": "",
         "canvas_width": cfg.canvas_width(),
         "canvas_height": cfg.canvas_height(),
+        "canvas_overlap": bool(site_config(site=site)["canvas_overlap"]),
     })
 
 
@@ -382,6 +396,8 @@ def demo(request):
             from wagtail.models import Site
             usage_site = Site.objects.filter(hostname=site_host).first()
     for kind, kind_groups in sections:
+        kind_groups = registry.order_by_usage(
+            kind_groups, lambda n, b: len(demo_mod.usage(n, b, usage_site)))
         kkey = registry.KIND_KEYS[kind]
         kind_entry = {"kind": kind, "key": kkey, "short": registry.KIND_SHORT[kind], "groups": []}
         for g, items in kind_groups:
@@ -414,26 +430,16 @@ def demo(request):
         "total": sum(len(g["blocks"]) for g in groups),
         "unpreviewable": unpreviewable,
         "preview_url": reverse("prblm_builder:preview"),
-        "site_choices": site_choices,
+        "site_choices": sites.library_choices() if site_choices else [],
+        # Tabs for a few sites (+ "All sites"); a dropdown beyond that.
+        "site_tabs": len(site_choices) - 1 <= sites.SITE_TABS_MAX,
+        "admin_home": reverse("wagtailadmin_home"),
         "site": site_host,
         "site_param": f"&site={site_host}" if site_host and site_host != sites.ALL else "",
         "site_label": dict(site_choices).get(site_host, "") if site_choices else "",
         "site_scoped": usage_site is not None,
         "canvas_height": cfg.canvas_height(),
     })
-
-
-@xframe_options_sameorigin
-def page_preview(request, page_id):
-    """Render the whole page from its latest (draft) revision — the real page, as a
-    single document, for the 'open in new tab' preview."""
-    page = _specific_page(page_id)
-    if not _can_edit(page, request.user):
-        raise PermissionDenied
-    page = page.get_latest_revision_as_object()
-    request.is_preview = True
-    request.preview_mode = ""
-    return page.serve_preview(request, page.default_preview_mode)
 
 
 # ----------------------------------------------------------------- block preview (iframe body)
@@ -445,6 +451,8 @@ def preview(request):       # builder frames this from the same origin, so allow
     ``?page=<id>&block=<name>``  → a demo-data preview (page used for context).
     ``?model=<app.Model>&block=<name>`` → demo preview with no page (standalone).
     """
+    # Lets the site's template tags (analytics, tracking, SEO) skip themselves in previews.
+    request.is_prblm_preview = True
     # Site header/footer chrome (shown around the page on the canvas).
     chrome_kind = request.GET.get("chrome")
     if chrome_kind in ("header", "footer"):
@@ -527,42 +535,3 @@ def check_setting(request):
         raise Http404("Unknown block.")
     error = registry.check_setting(block, request.GET.get("name", ""), request.GET.get("value", ""))
     return JsonResponse({"ok": error is None, "error": error or ""})
-
-
-# ----------------------------------------------------------------- save
-@require_POST
-def save(request, page_id):
-    page = _editing_page(page_id)   # build on the latest draft, not the published row
-    if not _can_edit(page, request.user):
-        raise PermissionDenied
-    field_name, stream_block = registry.stream_block_for(type(page))
-    if not stream_block:
-        raise Http404
-
-    try:
-        posted = json.loads(request.body.decode())
-    except (ValueError, UnicodeDecodeError):
-        return JsonResponse({"ok": False, "error": "bad payload"}, status=400)
-    sections = posted.get("sections", [])
-    publish = bool(posted.get("publish"))
-
-    # Standalone builder: it shows every section and saves the whole set, so the
-    # listed sections are authoritative — initial = the current ids, meaning any
-    # omitted one was removed by the editor and is dropped.
-    current_raw = list(getattr(page, field_name).raw_data)
-    initial_ids = [d.get("id") for d in current_raw]
-    try:
-        new_raw = layout_mod.reconcile(stream_block, current_raw, sections, initial_ids)
-    except layout_mod.SettingsError as exc:
-        return JsonResponse({"ok": False, "error": "; ".join(exc.messages)}, status=400)
-
-    setattr(page, field_name, stream_block.to_python(new_raw))
-    revision = page.save_revision(user=request.user)
-    if publish:
-        revision.publish(user=request.user)
-
-    return JsonResponse({
-        "ok": True,
-        "published": publish,
-        "edit_url": reverse("wagtailadmin_pages:edit", args=[page.id]),
-    })

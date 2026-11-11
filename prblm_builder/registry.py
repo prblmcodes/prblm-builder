@@ -138,6 +138,21 @@ def _group(blocks_iter):
     return [(g, groups[g]) for g in ordered]
 
 
+def order_by_usage(groups, count):
+    """``groups`` (from ``_group``) reordered by usage when ``PRBLM_BUILDER_BLOCK_ORDER`` is
+    ``"usage"``: blocks in a group most-used first (ties A–Z, unused last), and the groups
+    by their blocks' total usage (ties A–Z). ``count(name, block)`` → number of pages."""
+    if cfg.block_order() != "usage":
+        return groups
+    out = []
+    for g, items in groups:
+        scored = [(count(n, b), n, b, lbl) for n, b, lbl in items]
+        scored.sort(key=lambda t: (-t[0], t[3].lower()))
+        out.append((sum(t[0] for t in scored), g, [(n, b, lbl) for _c, n, b, lbl in scored]))
+    out.sort(key=lambda t: (-t[0], t[1].lower()))
+    return [(g, items) for _total, g, items in out]
+
+
 def grouped_blocks(stream_block):
     """Grouped previewable blocks a single StreamField allows (for the builder palette)."""
     return _group(stream_block.child_blocks.items())
@@ -243,7 +258,11 @@ def _library_stream_blocks():
 def _library_sources():
     """``(model, field_name, stream_block)`` the Block library draws from."""
     if cfg.library_scope() == "all":
+        # Every page type's StreamFields — not snippets, settings or menu apps, whose
+        # blocks (menu items, links…) aren't page sections.
         for model in django_apps.get_models():
+            if not issubclass(model, Page) or model is Page:
+                continue
             for field in model._meta.get_fields():
                 if isinstance(field, StreamField):
                     yield model, field.name, field.stream_block

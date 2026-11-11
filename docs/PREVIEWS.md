@@ -13,9 +13,11 @@ server after changing them.
 
 ## 1. Put the parts previews must leave out into blocks
 
-Previews should show your page **without** its header, footer, cookie banner, modals and
-Wagtail's user bar (the canvas shows the header and footer separately). Wrap each of them in
-a `{% block %}` in your base template, so a preview template can empty them:
+Previews should show your page **without** its header, footer, cookie banner, modals,
+Wagtail's user bar, **analytics / tracking scripts** and SEO tags (the canvas shows the
+header and footer separately; tracking in previews would count a page view for every
+section an editor looks at). Wrap each of them in a `{% block %}` in your base template, so
+a preview template can empty them:
 
 ```django
 {# templates/base.html #}
@@ -30,6 +32,27 @@ a `{% block %}` in your base template, so a preview template can empty them:
 ```
 
 Your live pages don't change: a block with content renders exactly as the include did.
+
+### Keep analytics and SEO tags out of previews
+
+Instead of a block, you can also wrap them in a check — previews set `prblm_preview` in the
+template and `request.is_prblm_preview` on the request (handy inside your own template tags):
+
+```django
+{% if not prblm_preview %}
+  {% include "partials/_analytics.html" %}
+  <meta property="og:title" content="{{ page.seo_title|default:page.title }}">
+{% endif %}
+```
+
+```python
+# a template tag or context processor of yours
+if getattr(request, "is_prblm_preview", False):
+    return ""          # no tracking in builder previews
+```
+
+`prblm_preview` exists in the preview template (step 2); `request.is_prblm_preview` in
+every preview, with or without one.
 
 ## 2. Create a preview template
 
@@ -48,8 +71,9 @@ Your live pages don't change: a block with content renders exactly as the includ
 PRBLM_BUILDER_PREVIEW_TEMPLATE = "prblm_preview.html"
 ```
 
-Previews now get your real `<head>` (CSS, fonts, inline scripts), your `<body>` attributes
-and your wrappers. The template gets `page` (the page being edited, when there is one),
+Previews now get your real `<head>` (CSS, fonts, inline scripts, **inline `<style>`
+with your colour variables**), your `<body>` attributes and your wrappers — no need to
+copy inline styles into `PRBLM_BUILDER_PREVIEW_CSS` and keep two copies in sync. The template gets `page` (the page being edited, when there is one),
 `request`, and `prblm_preview` (always `True`) if you want to change something only in
 previews. The canvas measures just the section, so padding around `{{ prblm_section }}`
 (e.g. under a fixed header) doesn't add space.
@@ -133,7 +157,21 @@ frame is scaled, not scrolled), leaving sections blank or half-faded.
   Put it in your CSS, or in the preview template:
   `{% if prblm_preview %}<style>…</style>{% endif %}`.
 
-## 6. Page types with their own header and footer
+## 6. Transparent headers and overlapping sections
+
+Nothing to set up. The canvas lies a **transparent fixed / absolute header** over the first
+section (as on the page at the top of the screen), and shows sections pulled over a
+neighbour by **negative margins** overlapping it. If the header should look solid on the
+canvas, give it a background under `.prblm-canvas`:
+
+```css
+.prblm-canvas .site-header { background: #0f172a; }
+```
+
+To stack everything instead: `PRBLM_BUILDER_CANVAS_OVERLAP = False` (or
+`"canvas_overlap": False` in one site's profile).
+
+## 7. Page types with their own header and footer
 
 When a page type renders its own header and footer (e.g. from its StreamFields), tell the
 canvas with the `prblm_builder_chrome_for_page` hook. Return the HTML, `""` for "none", or
@@ -156,13 +194,13 @@ def landing_chrome(kind, request, page, model):
     return render_to_string(template, {"page": page}, request=request)
 ```
 
-## 7. Good to know
+## 8. Good to know
 
 - Links and forms inside previews don't do anything when clicked (the canvas is a picture,
   not a browser); scripted buttons — Alpine `@click`, menus, accordions — still work.
 - Select a section on the canvas to see its margins as striped "Space" bands.
 
-## 8. Check it
+## 9. Check it
 
 Open a page with several sections in the editor and compare the **Layout** canvas with
 Wagtail's **Preview** panel:
@@ -170,12 +208,15 @@ Wagtail's **Preview** panel:
 - [ ] fonts and colours match (else: CSS order, `body_class`, the preview template);
 - [ ] the gaps between sections match (the canvas merges margins like a normal page; inside
       a flex / grid wrapper it doesn't, like the live page);
+- [ ] a transparent header and overlapping sections look as on the page (step 6);
 - [ ] tall sections (`70vh`, `h-screen`) look right (`PRBLM_BUILDER_CANVAS_HEIGHT`, default 900);
 - [ ] animated or script-driven parts are visible (step 5);
 - [ ] buttons using Alpine state don't show errors in the browser console (step 4);
-- [ ] the header and footer above / below the canvas are right for each page type (steps 2, 6);
+- [ ] the header and footer above / below the canvas are right for each page type (steps 2, 7);
+- [ ] no analytics hits / tracking requests from previews (step 1);
 - [ ] each site in the Block library's Site switcher uses its own styles (step 3).
 
 The canvas can't copy everything: sections are separate frames, so CSS that styles one
-section by its neighbour (`section + section`) or overlaps the previous section with
-negative margins looks different there.
+section by its neighbour (`section + section`), or a script that reads the next section
+(e.g. colouring a wave with the next section's background), can't work there. Overlaps by
+negative margins do work (step 6).

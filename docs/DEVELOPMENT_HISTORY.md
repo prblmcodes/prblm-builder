@@ -81,8 +81,8 @@ Pure introspection, no site-specific code.
     never resurrects a natively-deleted block or drops a natively-added one.
 - If `_pb_layout` is absent (the editor never opened the Layout tab), nothing changes — the
   native body saves exactly as submitted.
-- The standalone (non-embed) builder still has its own Save endpoint (`views.save`), which
-  reuses the same `reconcile`.
+- There is no other save path: the standalone (non-embed) builder and its `views.save`
+  endpoint were removed in 0.9 (the address redirects to the page editor).
 
 ### Previews — `views.py` (`preview`) + `previews.py` + `builder.js`
 - `preview` renders a single block into an iframe document. Modes:
@@ -112,7 +112,18 @@ Pure introspection, no site-specific code.
   page sees them (`edgeMargin` follows first / last children whose margins collapse
   through the section's edge), `collapse` whether its container lets them merge (not a
   flex / grid wrapper). `builder.js` `applyGaps()` overlaps each host (header → sections →
-  footer) with the previous by `min(prev.mb, mt)` × scale (0.8). Every preview `<html>` has
+  footer) with the previous by `min(prev.mb, mt)` × scale (0.8). Since 0.9 margins merge the
+  CSS way (`edgeMargins`: largest positive + most negative), and `measure` also returns
+  `above` / `below` (how far in-flow content — negative margins, nested "pokes" found by
+  `pokes()`, skipping absolute/fixed and overflow-clipped things — reaches over the previous /
+  next section), `rawTop` (content above the document's top; `measureFrame` pads `<html>` so
+  it's never cut off) and, for headers, `overlay` (a fixed/absolute header with no
+  background of its own or of a full-width bar inside it). With
+  `PRBLM_BUILDER_CANVAS_OVERLAP` (per site: `canvas_overlap`), `applyGaps` pulls a host up by
+  `prev.below + this.above` (a transparent header: by its whole height, over the first
+  section), and `setClear` makes the frame see-through (its `html,body` background moves to
+  the host as a gradient that is transparent over the overlapping strips); a host reaching
+  down gets `z-index:2` (`pb-pokes-down`), below the toolbars (3). Every preview `<html>` has
   `prblm-canvas` (shell: attribute; template mode: an inline script at the start of
   `prblm_section`), plus the reduce-motion `<style>` when `PRBLM_BUILDER_REDUCE_MOTION`.
 - `builder.js` renders each frame at a **desktop width** (`PRBLM_BUILDER_CANVAS_WIDTH`) and a
@@ -142,8 +153,10 @@ Built-in blocks keep their own explanatory `default`. For every other block, **p
    collection; link-like structs (`_link_choice`: a ChoiceBlock whose choices name sibling
    destination fields) get one type + its value (a live page, else `/`); lists 3 items or
    `min_num`, ≤ `max_num`; required documents a PDF / any / an example file.
-Then `validated()` runs `clean()`; failing fields fall back (generated → empty → the
-struct's dropdowns reset). `problem()` names the failing field for the Block library.
+Then `validated()` runs `clean()`; failing fields fall back (generated → a common shape
+that passes a pattern, `PATTERN_CANDIDATES` via `_pattern_value` (0.9) → empty → the
+struct's dropdowns reset). Real instances are ranked by `_score` = (filled fields incl.
+nested, images, stored length) (0.9; was length only). `problem()` names the failing field for the Block library.
 
 **Seeded sections.** `layout.reconcile` records each seeded section (and copies of untouched
 ones) in `SeededSection(section_id, value_hash)` — `content_hash` ignores ⚙ settings, ids and
@@ -167,8 +180,11 @@ that raise, render no text/media (`_is_blank`) or whose demo content fails their
 validation (0.7) are listed in a collapsed "Couldn't preview" section with the reason
 instead of as an empty/red card. They stay in the palette. Since 0.7 each card shows
 "Used on N pages" (live pages, `demo.usage`) with an All / Used / Not used filter; search
-covers descriptions; with several `PRBLM_BUILDER_PREVIEW_SITES` a site switcher adds
-`&site=<hostname>` to the previews.
+covers descriptions; with several Wagtail Sites (0.9: only then) the **Preview as** tabs
+(`sites.library_choices()`, a dropdown above `SITE_TABS_MAX` = 5) add `&site=<hostname>` to
+the previews and scope usage. Blocks and groups are ordered by usage (`registry.order_by_usage`,
+`PRBLM_BUILDER_BLOCK_ORDER`), also in the Layout sidebar (`views._palette(stream_block, site)`,
+the page's site on multi-site projects).
 
 ### Admin section — `wagtail_hooks.py`
 A **Page builder** sidebar section (`SubmenuMenuItem`) whose items come from the
@@ -384,6 +400,27 @@ of the code only calls these (never `django.conf.settings` directly). See §6.
     when a page type's `prblm_builder_chrome_for_page` hook decided (a landing page with
     its own header), sending editors to the wrong file.
 
+16. **0.9 (plan in `docs/plans/v0.9.0.md`) — installed on an existing Wagtail 7.0 / Django
+    5.2 site.** It needed four patches there: a Wagtail 8.1-only import (`BlockGroup`), the
+    telepath module path, and a migration depending on Wagtail 8's `0098_apitoken` and
+    reading `settings.WAGTAIL_PAGE_MODEL`. The package pinned `wagtail>=8.1` and
+    `Django>=6.1` because those were the latest versions, not because the code needed them
+    — the test suite passed on 7.0 with the patches (and on 6.3 except description /
+    preview_value). Now: `compat.py`, migrations on `0094_alter_page_locale`, `wagtail>=7.0,<9`
+    only, CI on 7.0, a test guarding migration dependencies. Lesson: **pin the oldest
+    version you test, not the newest you have**, and lower `makemigrations`' wagtailcore
+    dependency by hand. Canvas: transparent headers and negative-margin overlaps (above) —
+    the real site's white header text vanished on the canvas strip and "pull-up" boxes lost
+    their headings; the root bug was `edgeMargin` merging with `max()`, which drops a
+    negative margin. Also: usage order, Preview-as tabs only with 2+ Sites, `"all"` scope = page types only,
+    `request.is_prblm_preview` for analytics tags, pattern-shaped demo values. Removed the
+    leftover standalone builder (own Save + "new tab" view, unlinked since 0.2) — one save
+    path only. A "refresh demo content" action for untouched sections was built and dropped
+    before release: sections already on a page may hold real content, so nothing refills
+    them. Lesson from the same round: renaming `measure` → `measureFrame` in `builder.js`
+    missed the thumbnail code, whose `try/catch` hid the ReferenceError — a test now checks
+    the name.
+
 ---
 
 ## 4. Key decisions (and why)
@@ -492,7 +529,7 @@ previews unstyled.
 | `PRBLM_BUILDER_EXCLUDE_TEMPLATE_PREFIXES` | `()` | Block template prefixes to hide |
 | `PRBLM_BUILDER_INDEX_SCAN_LIMIT` | `500` | Pages/model scanned for real demo content |
 | `PRBLM_BUILDER_EXCLUDE_BLOCKS` | `()` | Hide blocks by name or dotted class path (0.2) |
-| `PRBLM_BUILDER_LIBRARY_SCOPE` | `"builder"` | Block library = palette blocks, or `"all"` StreamFields (0.2) |
+| `PRBLM_BUILDER_LIBRARY_SCOPE` | `"builder"` | Block library = palette blocks, or `"all"` page types' StreamFields (0.2; page types only 0.9) |
 | ~~`PRBLM_BUILDER_SEED_NEW_BLOCKS`~~ | — | Removed in 0.3 (startup warning W001 if still set) |
 | `PRBLM_BUILDER_PAGE_TYPE` | `True` | Built-in "Builder page" creatable (0.3, blocks app only) |
 | `PRBLM_BUILDER_PAGE_PARENTS` | `[]` | Page types allowed to hold Builder pages (0.4) |
@@ -507,6 +544,8 @@ previews unstyled.
 | `PRBLM_BUILDER_PREVIEW_BODY_ATTRS` | `{}` | Extra `<body>` attributes in the plain preview shell + Builder pages (0.8) |
 | `PRBLM_BUILDER_PREVIEW_HTML_ATTRS` | `{}` | Extra `<html>` attributes (0.8) |
 | `PRBLM_BUILDER_REDUCE_MOTION` | `True` | Animations / transitions instant under `.prblm-canvas` (0.8) |
+| `PRBLM_BUILDER_CANVAS_OVERLAP` | `True` | Transparent header over the first section; negative-margin overlaps (0.9; per site `canvas_overlap`) |
+| `PRBLM_BUILDER_BLOCK_ORDER` | `"usage"` | Sidebar + library order: most used first, or `"alpha"` (0.9) |
 
 Block-level options (not settings): `Meta.builder = False` (hide), `Meta.builder_settings =
 [...]` (⚙ panel, 0.5), Wagtail's `preview_value` / `description` (0.5). Model attribute:
@@ -526,8 +565,12 @@ A block can also opt out itself: `class Meta: builder = False`.
   - ride-along save's hidden-field injection: `form[data-edit-form]` *(essential — not
     switchable)*.
   The two admin tweaks can be turned off with `PRBLM_BUILDER_ADMIN_TWEAKS = False`.
-- Built against Wagtail 7 / Django 5.2; from v0.1.0 it targets **Wagtail 8.1+ / Django 6.1+ /
-  Python 3.12+** (CI covers Python 3.12–3.14).
+- Built against Wagtail 7 / Django 5.2; 0.1–0.8 required Wagtail 8.1+ / Django 6.1+. Since
+  0.9: **Wagtail 7.0+ (<9), Django from Wagtail, Python 3.12+** (CI: Python 3.12–3.14 on the
+  latest Wagtail, and Wagtail 7.0 / Django 5.2). Version-dependent imports live in
+  `compat.py`; `BuilderSettingsMixin` needs 8.1's `form_layout` (no-op before); block
+  `description` / `preview_value` need 6.4. New migrations must depend on
+  `wagtailcore.0094` at most (`tests/test_v09.py` checks).
 - Tests: `prblm_builder/tests/test_builder.py` (generic, shipped — runs in the bundled
   test project or inside a host project via `manage.py test prblm_builder`) and
   `tests/test_options.py` (settings + Block-library rules; needs the edge-case blocks in
@@ -536,8 +579,9 @@ A block can also opt out itself: `class Meta: builder = False`.
   compares with what 0.6 could have seeded, so it can miss one (shows as edited); it never
   flags a section an editor actually changed.
 - The canvas can't reproduce everything a live page does: sections are separate frames,
-  so CSS that relies on neighbouring sections (`section + section`, negative margins
-  overlapping the previous section) or on page-level JS state looks different. A preview
+  so CSS that relies on neighbouring sections (`section + section`) or scripts reading the
+  next section, and page-level JS state, look different. Negative-margin overlaps and
+  transparent headers are reproduced since 0.9 (the header in its scroll-top state). A preview
   template (`PRBLM_BUILDER_PREVIEW_TEMPLATE`) covers `<body>` attributes and head scripts.
 - Auto-save conflicts (`invalid_revision`, e.g. another tab saved first) can't be fixed by
   the plugin; the save banner says a manual Save draft is needed.
@@ -557,11 +601,12 @@ prblm_builder/                the installable app (what the wheel ships)
   layout.py          reconcile(…), new_block_value(); records seeded sections
   registry.py        block/model introspection; block_key; hidden(), previewable(),
                      library scope + origins; ⚙ settings schema + check_setting
-  views.py           builder, builder_new, preview, demo, save, page_preview, check_setting
+  views.py           builder (Layout tab canvas; alone → redirect), builder_new, preview, demo, check_setting
   demo.py            demo content field by field; real-content index + usage; placeholders
   previews.py        frame (shell or preview template), css/js tags, trim, is_unedited,
                      0.6's generator (legacy "Not edited yet" only)
-  sites.py           per-site preview settings (PRBLM_BUILDER_PREVIEW_SITES)
+  sites.py           per-site preview settings (PRBLM_BUILDER_PREVIEW_SITES), Preview-as tabs
+  compat.py          imports that differ between Wagtail versions (0.9)
   models.py          SeededSection (+ migrations/0001_seeded_sections.py)
   chrome.py          header/footer around the canvas (hooks → site template → default)
   mixins.py          BuilderSettingsMixin
@@ -581,9 +626,10 @@ tests/                        test project (repo only, not shipped)
                             v08: marker, attributes, site matching, release workflow)
   examples/, test_examples.py the code from docs/EXAMPLES.md
 runtests.py                   test runner (also `runtests.py makemigrations`)
-.github/workflows/test.yml    CI: Python 3.12–3.14 + wheel build check
+.github/workflows/test.yml    CI: Python 3.12–3.14 + Wagtail 7.0 + wheel build check
 .github/workflows/release.yml on a v* tag: test, check version, attach wheel + sdist to the release
-README.md                     user docs: install, settings reference, troubleshooting
+README.md                     what it is + quick start; user docs in docs/ (0.9 split):
+                              GUIDE (features), SETTINGS, TROUBLESHOOTING, UPGRADING, DEVELOPMENT
 CHANGELOG.md                  per-release changes
 LICENSE                       MIT
 docs/plans/               each release's plan + progress log
@@ -631,3 +677,7 @@ block's default content into one HTML file and screenshotting it with headless C
 8. ~~**Optional built-in blocks**~~ — done in 0.3 (21 blocks, Theme, Header & footer,
    Builder page). Possible next: more blocks (contact form needs storage + spam
    protection), a theme preview on the Theme page, dark-mode aware defaults.
+9. **Single-frame canvas** — render the whole page in one frame (sections as positioned
+   regions) so CSS / scripts that read neighbouring sections (`section + section`, a wave
+   coloured by the next section) work too. Big rewrite; noted in 0.9, not planned.
+10. **Dark mode** for the builder UI and Block library (they use fixed light colours).

@@ -11,7 +11,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('wagtailcore', '0098_apitoken'),
+        ('wagtailcore', '0094_alter_page_locale'),
     ]
 
     operations = [
@@ -25,7 +25,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='StandardPage',
             fields=[
-                ('page_ptr', models.OneToOneField(auto_created=True, on_delete=django.db.models.deletion.CASCADE, parent_link=True, primary_key=True, serialize=False, to=settings.WAGTAIL_PAGE_MODEL)),
+                ('page_ptr', models.OneToOneField(auto_created=True, on_delete=django.db.models.deletion.CASCADE, parent_link=True, primary_key=True, serialize=False, to=getattr(settings, 'WAGTAIL_PAGE_MODEL', 'wagtailcore.page'))),
                 ('body', wagtail.fields.StreamField([('rich_text', 0), ('heading', 1), ('hero', 7), ('internal_note', 8), ('broken', 9), ('spacer', 10)], blank=True, block_lookup={0: ('wagtail.blocks.RichTextBlock', (), {'template': 'testapp/blocks/rich_text.html'}), 1: ('wagtail.blocks.CharBlock', (), {'template': 'testapp/blocks/heading.html'}), 2: ('wagtail.blocks.CharBlock', (), {}), 3: ('wagtail.blocks.TextBlock', (), {'required': False}), 4: ('wagtail.images.blocks.ImageChooserBlock', (), {'required': False}), 5: ('wagtail.blocks.URLBlock', (), {'required': False}), 6: ('wagtail.blocks.StructBlock', [[('text', 2), ('url', 5)]], {'required': False}), 7: ('wagtail.blocks.StructBlock', [[('title', 2), ('text', 3), ('image', 4), ('cta', 6)]], {'template': 'testapp/blocks/hero.html'}), 8: ('wagtail.blocks.CharBlock', (), {'builder': False, 'template': 'testapp/blocks/heading.html'}), 9: ('wagtail.blocks.CharBlock', (), {'template': 'testapp/blocks/broken.html'}), 10: ('wagtail.blocks.CharBlock', (), {'required': False, 'template': 'testapp/blocks/spacer.html'})})),
             ],
             options={

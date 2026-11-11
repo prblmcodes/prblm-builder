@@ -6,16 +6,14 @@ from . import views
 
 app_name = "prblm_builder"
 # Layout editing lives in the page editor's "Layout" tab (see panels.LayoutBuilderPanel),
-# so there's no standalone-builder menu item or explorer/header "Edit layout" button.
-# The ``builder`` view stays — the Layout tab embeds it (``?embed=1``).
+# so there's no standalone builder: the ``builder`` view is the Layout tab's canvas
+# (``?embed=1``); opened on its own it redirects to the page editor.
 urlpatterns = [
     path("layout-new/", views.builder_new, name="builder_new"),
     path("demo/", views.demo, name="demo"),
     path("preview/", views.preview, name="preview"),
     path("check-setting/", views.check_setting, name="check_setting"),
     path("page/<int:page_id>/", views.builder, name="builder"),
-    path("page/<int:page_id>/save/", views.save, name="save"),
-    path("page/<int:page_id>/preview/", views.page_preview, name="page_preview"),
 ]
 
 

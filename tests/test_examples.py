@@ -3,11 +3,14 @@ import json
 import uuid
 
 from django.contrib.auth import get_user_model
+from unittest import skipUnless
+
 from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from wagtail.models import Page
 
 from prblm_builder import previews, registry
+from prblm_builder.compat import HAS_FORM_LAYOUT
 from prblm_builder.blocks import builder_blocks
 from prblm_builder.blocks.fields import body_blocks
 from tests.examples.blocks import PromoBlock
@@ -42,6 +45,7 @@ class ExamplesTests(TestCase):
         self.assertEqual(previews.demo_value(heading, "heading"), "A heading for the next part of the page")
         self.assertEqual(registry.block_description(heading), "A large heading that starts a new part of the page.")
 
+    @skipUnless(HAS_FORM_LAYOUT, "Wagtail 8.1+ settings area")
     def test_promo_settings_panel_and_content_tab(self):
         block = PromoBlock()
         self.assertEqual([f["name"] for f in registry.settings_schema(block)], ["background", "anchor_id"])
@@ -111,7 +115,7 @@ class ReuseLinkBlockTests(TestCase):
 
     def test_card_form_gets_the_link_type_switch(self):
         from tests.examples.blocks import CardBlock
-        from wagtail.admin.telepath import JSContext
+        from prblm_builder.compat import JSContext
         ctx = JSContext()
         ctx.pack(CardBlock())
         self.assertIn("prblm_builder/blocks/link-block.js", str(ctx.media))

@@ -10,8 +10,12 @@ body.pb{background:var(--pb-bg);font-family:var(--pb-font);color:var(--pb-ink)}
 /* top bar */
 .pb-bar{position:sticky;top:0;z-index:40;height:var(--pb-bar-h);display:flex;align-items:center;gap:16px;
   padding:0 18px;background:var(--pb-panel);border-bottom:1px solid var(--pb-line)}
-.pb-back{font-size:22px;text-decoration:none;color:var(--pb-mute);line-height:1}
-.pb-back:hover{color:var(--pb-ink)}
+/* Back to the admin (Block library): a line chevron in a 36px target. */
+.pb-back{display:inline-flex;align-items:center;justify-content:center;flex:none;width:36px;height:36px;
+  margin-left:-6px;border-radius:8px;color:var(--pb-mute);text-decoration:none}
+.pb-back svg{width:22px;height:22px}
+.pb-back:hover{background:#f1f2f6;color:var(--pb-ink)}
+.pb-back:focus-visible{outline:2px solid var(--pb-accent);outline-offset:1px}
 .pb-title{display:flex;flex-direction:column;line-height:1.1}
 .pb-kicker{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--pb-accent);font-weight:700}
 .pb-title h1{margin:0;font-size:16px;font-weight:600}
@@ -56,6 +60,13 @@ body.pb-embed.pb-expanded .pb-divider{display:none}
 .pb-frame,
 .pb-chrome-frame{position:absolute;top:0;left:0;transform-origin:top left}
 .pb-chrome.pb-chrome-empty{height:0 !important}
+/* Overlap (PRBLM_BUILDER_CANVAS_OVERLAP): see-through frames; a section reaching down over
+   the next one, and a transparent header over the first section, sit above it (below the
+   section toolbars, z-index 3). */
+.pb-frame.pb-frame-clear,
+.pb-chrome-frame.pb-frame-clear{background:transparent}
+.pb-sec.pb-pokes-down,
+.pb-chrome.pb-chrome-overlay{z-index:2}
 
 /* While a section's preview loads, show a sized shimmer placeholder (not a bare
    stripe) and fade the frame in once it's rendered. The min-height only applies while
@@ -127,7 +138,6 @@ body.pb-embed .pb-expand{display:inline-flex}
 .pb-space-label{position:absolute;left:8px;top:50%;transform:translateY(-50%);padding:1px 7px;border-radius:999px;
   background:#fff7e6;color:#7a4a00;border:1px solid #f0c27a;font-size:10.5px;font-weight:700;line-height:1.5;white-space:nowrap}
 .pb-space-top .pb-space-label{left:50%;transform:translate(-50%,-50%)}  /* clear of the badge and toolbar */
-body.pb-preview-mode .pb-space{display:none}
 /* a section = a seamless preview with hover/selected chrome */
 .pb-sec{position:relative;display:block}
 .pb-frame{display:block;width:100%;border:0;background:#fff}
@@ -149,7 +159,6 @@ body.pb-preview-mode .pb-space{display:none}
 .pb-unedited{position:absolute;top:8px;left:8px;z-index:3;pointer-events:none;font:600 11px/1 system-ui,sans-serif;
   letter-spacing:.02em;padding:5px 9px;border-radius:999px;background:#fff4e5;color:#8a4b00;border:1px solid #f3c58a;
   box-shadow:0 1px 3px rgba(0,0,0,.12)}
-body.pb-preview-mode .pb-unedited{display:none}
 .pb-sec-ctrls{display:flex;gap:2px}
 /* Buttons keep their 26px size; no inner padding, so the icons can be bigger (17px). */
 .pb-sec-ctrls button{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;border:0;background:rgba(255,255,255,.12);color:#fff;border-radius:6px;cursor:pointer;font-size:13px;line-height:1}
@@ -175,16 +184,6 @@ body.pb-preview-mode .pb-unedited{display:none}
 .pb-toast.pb-err{background:#a11}
 
 /* preview mode: hide the editing chrome, show just the page full-width */
-.pb-exit-preview{display:none}
-body.pb-preview-mode .pb-wrap{grid-template-columns:1fr}
-body.pb-preview-mode .pb-palette{display:none}
-body.pb-preview-mode .pb-sec-bar{display:none}
-body.pb-preview-mode .pb-sec-hit{pointer-events:none}
-body.pb-preview-mode .pb-sec::after{box-shadow:none !important}
-body.pb-preview-mode .pb-stage{padding:0}
-body.pb-preview-mode .pb-page{border-radius:0;box-shadow:none}
-body.pb-preview-mode .pb-actions{display:none}
-body.pb-preview-mode .pb-exit-preview{display:inline-block;margin-left:12px}
 
 @media (max-width:820px){
   body:not(.pb-embed) .pb-wrap{grid-template-columns:1fr}

@@ -122,7 +122,7 @@ class WiringTests(TestCase):
         self.assertIn("collapse: collapse", frames)
         js = (STATIC / "builder.js").read_text()
         self.assertIn("function applyGaps", js)
-        self.assertIn("Math.min(prev._pbM.mb, m.mt)", js)
+        self.assertIn("Math.min(p.mb, m.mt)", js)
 
     def test_release_workflow(self):
         wf = (ROOT / ".github" / "workflows" / "release.yml").read_text()
@@ -202,7 +202,7 @@ class LibraryAndPaletteMarkupTests(TestCase):
         self.assertIn('class="bl-card-side"', html)
         self.assertIn("data-kind-filter", html)
         self.assertIn('data-kind-block="builtin"', html)
-        self.assertIn("background:#e9ecf1", html)
+        self.assertIn("background:#dde4f0", html)
 
     def test_layout_palette_pills(self):
         from django.urls import reverse

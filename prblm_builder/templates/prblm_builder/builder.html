@@ -11,38 +11,12 @@
   <script src="{% prblm_static 'prblm_builder/builder.js' %}" defer></script>
   <script src="{% prblm_static 'prblm_builder/fold.js' %}" defer></script>
 </head>
-<body class="pb{% if embed %} pb-embed{% endif %}" data-fold-store="palette">
-  {% if not embed %}
-  <header class="pb-bar">
-    {% if not embed %}<a class="pb-back" href="{{ back_url }}" title="Back to explorer">&larr;</a>{% endif %}
-    <div class="pb-title"><span class="pb-kicker">Page builder</span><h1>{{ page.title }}</h1></div>
-    <div class="pb-devices" role="group" aria-label="Preview width">
-      <button type="button" data-device="desktop" class="active" title="Desktop" aria-label="Desktop">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="1.5"/><path d="M8 20h8M12 17v3"/></svg></button>
-      <button type="button" data-device="tablet" title="Tablet" aria-label="Tablet">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2.5" width="14" height="19" rx="2"/><path d="M10.5 18.5h3"/></svg></button>
-      <button type="button" data-device="mobile" title="Mobile" aria-label="Mobile">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M10.5 18.5h3"/></svg></button>
-    </div>
-    <div class="pb-actions">
-      <button class="pb-btn" id="pb-preview" title="Hide the panels to preview the page">Preview</button>
-      <a class="pb-btn pb-btn-ghost" href="{{ preview_page_url }}" target="_blank" rel="noopener"
-         title="Open the last-saved draft in a new tab">New&nbsp;tab&nbsp;&#8599;</a>
-      <a class="pb-btn pb-btn-ghost" href="{{ edit_url }}">Edit content</a>
-      <button class="pb-btn" id="pb-save">Save draft</button>
-      <button class="pb-btn pb-btn-primary" id="pb-publish">Save &amp; publish</button>
-    </div>
-    <button class="pb-btn pb-exit-preview" id="pb-exit-preview">Exit preview</button>
-  </header>
-  {% endif %}
-
+<body class="pb pb-embed" data-fold-store="palette">
   <div class="pb-wrap"
        data-preview-url="{{ preview_url }}" data-check-url="{{ check_url }}"
-       data-save-url="{{ save_url }}"
        data-context="{{ context_param }}"
-       data-edit-url="{{ edit_url }}"
-       data-csrf="{{ csrf_token }}"
        data-canvas-width="{{ canvas_width }}" data-canvas-height="{{ canvas_height }}"
+       data-canvas-overlap="{% if canvas_overlap %}1{% else %}0{% endif %}"
        data-field-name="{{ field_name }}">
     {{ sections|json_script:"pb-sections" }}
     {{ settings_schema|json_script:"pb-settings-schema" }}
@@ -122,7 +96,7 @@
           <div class="pb-empty" id="pb-empty">
             <strong>Start building the page</strong>
             <span>Drag a section here, or click one in the list on the left.</span>
-            <span>{% if embed %}After saving, edit each section's words and images in the <b>Content</b> tab.{% else %}Edit a section's content with its pencil button.{% endif %}</span>
+            <span>After saving, edit each section's words and images in the <b>Content</b> tab.</span>
           </div>
         </div>
         {% if footer_src or page_options %}

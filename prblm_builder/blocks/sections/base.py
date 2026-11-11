@@ -12,7 +12,7 @@ from django.utils.functional import cached_property
 from wagtail import blocks
 from wagtail.blocks.struct_block import StructBlockAdapter, StructBlockValidationError
 from wagtail.documents.blocks import DocumentChooserBlock
-from wagtail.admin.telepath import register
+from prblm_builder.compat import register
 
 from prblm_builder.mixins import BuilderSettingsMixin
 

@@ -3,11 +3,14 @@ import json
 import uuid
 
 from django.contrib.auth import get_user_model
+from unittest import skipUnless
+
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from wagtail.models import Page
 
 from prblm_builder import previews, registry
+from prblm_builder.compat import HAS_FORM_LAYOUT
 from prblm_builder.layout import reconcile
 from tests.testapp.models import StandardPage
 
@@ -112,7 +115,7 @@ class LinkBlockTests(TestCase):
 
     def test_admin_script_registered(self):
         from prblm_builder.blocks.sections.base import LinkBlock
-        from wagtail.admin.telepath import JSContext
+        from prblm_builder.compat import JSContext
         ctx = JSContext()
         ctx.pack(LinkBlock())
         self.assertIn("prblm_builder/blocks/link-block.js", str(ctx.media))
@@ -143,6 +146,7 @@ class SectionSettingsTests(TestCase):
         self.assertTrue(fields["background"]["swatches"])
         self.assertEqual(fields["anchor_id"]["kind"], "text")
 
+    @skipUnless(HAS_FORM_LAYOUT, "Wagtail 8.1+ settings area")
     def test_content_tab_puts_settings_in_collapsed_area(self):
         from prblm_builder.blocks.sections.heroes import HeroBlock
         layout = HeroBlock().meta.form_layout

@@ -15,27 +15,36 @@
     .bl-head p{margin:4px 0 0;color:var(--pb-mute);font-size:13.5px}
     .bl-group-title{margin:28px 2px 2px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--pb-mute)}
     .bl-card{background:#fff;border:1px solid var(--pb-line);border-radius:12px;margin:14px 0;overflow:hidden;scroll-margin-top:80px}
-    /* The card's label strip: grey, so it never reads as part of the section below it. */
-    .bl-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:11px 14px;
-      background:#e9ecf1;border-bottom:2px solid #c9ced8}
+    /* The card's label strip: tinted (never white, so it can't merge with a white section),
+       a dark divider and an accent edge, with text that passes WCAG AA on the tint. */
+    .bl-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:11px 14px 11px 12px;
+      background:#dde4f0;border-bottom:2px solid #8a97ad;border-left:4px solid var(--pb-accent);color:#1f2937}
     .bl-card-main{flex:1 1 auto;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}
     .bl-card-side{flex:none;max-width:45%;text-align:right}
     .bl-card-head h3{margin:0;font-size:15px;font-weight:600}
-    .bl-card-desc{flex-basis:100%;margin:2px 0 0;font-size:13px;color:var(--pb-mute)}
-    .bl-card-head code{font-size:11px;color:var(--pb-mute);background:#f3f3f6;padding:2px 7px;border-radius:5px}
+    .bl-card-desc{flex-basis:100%;margin:2px 0 0;font-size:13px;color:#475569}
+    .bl-card-head code{font-size:11px;color:#334155;background:#f5f7fb;padding:2px 7px;border-radius:5px}
     .bl-frame-wrap{position:relative;overflow:hidden;background:#fff;padding:0;min-height:40px}
     .bl-frame{position:absolute;top:0;left:0;display:block;width:100%;border:0;background:#fff;transform-origin:top left}
-    .bl-usage{margin:2px 0 0;font-size:12.5px;color:var(--pb-mute)}
-    .bl-usage summary{cursor:pointer;color:var(--pb-accent);list-style-position:inside}
+    .bl-usage{margin:2px 0 0;font-size:12.5px;color:#475569}
+    .bl-usage summary{cursor:pointer;color:#1d4f8a;font-weight:600;list-style-position:inside}
     .bl-usage ul{margin:6px 0 2px;padding:0;list-style:none;text-align:right}
     .bl-usage li{margin:2px 0}
-    .bl-usage a{color:var(--pb-accent)}
-    .bl-unused{color:#8a4b00}
-    .bl-origin{font-size:11px;color:var(--pb-mute)}
+    .bl-usage a{color:#1d4f8a}
+    .bl-unused{color:#7a3f00}
+    .bl-origin{font-size:11px;color:#475569}
     .bl-filter{display:inline-flex;gap:2px;margin:12px 0 0;padding:3px;background:#f1f2f6;border-radius:9px}
     .bl-filter button{border:0;background:transparent;padding:6px 11px;border-radius:7px;font:inherit;font-size:12.5px;font-weight:600;color:#55555c;cursor:pointer}
     .bl-filter button[aria-pressed="true"]{background:#fff;color:var(--pb-ink);box-shadow:0 1px 3px rgba(20,20,40,.12)}
-    .bl-site{margin-left:12px;padding:6px 9px;border:1px solid var(--pb-line);border-radius:8px;font:inherit;font-size:13px;background:#fff}
+    /* "Preview as" site tabs: underlined tabs, so they don't look like the kind pills. */
+    .bl-sites{display:flex;flex-wrap:wrap;align-items:flex-end;gap:2px 4px;margin:0 2px 18px;border-bottom:1px solid var(--pb-line)}
+    .bl-sites-label{margin:0 8px 9px 0;font-size:12.5px;font-weight:600;color:var(--pb-mute)}
+    .bl-sites a{display:block;padding:8px 12px 7px;margin-bottom:-1px;font-size:13.5px;font-weight:600;color:#55555c;
+      text-decoration:none;border-bottom:3px solid transparent}
+    .bl-sites a:hover{color:var(--pb-ink)}
+    .bl-sites a[aria-current="page"]{color:var(--pb-accent);border-bottom-color:var(--pb-accent)}
+    .bl-sites-note{font-weight:400;color:var(--pb-mute)}
+    .bl-site{padding:6px 9px;margin-bottom:8px;border:1px solid var(--pb-line);border-radius:8px;font:inherit;font-size:13px;background:#fff}
     .nav-link{display:block;padding:6px 10px;border-radius:7px;font-size:13.5px;color:#55555c;text-decoration:none}
     .nav-link:hover{background:#f6f1ee;color:var(--pb-ink)}
     .nav-link.active{background:rgba(43,108,176,.12);color:var(--pb-accent);font-weight:600}
@@ -60,17 +69,9 @@
 </head>
 <body class="pb" data-fold-store="library">
   <header class="pb-bar">
-    <a class="pb-back" href="/admin/" title="Back">&larr;</a>
+    <a class="pb-back" href="{{ admin_home }}" title="Back to the admin" aria-label="Back to the admin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></a>
     <div class="pb-title"><span class="pb-kicker">Page builder</span><h1>Block library</h1></div>
-    {% if site_choices %}
-    <form method="get" style="margin-left:auto">
-      <label class="pb-kicker" for="bl-site">Site</label>
-      <select class="bl-site" id="bl-site" name="site" onchange="this.form.submit()">
-        {% for host, name in site_choices %}<option value="{{ host }}"{% if host == site %} selected{% endif %}>{{ name }}</option>{% endfor %}
-      </select>
-    </form>
-    {% endif %}
-    <div class="pb-devices" id="bl-devices" role="group" aria-label="Preview width"{% if site_choices %} style="margin-left:12px"{% endif %}>
+    <div class="pb-devices" id="bl-devices" role="group" aria-label="Preview width">
       <button type="button" data-device="desktop" class="active" title="Desktop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="1.5"/><path d="M8 20h8M12 17v3"/></svg></button>
       <button type="button" data-device="tablet" title="Tablet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2.5" width="14" height="19" rx="2"/><path d="M10.5 18.5h3"/></svg></button>
       <button type="button" data-device="mobile" title="Mobile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M10.5 18.5h3"/></svg></button>
@@ -111,6 +112,23 @@
     </aside>
 
     <main class="bl-main" id="bl-main" data-device="desktop">
+      {% if site_choices %}
+      {% comment %}Several Wagtail Sites: whose styles previews use and whose pages count as
+      "used". Tabs for a few sites, a dropdown for many.{% endcomment %}
+      {% if site_tabs %}
+      <nav class="bl-sites" aria-label="Preview as site">
+        <span class="bl-sites-label">Preview as:</span>
+        {% for host, name, note in site_choices %}<a href="?site={{ host|urlencode }}"{% if host == site %} aria-current="page"{% endif %}{% if note %} title="{{ note }}"{% endif %}>{{ name }}{% if note %} <span class="bl-sites-note">*</span>{% endif %}</a>{% endfor %}
+      </nav>
+      {% else %}
+      <form method="get" class="bl-sites">
+        <label class="bl-sites-label" for="bl-site">Preview as:</label>
+        <select class="bl-site" id="bl-site" name="site" onchange="this.form.submit()">
+          {% for host, name, note in site_choices %}<option value="{{ host }}"{% if host == site %} selected{% endif %}>{{ name }}{% if note %} — {{ note }}{% endif %}</option>{% endfor %}
+        </select>
+      </form>
+      {% endif %}
+      {% endif %}
       <div class="bl-head">
         <h2>Block library</h2>
         <p>{{ total }} section{{ total|pluralize }} you can drop onto a page — shown with demo content. Use these in the <strong>Layout</strong> builder.</p>
@@ -178,7 +196,7 @@
       function fit(f){ try{
         var d=f.contentDocument, wrap=f.parentNode; if(!d||!d.body||!window.prblmFrames) return;
         if((parseFloat(f.style.height)||0) < VH) f.style.height = VH + "px";
-        var m = window.prblmFrames.measure(d, false);
+        var m = window.prblmFrames.measureFrame(f, false);
         if(m.top + m.height > parseFloat(f.style.height) && (f._g = (f._g||0) + 1) <= 3) f.style.height = (m.top + m.height) + "px";
         f.style.transform = m.top ? "translateY(" + (-m.top) + "px)" : "";
         wrap.style.height = m.height + "px";

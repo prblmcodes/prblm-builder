@@ -56,9 +56,11 @@ class OptionsTests(TestCase):
         self.assertNotIn("footer_link", shown | set(skipped))  # non-page StreamField
 
     @override_settings(PRBLM_BUILDER_LIBRARY_SCOPE="all")
-    def test_library_scope_all_includes_other_streamfields(self):
+    def test_library_scope_all_is_page_types_only(self):
         shown, skipped = self.library()
-        self.assertIn("footer_link", shown | set(skipped))
+        self.assertIn("own_heading", shown | set(skipped))      # a page type's StreamField
+        # A non-page model's StreamField (menus, settings, snippets) isn't page sections.
+        self.assertNotIn("footer_link", shown | set(skipped))
 
     # --- hiding blocks -------------------------------------------------------
     def test_meta_builder_false_hides_block(self):
@@ -217,3 +219,17 @@ class PreviewOptions08Tests(TestCase):
         with self.settings(PRBLM_BUILDER_PREVIEW_HTML_ATTRS={"lang": "en"}, PRBLM_BUILDER_REDUCE_MOTION=0):
             self.assertEqual(cfg.preview_html_attrs(), {"lang": "en"})
             self.assertFalse(cfg.reduce_motion())
+
+
+class Options09Tests(TestCase):
+    """0.9 settings (the full behaviour is tested in tests/test_v09.py)."""
+
+    def test_readers(self):
+        from prblm_builder import settings as cfg
+        self.assertTrue(cfg.canvas_overlap())
+        self.assertEqual(cfg.block_order(), "usage")
+        with self.settings(PRBLM_BUILDER_CANVAS_OVERLAP=False, PRBLM_BUILDER_BLOCK_ORDER="ALPHA"):
+            self.assertFalse(cfg.canvas_overlap())
+            self.assertEqual(cfg.block_order(), "alpha")
+        with self.settings(PRBLM_BUILDER_BLOCK_ORDER="random"):
+            self.assertEqual(cfg.block_order(), "usage")

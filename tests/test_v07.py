@@ -215,7 +215,8 @@ class PerSitePreviewTests(TestCase):
     def test_library_has_a_site_switcher(self):
         self.client.force_login(get_user_model().objects.create_superuser("ps", "ps@example.com", "pw"))
         html = self.client.get(reverse("prblm_builder:demo") + "?site=shop.example.com").content.decode()
-        self.assertIn('name="site"', html)
+        self.assertIn('aria-label="Preview as site"', html)       # tabs (few sites)
+        self.assertIn('href="?site=shop.example.com" aria-current="page"', html)
         self.assertIn("site=shop.example.com\"", html)
 
 

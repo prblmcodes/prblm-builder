@@ -4,8 +4,8 @@
   var wrap = document.querySelector(".pb-wrap");
   if (!wrap) return;
   var CFG = {
-    preview: wrap.dataset.previewUrl, save: wrap.dataset.saveUrl, check: wrap.dataset.checkUrl,
-    context: wrap.dataset.context, csrf: wrap.dataset.csrf, edit: wrap.dataset.editUrl,
+    preview: wrap.dataset.previewUrl, check: wrap.dataset.checkUrl,
+    context: wrap.dataset.context,
   };
   var canvas = document.getElementById("pb-canvas");   // the .pb-page
   var empty = document.getElementById("pb-empty");
@@ -101,7 +101,28 @@
   // Frames keep a viewport at least this tall, so `vh` sizes (min-h-[70vh], h-screen)
   // resolve as on a typical screen instead of against a frame sized to its content.
   var CANVAS_H = parseInt(wrap.dataset.canvasHeight, 10) || 900;   // PRBLM_BUILDER_CANVAS_HEIGHT
-  var measure = window.prblmFrames.measure;   // frames.js
+  var measureFrame = window.prblmFrames.measureFrame;   // frames.js
+  // PRBLM_BUILDER_CANVAS_OVERLAP: frames overlap where the live page does (a transparent
+  // header over the first section; sections pulled over a neighbour by negative margins).
+  var OVERLAP = wrap.dataset.canvasOverlap !== "0";
+  // Let the page behind show through a frame (where it overlaps a neighbour): the frame's
+  // own background moves onto its host, except over the overlapping strips.
+  function setClear(frame, host, on, m, s, chrome) {
+    var d = frame.contentDocument, st = d.getElementById("pb-clear");
+    if (on && !frame._pbBg) frame._pbBg = window.prblmFrames.pageBackground(d);
+    if (on && !st && d.head) {
+      st = d.createElement("style"); st.id = "pb-clear";
+      st.textContent = "html,body{background:transparent!important}";
+      d.head.appendChild(st);
+    }
+    if (!on && st) st.remove();
+    frame.classList.toggle("pb-frame-clear", on);
+    if (!on) { host.style.background = ""; return; }
+    if (chrome) { host.style.background = "transparent"; return; }
+    var a = Math.round(m.above * s), b = Math.round((m.height - m.below) * s), bg = frame._pbBg;
+    host.style.background = "linear-gradient(to bottom,transparent " + a + "px," + bg + " " + a + "px," +
+                            bg + " " + b + "px,transparent " + b + "px)";
+  }
 
   // Size a section / header / footer frame. Embedded, it renders at the desktop width
   // and is scaled to fit its host; standalone, at the host's width. The iframe stays at
@@ -115,7 +136,7 @@
       frame.style.width = EMBED ? CANVAS_W + "px" : "100%";
       var cur = parseFloat(frame.style.height) || 0;
       if (cur < CANVAS_H) { frame.style.height = CANVAS_H + "px"; cur = CANVAS_H; }
-      var m = measure(d, chrome);
+      var m = measureFrame(frame, chrome);
       if (chrome) {
         // A header/footer with nothing visible (an empty template / hook) takes no space.
         var blank = !m.height || (!(d.body.innerText || "").trim() &&
@@ -130,7 +151,13 @@
       if (want !== cur) frame.style.height = want + "px";
       frame.style.transform = "scale(" + s + ")" + (m.top ? " translateY(" + (-m.top) + "px)" : "");
       host.style.height = Math.round(m.height * s) + "px";
-      host._pbM = { mt: m.mt || 0, mb: m.mb || 0, collapse: !!m.collapse, s: s };
+      var overlay = OVERLAP && chrome && m.overlay && host.dataset.chrome === "header";
+      var reach = OVERLAP && !chrome && !!(m.above || m.below);
+      setClear(frame, host, overlay || reach, m, s, chrome);
+      host.classList.toggle("pb-chrome-overlay", !!overlay);
+      host.classList.toggle("pb-pokes-down", OVERLAP && !chrome && !!m.below);
+      host._pbM = { mt: m.mt || 0, mb: m.mb || 0, collapse: !!m.collapse, s: s,
+                    above: OVERLAP ? m.above || 0 : 0, below: OVERLAP ? m.below || 0 : 0, overlay: !!overlay };
       if (host.classList.contains("pb-selected")) drawSpace(host);
       queueGaps();
     } catch (e) {}
@@ -153,9 +180,13 @@
     if (usable(foot)) hosts.push(foot);
     var prev = null;
     hosts.forEach(function (h) {
-      var m = h._pbM, overlap = 0;
-      if (prev && m && prev._pbM && m.collapse && prev._pbM.collapse) {
-        overlap = Math.min(prev._pbM.mb, m.mt) * m.s;
+      var m = h._pbM, overlap = 0, p = prev && prev._pbM;
+      if (p && m && p.overlay && h.classList.contains("pb-sec")) {
+        overlap = prev.offsetHeight;          // a transparent header lies over the first section
+      } else if (p && m) {
+        if (m.collapse && p.collapse) overlap = Math.min(p.mb, m.mt) * m.s;
+        // Reaching over a neighbour (negative margins): as far as the live page does.
+        overlap += (p.below || 0) * p.s + (m.above || 0) * m.s;
       }
       h.style.marginTop = overlap ? (-Math.round(overlap)) + "px" : "";
       prev = m ? h : null;
@@ -254,7 +285,6 @@
            'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + inner + '</svg>';
   }
   var ICON = {
-    edit: svgIcon('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>'),
     grab: svgIcon('<circle cx="9" cy="6" r="1.2"/><circle cx="15" cy="6" r="1.2"/><circle cx="9" cy="12" r="1.2"/>' +
                   '<circle cx="15" cy="12" r="1.2"/><circle cx="9" cy="18" r="1.2"/><circle cx="15" cy="18" r="1.2"/>'),
     up: svgIcon('<path d="M6 15l6-6 6 6"/>'),
@@ -284,8 +314,6 @@
       '<div class="pb-sec-bar">' +
         '<span class="pb-sec-name"></span>' +
         '<span class="pb-sec-ctrls">' +
-          // In the Layout tab, content is edited in the Content tab — so no pencil.
-          (EMBED ? '' : '<button data-act="edit" aria-label="Edit content" data-tip="Edit this section\'s words and images">' + ICON.edit + '</button>') +
           '<button class="pb-grab" data-act="grab" aria-label="Drag to move" data-tip="Drag to move this section">' + ICON.grab + '</button>' +
           '<button data-act="up" aria-label="Move up" data-tip="Move up">' + ICON.up + '</button>' +
           '<button data-act="down" aria-label="Move down" data-tip="Move down">' + ICON.down + '</button>' +
@@ -424,11 +452,6 @@
   }
   function act(sec, name, btn) {
     if (name === "settings") { openSettings(sec, btn || sec.querySelector('[data-act="settings"]')); return; }
-    if (name === "edit") {
-      if (sec.dataset.unsaved) showToast("Save draft first to edit this new section's content", false);
-      else window.open(CFG.edit + "#block-" + sec.dataset.id, "_blank");
-      return;
-    }
     if (name === "copy") { copySection(sec); return; }
     if (name === "up" && sec.previousElementSibling && sec.previousElementSibling.classList.contains("pb-sec"))
       sec.parentNode.insertBefore(sec, sec.previousElementSibling);
@@ -782,7 +805,7 @@
       if (!thumb || !doc || !doc.body) return;
       f.style.width = CANVAS_W + "px";
       if ((parseFloat(f.style.height) || 0) < CANVAS_H) f.style.height = CANVAS_H + "px";
-      var m = measure(doc, false);
+      var m = measureFrame(f, false);
       if (m.top + m.height > parseFloat(f.style.height)) f.style.height = (m.top + m.height) + "px";
       var scale = thumb.clientWidth / CANVAS_W;
       f.style.transform = "scale(" + scale + ")" + (m.top ? " translateY(" + (-m.top) + "px)" : "");
@@ -864,34 +887,6 @@
     toast.textContent = msg; toast.className = "pb-toast pb-show " + (ok ? "pb-ok" : "pb-err");
     setTimeout(function () { toast.className = "pb-toast"; }, 3200);
   }
-  function doSave(publish, btn) {
-    var label = btn.textContent; btn.disabled = true; btn.textContent = "Saving…";
-    fetch(CFG.save, { method: "POST", headers: { "Content-Type": "application/json", "X-CSRFToken": CFG.csrf },
-      body: JSON.stringify({ sections: collect(), publish: publish }) })
-      .then(function (r) { return r.json(); }).then(function (d) {
-        btn.disabled = false; btn.textContent = label;
-        if (d.ok) sections().forEach(function (s) { delete s.dataset.unsaved; });  // now saved → content editable
-        showToast(d.ok ? (publish ? "Published ✓" : "Draft saved ✓") : ("Save failed: " + (d.error || "error")), !!d.ok);
-      }).catch(function () { btn.disabled = false; btn.textContent = label; showToast("Save failed", false); });
-  }
-  // Standalone builder only — the toolbar (and its Save/Preview buttons) is absent
-  // when embedded as the Layout tab, so guard every lookup.
-  var saveBtn = document.getElementById("pb-save");
-  var publishBtn = document.getElementById("pb-publish");
-  if (saveBtn) saveBtn.addEventListener("click", function () { doSave(false, this); });
-  if (publishBtn) publishBtn.addEventListener("click", function () { doSave(true, this); });
-
-  /* ---------- preview mode (hide chrome) — standalone builder only ---------- */
-  function setPreview(on) {
-    document.body.classList.toggle("pb-preview-mode", on);
-    setTimeout(function () { canvas.querySelectorAll(".pb-frame").forEach(fit); }, 60);
-  }
-  var previewBtn = document.getElementById("pb-preview");
-  var exitPreviewBtn = document.getElementById("pb-exit-preview");
-  if (previewBtn) previewBtn.addEventListener("click", function () { setPreview(true); });
-  if (exitPreviewBtn) exitPreviewBtn.addEventListener("click", function () { setPreview(false); });
-  if (previewBtn) document.addEventListener("keydown", function (e) { if (e.key === "Escape") setPreview(false); });
-
   /* ---------- embed: expand toggle + keep the scale right on resize ---------- */
   if (EMBED) {
     var expandBtn = document.createElement("button");

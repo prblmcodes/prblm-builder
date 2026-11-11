@@ -17,7 +17,7 @@ previews at its own front-end CSS/JS so sections look like production.
     PRBLM_BUILDER_PREVIEW_BODY_ATTRS = {"x-data": "{ open: false }"}  # <body> in previews
     PRBLM_BUILDER_REDUCE_MOTION = True                   # instant animations in previews
 
-See the README for the full list.
+See docs/SETTINGS.md for the full list.
 """
 from django.conf import settings
 
@@ -162,6 +162,21 @@ def reduce_motion():
     """Whether animations and transitions run instantly in previews (default ``True``):
     the canvas is a still picture, and running animations confuse its measuring."""
     return bool(_get("PRBLM_BUILDER_REDUCE_MOTION", True))
+
+
+def canvas_overlap():
+    """Whether canvas frames overlap where the live page does (default ``True``): a
+    transparent fixed/absolute header over the first section, and sections with negative
+    margins over their neighbour. ``False``: everything stacked, negative margins cancelled.
+    Per site: ``"canvas_overlap"`` in a ``PRBLM_BUILDER_PREVIEW_SITES`` profile."""
+    return bool(_get("PRBLM_BUILDER_CANVAS_OVERLAP", True))
+
+
+def block_order():
+    """Order of blocks and groups in the Layout sidebar and Block library: ``"usage"``
+    (default; most used first) or ``"alpha"`` (A–Z)."""
+    value = str(_get("PRBLM_BUILDER_BLOCK_ORDER", "usage") or "usage").lower()
+    return value if value in ("usage", "alpha") else "usage"
 
 
 def page_parents():

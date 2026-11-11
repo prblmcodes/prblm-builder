@@ -9,14 +9,14 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('testapp', '0003_alter_blockspage_body'),
-        ('wagtailcore', '0098_apitoken'),
+        ('wagtailcore', '0094_alter_page_locale'),
     ]
 
     operations = [
         migrations.CreateModel(
             name='RestrictedHome',
             fields=[
-                ('page_ptr', models.OneToOneField(auto_created=True, on_delete=django.db.models.deletion.CASCADE, parent_link=True, primary_key=True, serialize=False, to=settings.WAGTAIL_PAGE_MODEL)),
+                ('page_ptr', models.OneToOneField(auto_created=True, on_delete=django.db.models.deletion.CASCADE, parent_link=True, primary_key=True, serialize=False, to=getattr(settings, 'WAGTAIL_PAGE_MODEL', 'wagtailcore.page'))),
             ],
             options={
                 'abstract': False,

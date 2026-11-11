@@ -13,12 +13,20 @@ jobs:
       fail-fast: false
       matrix:
         python: ["3.12", "3.13", "3.14"]
+        wagtail: ["latest"]
+        include:
+          # The oldest supported Wagtail (LTS) and its Django.
+          - python: "3.12"
+            wagtail: "7.0"
+    name: test (python ${{ matrix.python }}, wagtail ${{ matrix.wagtail }})
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
       - run: pip install -e .
+      - if: matrix.wagtail != 'latest'
+        run: pip install "wagtail~=${{ matrix.wagtail }}.0" "Django>=5.2,<5.3"
       - run: python -W error::DeprecationWarning runtests.py
 
   build:
@@ -49,6 +57,7 @@ jobs:
           python -m zipfile -l dist/*.whl | grep -q "prblm_builder/migrations/0001_seeded_sections.py"
           python -m zipfile -l dist/*.whl | grep -q "prblm_builder/demo.py"
           python -m zipfile -l dist/*.whl | grep -q "prblm_builder/sites.py"
+          python -m zipfile -l dist/*.whl | grep -q "prblm_builder/compat.py"
       - uses: actions/upload-artifact@v4
         with:
           name: dist

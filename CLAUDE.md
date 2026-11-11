@@ -24,8 +24,8 @@ field (preview_value → real site content of the same block → default → neu
   rules (`Meta: builder = False`, `PRBLM_BUILDER_EXCLUDE_BLOCKS`).
 - `prblm_builder/demo.py` — demo content, field by field (preview_value → real → default → generated, then `clean()`); `models.py` `SeededSection` records the plugin's own demo sections.
 - `prblm_builder/previews.py` — iframe frame (+ preview template, asset tags), trimming, "Not edited yet"; `sites.py` — per-site preview settings.
-- `prblm_builder/views.py` — builder / builder_new / preview / demo / save.
-- `prblm_builder/static/prblm_builder/builder.{js,css}` — the canvas (SortableJS, scaled iframes, undo/redo); `frames.js` — measuring preview frames (shared with the Block library); `fold.js` — foldable groups.
+- `prblm_builder/views.py` — builder (the Layout tab's canvas, `?embed=1`; alone it redirects to the editor) / builder_new / preview / demo. Pages are saved only through Wagtail's edit form.
+- `prblm_builder/static/prblm_builder/builder.{js,css}` — the canvas (SortableJS, scaled iframes, undo/redo, overlap); `frames.js` — measuring preview frames: margins, negative-margin overlaps, transparent headers (shared with the Block library); `fold.js` — foldable groups.
 - `prblm_builder/static/prblm_builder/form-columns.{js,css}` — two-column block forms
   (CSS does the layout; JS only marks unpaired fields; built-ins = `pbk-form` class, site
   blocks via `PRBLM_BUILDER_SITE_BLOCK_COLUMNS` + `form-columns-site.css`). Tab sync lives
@@ -33,7 +33,7 @@ field (preview_value → real site content of the same block → default → neu
 - `prblm_builder/chrome.py` — header/footer around the canvas (hooks → template setting → default).
 - `prblm_builder/mixins.py` — `BuilderSettingsMixin` (⚙ settings → Wagtail's settings area).
 - `prblm_builder/settings.py` — one reader per `PRBLM_BUILDER_*` setting (all optional).
-  User-facing reference: README "Settings reference"; dev table: history doc §6.
+  User-facing reference: `docs/SETTINGS.md`; dev table: history doc §6.
 - `prblm_builder/blocks/` — **optional** app with the 21 built-in blocks (`sections/`), Theme
   + Headers/Footers (snippets) + Builder page (`models.py`, `fields.py`), `{% prblm_assets %}` etc.
   (`templatetags/prblm_blocks.py`), self-contained `blocks.css`/`blocks.js`. The core must
@@ -53,12 +53,17 @@ field (preview_value → real site content of the same block → default → neu
 - Some full-width / header-link / preview-coexist features depend on **Wagtail admin
   classes** and degrade gracefully — they're the first things to check on a new Wagtail
   version (switchable via `PRBLM_BUILDER_ADMIN_TWEAKS`).
-- **Adding a setting:** reader in `settings.py`, row in README "Settings reference" + history
+- **Adding a setting:** reader in `settings.py`, row in `docs/SETTINGS.md` (and the feature's part of `docs/GUIDE.md`) + history
   doc §6, CHANGELOG entry, a test in `tests/test_options.py`.
 - **Built-in blocks are a promise:** block names, field names and class *module paths*
   (`prblm_builder.blocks.sections.*`) end up in sites' data and migrations — never rename
   or move; only add. Changing a block definition needs
   `python runtests.py makemigrations prblm_builder_blocks` (BuilderPage records them).
+- **Migrations:** `makemigrations` makes them depend on the newest wagtailcore migration —
+  lower it to `('wagtailcore', '0094_alter_page_locale')` and use
+  `getattr(settings, "WAGTAIL_PAGE_MODEL", "wagtailcore.page")`, or Wagtail 7.0 sites can't
+  migrate (`tests/test_v09.py` checks). Never change an already released migration's
+  dependency to something newer.
 - **Wagtail quirks:** `ChoiceBlock` ignores `Meta.default` (set it in `__init__`); admin
   menus are built once (use `is_shown()` for setting-dependent items); list items get a
   fresh random `id` on every save, empty text becomes `""` and rich text gains
@@ -77,10 +82,15 @@ field (preview_value → real site content of the same block → default → neu
 `python runtests.py` runs `prblm_builder/tests/` against the bundled test project in
 `tests/` (settings + `tests.testapp.StandardPage` with a `body` StreamField). CI
 (`.github/workflows/test.yml`) runs it on Python 3.12–3.14 and checks the wheel builds.
-Target stack: **Wagtail 8.1+ (<9), Django 6.1+, Python 3.12+** (latest stable as of v0.8.0).
+Supported: **Wagtail 7.0+ (<9), Django from Wagtail (5.2+), Python 3.12+**. CI runs the
+latest Wagtail and Wagtail 7.0. Version-dependent imports go in `prblm_builder/compat.py`.
 
 ## Current state
-Latest release **v0.8.0** (plan in `docs/plans/v0.8.0.md`; earlier plans in `docs/plans/`). Preview setup guide for users: `docs/PREVIEWS.md`. Pushing a `v*` tag attaches the wheel to the GitHub release (`.github/workflows/release.yml`). Copy-paste usage examples:
+User docs: `README.md` = what it is + quick start (links are absolute GitHub URLs — it's
+also the package page); `docs/GUIDE.md` = every feature in order; `docs/SETTINGS.md`,
+`docs/TROUBLESHOOTING.md` (by topic), `docs/UPGRADING.md`, `docs/DEVELOPMENT.md`. Put new
+user-facing docs in the matching file, not the README.
+Latest release **v0.9.0** (plan in `docs/plans/v0.9.0.md`; earlier plans in `docs/plans/`). Preview setup guide for users: `docs/PREVIEWS.md`. Pushing a `v*` tag attaches the wheel to the GitHub release (`.github/workflows/release.yml`). Copy-paste usage examples:
 `docs/EXAMPLES.md` — its code lives in `tests/examples/` (keep them identical). Install in another project
 with `pip install "prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@<tag or branch>"`.
 Tests: `prblm_builder/tests/` (generic, shipped) + `tests/test_options.py` (needs the

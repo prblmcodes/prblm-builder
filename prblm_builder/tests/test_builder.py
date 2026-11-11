@@ -56,10 +56,16 @@ class BuilderTests(TestCase):
         self.assertTrue(registry.enabled_page_models())
 
     def test_builder_page_renders(self):
-        r = self.client.get(reverse("prblm_builder:builder", args=[self.page.id]))
+        r = self.client.get(reverse("prblm_builder:builder", args=[self.page.id]) + "?embed=1")
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, "pb-canvas")
         self.assertContains(r, "pb-pitem")  # palette has blocks
+
+    def test_builder_alone_opens_the_page_editor(self):
+        """There's no standalone builder: pages are saved only through Wagtail's editor."""
+        r = self.client.get(reverse("prblm_builder:builder", args=[self.page.id]))
+        self.assertRedirects(r, reverse("wagtailadmin_pages:edit", args=[self.page.id]),
+                             fetch_redirect_response=False)
 
     def test_autoenable_adds_layout_tab(self):
         """The plugin injects a Layout tab + save wiring into enabled page models."""
@@ -110,28 +116,6 @@ class BuilderTests(TestCase):
         sid = getattr(self.page, self.field)[0].id
         r = self.client.get(reverse("prblm_builder:preview") + f"?page={self.page.id}&section={sid}")
         self.assertNotEqual(r.status_code, 200)
-
-    def test_reorder_preserves_content(self):
-        url = reverse("prblm_builder:save", args=[self.page.id])
-        r = self.client.post(url, data=json.dumps({"sections": [
-            {"type": "rich_text", "id": "b2"}, {"type": "rich_text", "id": "a1"}]}),
-            content_type="application/json")
-        self.assertTrue(r.json()["ok"])
-        body = self.page.__class__.objects.get(id=self.page.id).get_latest_revision_as_object()
-        body = getattr(body, self.field)
-        self.assertIn("BETA", str(body[0].value))
-        self.assertIn("ALPHA", str(body[1].value))
-
-    def test_add_block_and_publish(self):
-        url = reverse("prblm_builder:save", args=[self.page.id])
-        r = self.client.post(url, data=json.dumps({"sections": [
-            {"type": "rich_text", "id": "a1"},
-            {"type": "rich_text", "id": str(uuid.uuid4()), "new": True}],
-            "publish": True}), content_type="application/json")
-        self.assertTrue(r.json()["published"])
-        live = self.page.__class__.objects.get(id=self.page.id)
-        self.assertTrue(live.live)
-        self.assertEqual(len(getattr(live, self.field)), 2)
 
 
 class ReconcileTests(TestCase):

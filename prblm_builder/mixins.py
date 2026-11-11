@@ -14,7 +14,7 @@ in the Content tab::
         class Meta:
             builder_settings = ["background"]
 """
-from wagtail.blocks.struct_block import BlockGroup
+from .compat import BlockGroup
 
 
 def builder_setting_names(block):
@@ -26,10 +26,11 @@ def builder_setting_names(block):
 
 class BuilderSettingsMixin:
     """Put ``Meta.builder_settings`` fields in Wagtail's collapsed settings area (Wagtail
-    8.1 ``form_layout``), unless the block sets its own ``form_layout``."""
+    8.1 ``form_layout``), unless the block sets its own ``form_layout``. On older Wagtail
+    (no settings area) it does nothing: the fields stay in the Content tab too."""
 
     def get_form_layout(self):
-        if self.meta.form_layout is None:
+        if BlockGroup is not None and getattr(self.meta, "form_layout", None) is None:
             names = builder_setting_names(self)
             if names:
                 content = [n for n in self.child_blocks if n not in names]

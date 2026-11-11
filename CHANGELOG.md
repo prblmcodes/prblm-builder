@@ -1,5 +1,72 @@
 # Changelog
 
+## 0.9.0 — 2026-11-11
+
+From installing 0.8 on an existing production site running **Wagtail 7.0 / Django 5.2**,
+with a transparent fixed header, overlapping sections, Tailwind and Alpine.
+
+**Compatibility**
+- **Wagtail 7.0+ (below 9) is the only requirement** — no Django pin any more (Wagtail
+  brings a matching one), so pip no longer refuses older projects or tries to upgrade them.
+  Python 3.12+.
+- Works on Wagtail 7.0: version-dependent imports live in `prblm_builder/compat.py`
+  (`BlockGroup`, telepath); `BuilderSettingsMixin` does nothing before Wagtail 8.1 (the ⚙
+  fields then also stay in the Content tab); migrations depend on
+  `wagtailcore.0094_alter_page_locale` instead of Wagtail 8's `0098_apitoken`, and no longer
+  read `settings.WAGTAIL_PAGE_MODEL` directly. Sites that already ran them are unaffected.
+- CI also runs the tests on Wagtail 7.0 / Django 5.2; a test fails if a new migration
+  depends on a newer wagtailcore migration.
+
+**Added**
+- **Overlap on the canvas** — `PRBLM_BUILDER_CANVAS_OVERLAP` (default `True`, also per site
+  profile as `canvas_overlap`): a **transparent fixed/absolute header** lies over the first
+  section like on the page, and sections pulled over a neighbour by **negative margins**
+  overlap it (the neighbour shows through around them). Nothing is cut off any more — also
+  with `False`, which stacks everything. The Block library cards no longer cut off such
+  sections either.
+- **Most used first** — `PRBLM_BUILDER_BLOCK_ORDER` (`"usage"` default, or `"alpha"`): blocks
+  and groups in the Layout sidebar and Block library ordered by how many published pages
+  use them (of that site, on multi-site projects).
+- **`request.is_prblm_preview`** on every preview request, so analytics / tracking tags can
+  skip themselves; PREVIEWS.md explains keeping analytics and SEO tags out of previews.
+- **Documentation reorganised**: the README is now a short introduction with a 10-minute
+  **Quick start**; everything else moved to `docs/` — a [Feature guide](docs/GUIDE.md) (every
+  feature in order), [Settings](docs/SETTINGS.md), [Troubleshooting](docs/TROUBLESHOOTING.md)
+  by topic, [Upgrading](docs/UPGRADING.md) and [Development](docs/DEVELOPMENT.md). New:
+  **What the plugin adds to your admin**, **Uninstalling**, supported Wagtail versions per
+  feature.
+
+**Changed**
+- Block library: the site switch is now **Preview as** tabs at the top (a dropdown above 5
+  sites), shown **only with more than one Wagtail Site** (it used to appear for a single site
+  when `PRBLM_BUILDER_PREVIEW_SITES` was set).
+- Block library card headers: stronger contrast — blue-grey tint, dark divider, accent edge,
+  darker text (WCAG AA).
+- `PRBLM_BUILDER_LIBRARY_SCOPE = "all"` lists page types' StreamFields only — no longer the
+  blocks of snippets, settings or menu apps.
+- Real content borrowed for demos: the section with the **most filled fields** wins (then
+  images, then length), not the one with the longest stored text.
+
+**Removed**
+- The full-screen builder (`/admin/page-builder/page/<id>/` without `?embed=1`), unlinked
+  since 0.2, with its own save endpoint and "open in new tab" view: the address now opens
+  the page editor, so pages change only through Wagtail's Save draft / Publish.
+
+**Fixed**
+- Block library: the back button is a larger chevron (it was a small text arrow) and goes
+  to your admin's home page even when the admin isn't at `/admin/`.
+- Demo content for fields with a required pattern (`RegexBlock`, validators — e.g. a
+  "relative URL" menu item) now validates (`/`, `/page/`, `https://example.com/`…), so such
+  blocks preview instead of "Couldn't preview".
+- Canvas: a negative margin inside a section no longer disappears from the measured
+  spacing (margins merge the CSS way: largest positive + most negative).
+
+**Upgrade notes**
+- Run `migrate` as usual (nothing new). If you installed 0.8 with `--no-deps` and patched it
+  for older Wagtail, reinstall normally and drop the patches.
+- Prefer the old stacked canvas? `PRBLM_BUILDER_CANVAS_OVERLAP = False`. A–Z order?
+  `PRBLM_BUILDER_BLOCK_ORDER = "alpha"`.
+
 ## 0.8.0 — 2026-11-11
 
 From testing 0.7 in a multi-site project (two Tailwind builds, Alpine, scroll-reveal
