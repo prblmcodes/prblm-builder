@@ -11,6 +11,8 @@ prblm_builder/                  the installable Django app
   layout.py                     reconcile() — merges arrangement + content; new-block values
   registry.py                   finds page models + blocks; palette/library lists; hiding rules
   demo.py                       demo content, field by field (preview_value → real → default → generated)
+  cleanup.py                    removes demo-content records of deleted pages' sections
+  management/commands/          prblm_builder_cleanup (leftover demo-content records)
   previews.py                   preview HTML frame, asset tags, trimming, "Not edited yet"
   sites.py                      per-site preview settings (PRBLM_BUILDER_PREVIEW_SITES)
   compat.py                     imports that differ between Wagtail versions (7.0 – 8.x)
@@ -52,6 +54,7 @@ tests/                          test project for this repo (not shipped)
   test_v07.py                   demo content chain, per-site previews, preview template, ⚙ checks
   test_v08.py                   preview marker, attributes, site matching, release workflow
   test_v09.py                   older Wagtail, overlap, demo values, usage order, site tabs, cleanup
+  test_v091.py                  demo-content records removed with their page; cleanup command
   examples/, test_examples.py   the code from docs/EXAMPLES.md, checked
 runtests.py                     runs all tests against tests/
 .github/workflows/test.yml      CI: tests on Python 3.12–3.14 (latest Wagtail) and Wagtail 7.0 + wheel check

@@ -12,3 +12,8 @@ class PrblmBuilderConfig(AppConfig):
         # model, so host sites don't wire each model by hand.
         from . import checks, integration  # noqa: F401  (checks registers on import)
         integration.autoenable()
+        # Forget the demo-content records of a deleted page's sections.
+        from django.db.models.signals import pre_delete
+
+        from . import cleanup
+        pre_delete.connect(cleanup.page_deleted, dispatch_uid="prblm_builder_page_deleted")

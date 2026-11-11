@@ -15,7 +15,8 @@ own **Save draft / Publish**.
 ## Requirements
 
 - **Wagtail 7.0 or newer (below 9)** — the only requirement; it brings a matching Django
-  (5.2+). Tested on Wagtail 7.0 LTS and the latest 8.x.
+  (5.2+). Tested on Wagtail 7.0 LTS and the latest 8.x. Wagtail 7.0 has no auto-save, so
+  there new sections show in the Content tab after you save the page.
 - Python 3.12+
 
 ## Quick start
@@ -25,14 +26,14 @@ About ten minutes, on any Wagtail site.
 **1. Install** it in your project's virtual environment:
 
 ```bash
-pip install "prblm-builder @ git+https://github.com/prblmcodes/prblm-builder.git@v0.9.0"
+pip install "prblm-builder @ git+https://github.com/prblmcodes/prblm-builder.git@v0.9.1"
 # private repo (uses your GitHub SSH key):
-# pip install "prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@v0.9.0"
+# pip install "prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@v0.9.1"
 ```
 
 Or download the wheel attached to the [GitHub release](https://github.com/prblmcodes/prblm-builder/releases)
-and `pip install prblm_builder-0.9.0-py3-none-any.whl`. To keep it installed, put the same
-`prblm-builder @ git+…@v0.9.0` line in `requirements.txt`.
+and `pip install prblm_builder-0.9.1-py3-none-any.whl`. To keep it installed, put the same
+`prblm-builder @ git+…@v0.9.1` line in `requirements.txt`.
 
 **2. Add it to `INSTALLED_APPS`** (your settings file, e.g. `<project>/settings/base.py`):
 
@@ -95,23 +96,23 @@ Pin a release so every server installs the same version:
   the SSH URL, or a token in the HTTPS URL):
 
   ```text
-  prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@v0.9.0
+  prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@v0.9.1
   ```
 
 - **From the release wheel** — every GitHub release has the wheel attached. Keep it in your
   project (e.g. `deploy/wheels/`); no GitHub access needed on the server:
 
   ```text
-  prblm-builder @ file:./deploy/wheels/prblm_builder-0.9.0-py3-none-any.whl
+  prblm-builder @ file:./deploy/wheels/prblm_builder-0.9.1-py3-none-any.whl
   ```
 
-  or `pip install --no-index --find-links deploy/wheels prblm-builder==0.9.0`.
+  or `pip install --no-index --find-links deploy/wheels prblm-builder==0.9.1`.
 
 After each upgrade run `python manage.py migrate` and `collectstatic`.
 
 ## Upgrading
 
-Change the version (`@v0.8.0` → `@v0.9.0`), reinstall, `migrate`, restart. If pip says the
+Change the version (`@v0.9.0` → `@v0.9.1`), reinstall, `migrate`, restart. If pip says the
 version is already installed, add `--force-reinstall --no-deps`. Notes for each version:
 [UPGRADING.md](https://github.com/prblmcodes/prblm-builder/blob/main/docs/UPGRADING.md); what changed:
 [CHANGELOG.md](https://github.com/prblmcodes/prblm-builder/blob/main/CHANGELOG.md).

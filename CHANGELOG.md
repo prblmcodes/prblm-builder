@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.9.1 — 2026-11-12
+
+From testing 0.9.0 on a Wagtail 7.0 site.
+
+**Fixed**
+- Deleting a page now also removes the demo-content records ("Not edited yet" markers) of
+  its sections — except ones another page still has (e.g. a copy). New command
+  `python manage.py prblm_builder_cleanup [--dry-run]` removes leftovers from before.
+
+**Docs**
+- Wagtail 7.0 has no auto-save: new sections show in the Content tab after you save the
+  page (README requirements, Feature guide).
+- The Feature guide says built-in blocks are always listed first, and how to focus on your
+  own (the **Your site's** pill, or fold *Built-in blocks*).
+
 ## 0.9.0 — 2026-11-11
 
 From installing 0.8 on an existing production site running **Wagtail 7.0 / Django 5.2**,

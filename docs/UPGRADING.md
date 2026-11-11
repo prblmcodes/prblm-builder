@@ -1,6 +1,6 @@
 # Upgrading
 
-1. Change the version you install (e.g. `@v0.8.0` → `@v0.9.0` in `requirements.txt`, or
+1. Change the version you install (e.g. `@v0.9.0` → `@v0.9.1` in `requirements.txt`, or
    download the new release wheel) and install it.
 2. Run `python manage.py migrate` (and `collectstatic` in production).
 3. Restart the server. The plugin's CSS/JS are version-stamped, so browsers load the new
@@ -11,6 +11,11 @@ wheel or a branch before), add `--force-reinstall --no-deps` — `--no-deps` kee
 reinstalling Wagtail and Django too.
 
 What changed in each version: [CHANGELOG.md](../CHANGELOG.md). Notes per version:
+
+**0.9.0 → 0.9.1**
+- No migrations, no setting changes — install and restart.
+- Optional: `python manage.py prblm_builder_cleanup` removes demo-content records left
+  behind by pages deleted before 0.9.1 (`--dry-run` first to see how many).
 
 **0.8 → 0.9**
 - Run `python manage.py migrate` as usual (nothing new to apply; one migration's

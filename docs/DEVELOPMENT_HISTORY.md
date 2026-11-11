@@ -158,7 +158,10 @@ that passes a pattern, `PATTERN_CANDIDATES` via `_pattern_value` (0.9) → empty
 struct's dropdowns reset). Real instances are ranked by `_score` = (filled fields incl.
 nested, images, stored length) (0.9; was length only). `problem()` names the failing field for the Block library.
 
-**Seeded sections.** `layout.reconcile` records each seeded section (and copies of untouched
+**Seeded sections.** (0.9.1: `cleanup.py` — a page's `pre_delete` collects its section ids
+from content and all revisions and, on commit, removes the records no other page or revision
+still contains (`icontains` on StreamFields and `Revision.content`; a copied page keeps the
+ids); `manage.py prblm_builder_cleanup` does it for all records.) `layout.reconcile` records each seeded section (and copies of untouched
 ones) in `SeededSection(section_id, value_hash)` — `content_hash` ignores ⚙ settings, ids and
 rich-text keys. `previews.is_unedited` compares against the recorded hash; sections seeded
 before 0.7 fall back to `legacy_unedited` (default / preview value / 0.6's generator, kept in

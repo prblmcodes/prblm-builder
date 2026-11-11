@@ -22,7 +22,7 @@ field (preview_value → real site content of the same block → default → neu
   values (always demo content; "Not edited yet" detection lives in `previews.is_unedited`).
 - `prblm_builder/registry.py` — finds models/blocks; palette + Block library lists; hiding
   rules (`Meta: builder = False`, `PRBLM_BUILDER_EXCLUDE_BLOCKS`).
-- `prblm_builder/demo.py` — demo content, field by field (preview_value → real → default → generated, then `clean()`); `models.py` `SeededSection` records the plugin's own demo sections.
+- `prblm_builder/demo.py` — demo content, field by field (preview_value → real → default → generated, then `clean()`); `models.py` `SeededSection` records the plugin's own demo sections; `cleanup.py` removes a deleted page's records (pre_delete → on_commit) and backs `manage.py prblm_builder_cleanup`.
 - `prblm_builder/previews.py` — iframe frame (+ preview template, asset tags), trimming, "Not edited yet"; `sites.py` — per-site preview settings.
 - `prblm_builder/views.py` — builder (the Layout tab's canvas, `?embed=1`; alone it redirects to the editor) / builder_new / preview / demo. Pages are saved only through Wagtail's edit form.
 - `prblm_builder/static/prblm_builder/builder.{js,css}` — the canvas (SortableJS, scaled iframes, undo/redo, overlap); `frames.js` — measuring preview frames: margins, negative-margin overlaps, transparent headers (shared with the Block library); `fold.js` — foldable groups.
@@ -90,7 +90,7 @@ User docs: `README.md` = what it is + quick start (links are absolute GitHub URL
 also the package page); `docs/GUIDE.md` = every feature in order; `docs/SETTINGS.md`,
 `docs/TROUBLESHOOTING.md` (by topic), `docs/UPGRADING.md`, `docs/DEVELOPMENT.md`. Put new
 user-facing docs in the matching file, not the README.
-Latest release **v0.9.0** (plan in `docs/plans/v0.9.0.md`; earlier plans in `docs/plans/`). Preview setup guide for users: `docs/PREVIEWS.md`. Pushing a `v*` tag attaches the wheel to the GitHub release (`.github/workflows/release.yml`). Copy-paste usage examples:
+Latest release **v0.9.1** (plan in `docs/plans/v0.9.0.md`; earlier plans in `docs/plans/`). Preview setup guide for users: `docs/PREVIEWS.md`. Pushing a `v*` tag attaches the wheel to the GitHub release (`.github/workflows/release.yml`). Copy-paste usage examples:
 `docs/EXAMPLES.md` — its code lives in `tests/examples/` (keep them identical). Install in another project
 with `pip install "prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@<tag or branch>"`.
 Tests: `prblm_builder/tests/` (generic, shipped) + `tests/test_options.py` (needs the

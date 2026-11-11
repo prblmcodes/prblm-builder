@@ -49,7 +49,9 @@ fit.
   text; the canvas shows the full text, exactly as it will be saved.
 - **Layout and Content stay in sync.** On a saved page, after you add, remove or move
   sections, opening the Content tab waits for Wagtail's auto-save ("Saving your layout
-  changes…") and reloads the editor on the Content tab with the new sections. Content-tab
+  changes…") and reloads the editor on the Content tab with the new sections. **Wagtail
+  7.0 has no auto-save:** there, new sections appear in the Content tab after you save the
+  page (a banner offers **Save draft now**). Content-tab
   edits show on the canvas when you switch back. ⚙ settings update the Content tab at once,
   and the other way round.
 - **A new page** (not saved yet) works too. Sections you add appear in the Content tab
@@ -68,7 +70,9 @@ appear — see [Section settings](#5-section-settings-).
 
 - **Sections | Page** tabs; it always opens on **Sections**.
 - **Search** looks through names and descriptions of every block.
-- **All · Built-in · Your site's** pills show one kind of block at a time.
+- **All · Built-in · Your site's** pills show one kind of block at a time. Built-in blocks
+  are always listed first; to work with your own blocks, click **Your site's** or fold
+  *Built-in blocks* (your browser remembers it).
 - **Most used first:** blocks are ordered by how many published pages use them (ties
   A–Z, unused last), groups by the total use of their blocks — on a multi-site project,
   that site's pages. `PRBLM_BUILDER_BLOCK_ORDER = "alpha"` keeps A–Z.
@@ -768,7 +772,10 @@ Good to know:
   Blocks added or deleted in the Content tab are respected.
 - **Remembers its own demo content.** Each section it fills is recorded (a small table)
   with a fingerprint of its content: until someone changes it, it shows "Not edited yet"
-  and it's never borrowed as "real content" for other demos.
+  and it's never borrowed as "real content" for other demos. When a page is deleted, the
+  records of its sections go too (unless another page — e.g. a copy — still has them);
+  `python manage.py prblm_builder_cleanup` clears any leftovers (`--dry-run` to see how
+  many).
 - **Demo content, field by field** — see [Where demo content comes from](#where-demo-content-comes-from).
   Blocks are matched by class, so a block reused under another name shares its content.
   Long text is shortened in the Block library and sidebar thumbnails only — the canvas

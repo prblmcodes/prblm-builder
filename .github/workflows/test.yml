@@ -58,6 +58,7 @@ jobs:
           python -m zipfile -l dist/*.whl | grep -q "prblm_builder/demo.py"
           python -m zipfile -l dist/*.whl | grep -q "prblm_builder/sites.py"
           python -m zipfile -l dist/*.whl | grep -q "prblm_builder/compat.py"
+          python -m zipfile -l dist/*.whl | grep -q "management/commands/prblm_builder_cleanup.py"
       - uses: actions/upload-artifact@v4
         with:
           name: dist
