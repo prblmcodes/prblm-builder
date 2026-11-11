@@ -118,6 +118,16 @@ body.pb-embed .pb-expand{display:inline-flex}
 .pb-empty strong{font-size:16px;color:var(--pb-ink)}
 .pb-page.pb-drop{outline:3px dashed var(--pb-accent);outline-offset:-6px}
 
+/* The selected section's margins: striped bands with their size (pointer-events: none). */
+.pb-space{position:absolute;left:0;right:0;z-index:2;pointer-events:none;
+  background:repeating-linear-gradient(135deg,rgba(234,166,40,.20) 0 6px,rgba(234,166,40,.07) 6px 12px);
+  border:0 dashed rgba(196,130,20,.55)}
+.pb-space-top{top:0;border-bottom-width:1px}
+.pb-space-bottom{bottom:0;border-top-width:1px}
+.pb-space-label{position:absolute;left:8px;top:50%;transform:translateY(-50%);padding:1px 7px;border-radius:999px;
+  background:#fff7e6;color:#7a4a00;border:1px solid #f0c27a;font-size:10.5px;font-weight:700;line-height:1.5;white-space:nowrap}
+.pb-space-top .pb-space-label{left:50%;transform:translate(-50%,-50%)}  /* clear of the badge and toolbar */
+body.pb-preview-mode .pb-space{display:none}
 /* a section = a seamless preview with hover/selected chrome */
 .pb-sec{position:relative;display:block}
 .pb-frame{display:block;width:100%;border:0;background:#fff}
@@ -218,6 +228,13 @@ body.pb-preview-mode .pb-exit-preview{display:inline-block;margin-left:12px}
 .pb-menu-sep{height:1px;background:var(--pb-line);margin:4px 2px}
 
 /* ---------- sidebar tabs + "Page" options ---------- */
+/* Kind filter (All · Built-in · Your site's): pills, unlike the Sections / Page tabs. */
+.pb-kinds{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.pb-kinds button{border:1px solid var(--pb-line);background:#fff;border-radius:999px;padding:4px 11px;
+  font:inherit;font-size:12px;font-weight:600;color:#55555c;cursor:pointer;line-height:1.4}
+.pb-kinds button:hover{border-color:#b9bcc6}
+.pb-kinds button[aria-pressed="true"]{background:var(--pb-ink);border-color:var(--pb-ink);color:#fff}
+.pb-kinds.pb-kinds-search button{opacity:.55}
 .pb-tabs{display:flex;gap:4px;margin:0 0 14px;padding:3px;background:#f1f2f6;border-radius:9px}
 .pb-tabs [role="tab"]{flex:1;border:0;background:transparent;padding:7px 8px;border-radius:7px;font:inherit;font-size:12.5px;
   font-weight:600;color:var(--pb-mute);cursor:pointer}

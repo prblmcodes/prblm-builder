@@ -14,6 +14,8 @@ previews at its own front-end CSS/JS so sections look like production.
     PRBLM_BUILDER_CANVAS_HEIGHT = 900                    # vh in previews
     PRBLM_BUILDER_PREVIEW_TEMPLATE = "prblm_preview.html"  # previews inside your base.html
     PRBLM_BUILDER_PREVIEW_SITES = {"shop.example.com": {"css": [...]}}  # per Wagtail Site
+    PRBLM_BUILDER_PREVIEW_BODY_ATTRS = {"x-data": "{ open: false }"}  # <body> in previews
+    PRBLM_BUILDER_REDUCE_MOTION = True                   # instant animations in previews
 
 See the README for the full list.
 """
@@ -138,6 +140,28 @@ def preview_template():
     """A template of the site's own that preview frames render sections inside (it
     extends the site's base.html; the section is ``{{ prblm_section }}``), or ``""``."""
     return _get("PRBLM_BUILDER_PREVIEW_TEMPLATE", "") or ""
+
+
+def _attrs_setting(name):
+    value = _get(name, {}) or {}
+    return dict(value) if isinstance(value, dict) else {}
+
+
+def preview_body_attrs():
+    """Extra attributes for the preview ``<body>`` (e.g. Alpine's ``{"x-data": "{ open: false }"}``)
+    — previews without a preview template, and published Builder pages."""
+    return _attrs_setting("PRBLM_BUILDER_PREVIEW_BODY_ATTRS")
+
+
+def preview_html_attrs():
+    """Extra attributes for the preview ``<html>`` (e.g. ``{"data-theme": "light"}``)."""
+    return _attrs_setting("PRBLM_BUILDER_PREVIEW_HTML_ATTRS")
+
+
+def reduce_motion():
+    """Whether animations and transitions run instantly in previews (default ``True``):
+    the canvas is a still picture, and running animations confuse its measuring."""
+    return bool(_get("PRBLM_BUILDER_REDUCE_MOTION", True))
 
 
 def page_parents():

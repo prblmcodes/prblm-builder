@@ -135,7 +135,7 @@ def _palette(stream_block):
     out = []
     for kind, groups in registry.palette_sections(stream_block):
         kkey = registry.KIND_KEYS[kind]
-        out.append({"kind": kind, "key": kkey, "groups": [
+        out.append({"kind": kind, "key": kkey, "short": registry.KIND_SHORT[kind], "groups": [
             {"group": g, "key": f"{kkey}:{slugify(g)}",
              "blocks": [{"type": n, "label": lbl, "description": registry.block_description(b)}
                         for (n, b, lbl) in items]}
@@ -217,28 +217,51 @@ def _page_options(request, page=None, model=None):
             continue
     # Header / footer that nothing lets the editor choose (the site's own page types):
     # explain where they come from instead of leaving editors looking for an option.
-    taken = {opt.get("name") for opt in out}
+    # A page type that decides its own header/footer in code, or the site's template,
+    # replaces any generic note, so the tab never points at a file the canvas doesn't use.
     for kind in ("header", "footer"):
-        if kind not in taken:
-            out.append(_chrome_info(kind, page, request))
+        src = chrome.source(kind, request, page, model)
+        current = next((o for o in out if o.get("name") == kind), None)
+        if current is not None and (current.get("choices") or src[0] == "default"):
+            continue                                   # a real choice (Builder page) / plugin default
+        info = _chrome_info(kind, page, request, model, src)
+        if current is None:
+            out.append(info)
+        else:
+            out[out.index(current)] = info
     for opt in out:
         for choice in opt.get("choices", []):
             choice["set_json"] = json.dumps(choice.get("set", {}))
     return out
 
 
-def _chrome_info(kind, page=None, request=None):
-    """An information-only "Page" tab entry: where this page type's header/footer come from."""
+def _chrome_info(kind, page=None, request=None, model=None, src=None):
+    """An information-only "Page" tab entry: where this page's header/footer really come
+    from (see ``chrome.source``), in words an editor can act on."""
     noun = kind
-    tmpl = chrome.template_name(kind, page, request)
-    if tmpl:
-        text = (f"Comes from your site's template for this page type. The canvas shows "
-                f"{tmpl}.")
+    src = src or chrome.source(kind, request, page, model)
+    dev = ""
+    if src[0] == "page" and src[1]:
+        text = (f"This page type has its own {noun}: it's built into the page, not shared "
+                f"with the rest of the site. Change it in this page's content (or ask your "
+                f"developer) — editing the site's {noun} won't change it.")
+    elif src[0] == "page":
+        text = (f"This page type has no separate {noun}. If it needs one, build it from "
+                f"sections on the page.")
+    elif src[0] == "template":
+        from .sites import site_for
+        site = site_for(page, request)
+        where = f"every page of \u201c{site.site_name or site.hostname}\u201d" if site else "every page"
+        text = (f"Your site's shared {noun}, the same on {where} that shows it. Changing it "
+                f"changes all those pages, so it isn't edited here.")
+        dev = f"For developers: the template {src[1]}."
     else:
-        text = (f"Comes from your site's template for this page type. To show it on the "
-                f"canvas too, set PRBLM_BUILDER_{kind.upper()}_TEMPLATE.")
+        text = f"No {noun} is shown on the canvas for this page type."
+        dev = (f"For developers: set PRBLM_BUILDER_{kind.upper()}_TEMPLATE (or a site's "
+               f"\u201c{kind}_template\u201d) to show your site's {noun} here.")
+    hint = f"{noun.capitalize()}s can be chosen per page on Builder pages."
     return {"name": kind, "label": noun.capitalize(), "info": text,
-            "hint": f"{noun.capitalize()}s can be chosen per page on Builder pages."}
+            "hint": f"{dev} {hint}".strip()}
 
 
 # ----------------------------------------------------------------- site header / footer
@@ -346,16 +369,21 @@ def demo(request):
     sections = registry.library_sections()
     origins = registry.library_origins() if cfg.library_scope() == "all" else {}
     # Several sites with their own preview settings: a switcher picks whose CSS is used.
+    # Several sites: the switcher picks whose CSS previews use AND whose pages count in
+    # "Used on N pages" ("all" = every site, default preview styles).
     site_choices = sites.choices()
-    site_host = ""
+    site_host, usage_site = "", None
     if site_choices:
         wanted = request.GET.get("site")
         known = [h for h, _l in site_choices]
         current = sites.site_for(request=request)
-        site_host = wanted if wanted in known else (current.hostname if current else known[0])
+        site_host = wanted if wanted in known else (current.hostname if current and current.hostname in known else known[0])
+        if site_host != sites.ALL:
+            from wagtail.models import Site
+            usage_site = Site.objects.filter(hostname=site_host).first()
     for kind, kind_groups in sections:
         kkey = registry.KIND_KEYS[kind]
-        kind_entry = {"kind": kind, "key": kkey, "groups": []}
+        kind_entry = {"kind": kind, "key": kkey, "short": registry.KIND_SHORT[kind], "groups": []}
         for g, items in kind_groups:
             ok = []
             builtin = kind == registry.KIND_BUILTIN
@@ -364,7 +392,7 @@ def demo(request):
                 if problem:
                     unpreviewable.append({"name": name, "label": label, "reason": problem})
                 else:
-                    pages = demo_mod.usage(name, block)
+                    pages = demo_mod.usage(name, block, usage_site)
                     ok.append({"name": name, "label": label, "builtin": builtin,
                                "description": registry.block_description(block),
                                "origin": origins.get((name, builtin), ""),
@@ -388,7 +416,9 @@ def demo(request):
         "preview_url": reverse("prblm_builder:preview"),
         "site_choices": site_choices,
         "site": site_host,
-        "site_param": f"&site={site_host}" if site_host else "",
+        "site_param": f"&site={site_host}" if site_host and site_host != sites.ALL else "",
+        "site_label": dict(site_choices).get(site_host, "") if site_choices else "",
+        "site_scoped": usage_site is not None,
         "canvas_height": cfg.canvas_height(),
     })
 

@@ -51,3 +51,38 @@ def html(kind, request, page=None, model=None):
         if result:
             return result
     return ""
+
+
+def _blank(html):
+    import re
+
+    from django.utils.html import strip_tags
+    html = str(html or "")
+    return not strip_tags(html).strip() and not re.search(
+        r"<(img|picture|svg|video|iframe|canvas|object|embed|hr)\b", html, re.I)
+
+
+def source(kind, request, page=None, model=None):
+    """Where the canvas's header/footer for ``page`` comes from, in the same order as
+    ``html()``: ``("page", shows)`` — the page type's own code (a
+    ``prblm_builder_chrome_for_page`` hook; ``shows`` False when it returns nothing);
+    ``("template", name)`` — the site's own template; ``("default", None)`` — a fallback
+    hook (the built-in blocks' site-default header/footer); ``("none", None)``."""
+    for fn in hooks.get_hooks(PAGE_HOOK):
+        try:
+            result = fn(kind, request, page, model)
+        except Exception:
+            result = None
+        if result is not None:
+            return "page", not _blank(result)
+    tmpl = template_name(kind, page, request)
+    if tmpl:
+        return "template", tmpl
+    for fn in hooks.get_hooks(DEFAULT_HOOK):
+        try:
+            result = fn(kind, request, page)
+        except Exception:
+            result = ""
+        if result and not _blank(result):
+            return "default", None
+    return "none", None

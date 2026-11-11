@@ -76,9 +76,15 @@
       <div class="pb-tabpanel" id="pb-tab-sections"{% if page_options %} role="tabpanel" aria-labelledby="pb-tabbtn-sections"{% endif %}>
       <p class="pb-palette-title">Add a section</p>
       <input type="search" id="pb-search" class="pb-search" placeholder="Search sections…" autocomplete="off">
+      {% if show_kinds %}
+      <div class="pb-kinds" role="group" aria-label="Show sections" data-kind-filter>
+        <button type="button" data-kind="all" aria-pressed="true">All</button>
+        {% for kind in palette %}<button type="button" data-kind="{{ kind.key }}" aria-pressed="false">{{ kind.short }}</button>{% endfor %}
+      </div>
+      {% endif %}
       <div id="pb-palette-list">
         {% for kind in palette %}
-         <div class="pb-pkind">
+         <div class="pb-pkind" data-kind-block="{{ kind.key }}">
           {% if show_kinds %}<div class="pb-fold-head pb-pkind-head"><p class="pb-pkind-title">{{ kind.kind }}</p>{% include "prblm_builder/_fold_button.html" with key=kind.key label=kind.kind %}</div>{% endif %}
           <div data-fold-body="{{ kind.key }}">
           {% for group in kind.groups %}

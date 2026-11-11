@@ -284,14 +284,16 @@ class PageOptionsTests(TestCase):
     def test_information_names_the_template_setting(self):
         r = self.builder(self.own_page())
         header = [o for o in r.context["page_options"] if o["name"] == "header"][0]
-        self.assertIn("testapp/header.html", header["info"])
+        self.assertIn("testapp/header.html", header["hint"])          # developer hint (0.8)
+        self.assertIn("shared header", header["info"])
 
     def test_information_without_any_header(self):
         from prblm_builder.blocks.models import SiteFooter, SiteHeader
         SiteHeader.objects.all().delete(); SiteFooter.objects.all().delete()
         r = self.builder(self.own_page())
         header = [o for o in r.context["page_options"] if o["name"] == "header"][0]
-        self.assertIn("PRBLM_BUILDER_HEADER_TEMPLATE", header["info"])
+        self.assertIn("PRBLM_BUILDER_HEADER_TEMPLATE", header["hint"])
+        self.assertIn("No header is shown", header["info"])
 
     def test_fields_moved_from_content_tab_to_hidden_layout_panel(self):
         page = self.builder_page()

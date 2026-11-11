@@ -1,5 +1,5 @@
 {% load wagtailcore_tags prblm_blocks %}<!doctype html>
-<html lang="{{ page.locale.language_code|default:'en' }}">
+<html lang="{{ page.locale.language_code|default:'en' }}"{% prblm_site_html_attrs %}>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -11,7 +11,7 @@
   {% prblm_assets %}
   <style>body{margin:0}</style>
 </head>
-<body class="pbk-page {% prblm_site_body_class %}">
+<body class="pbk-page {% prblm_site_body_class %}"{% prblm_site_body_attrs %}>
   {% comment %}A standalone page: the site-wide header, the page's sections, the site-wide
   footer. Override this template (same path, in your own templates folder) to render
   Builder pages inside your site's base layout instead.{% endcomment %}

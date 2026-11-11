@@ -204,3 +204,16 @@ class SiteBlockColumnsSettingTests(TestCase):
     def test_on(self):
         from prblm_builder import settings as cfg
         self.assertTrue(cfg.site_block_columns())
+
+
+class PreviewOptions08Tests(TestCase):
+    """0.8 settings (the full behaviour is tested in tests/test_v08.py)."""
+
+    def test_readers(self):
+        from prblm_builder import settings as cfg
+        self.assertEqual(cfg.preview_body_attrs(), {})
+        self.assertEqual(cfg.preview_html_attrs(), {})
+        self.assertTrue(cfg.reduce_motion())
+        with self.settings(PRBLM_BUILDER_PREVIEW_HTML_ATTRS={"lang": "en"}, PRBLM_BUILDER_REDUCE_MOTION=0):
+            self.assertEqual(cfg.preview_html_attrs(), {"lang": "en"})
+            self.assertFalse(cfg.reduce_motion())

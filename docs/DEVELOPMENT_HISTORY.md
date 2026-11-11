@@ -108,7 +108,13 @@ Pure introspection, no site-specific code.
   of a frame (or those between the markers), margins included; skips `link`/`style`/
   `script`, hidden and absolutely positioned elements; counts a **fixed** element only for
   a header/footer at the top of the frame; looks inside zero-size wrappers. Returns
-  `{top, height}`.
+  `{top, height, mt, mb, collapse}`: `mt` / `mb` are the section's outer margins as the
+  page sees them (`edgeMargin` follows first / last children whose margins collapse
+  through the section's edge), `collapse` whether its container lets them merge (not a
+  flex / grid wrapper). `builder.js` `applyGaps()` overlaps each host (header → sections →
+  footer) with the previous by `min(prev.mb, mt)` × scale (0.8). Every preview `<html>` has
+  `prblm-canvas` (shell: attribute; template mode: an inline script at the start of
+  `prblm_section`), plus the reduce-motion `<style>` when `PRBLM_BUILDER_REDUCE_MOTION`.
 - `builder.js` renders each frame at a **desktop width** (`PRBLM_BUILDER_CANVAS_WIDTH`) and a
   viewport at least `PRBLM_BUILDER_CANVAS_HEIGHT` tall (so `vh` resolves like a real screen),
   scales it to the column (`fitFrame`), shifts it by `top` and sets the host's height to the
@@ -359,6 +365,25 @@ of the code only calls these (never `django.conf.settings` directly). See §6.
     tall viewport (the plain shell forces `height:auto`); a built-in header frame starts
     with its `<link>` (measure visible children, not the first one).
 
+15. **0.8 (plan in `docs/plans/v0.8.0.md`) — follow-up from the same multi-site project.**
+    0.7 worked there with settings + preview templates + the chrome hook alone. Added:
+    margin merging between canvas sections (the last visible difference: margins added up
+    instead of collapsing — `edgeMargin` + `applyGaps`, skipped inside flex/grid wrappers);
+    the `prblm-canvas` marker and `PRBLM_BUILDER_REDUCE_MOTION` (scroll-reveal never fires in
+    a scaled, unscrolled frame); `body_attrs` / `html_attrs` (global + per profile, also on
+    Builder pages; ignored in template mode); `PREVIEW_SITES` keys by site name and wildcard
+    with a fallback warning (hostnames differ per environment); a release workflow that
+    attaches the wheel to the GitHub release; `docs/PREVIEWS.md`, the setup walkthrough the
+    tester had to work out alone. Second round before release: previews make links / forms
+    inert (`INERT_LINKS_JS`, default action only — script handlers still run); the
+    selected section shows its margins as bands (`drawSpace`); kind pills (All · Built-in ·
+    Your site's) in both sidebars, search ignores them; Block library card header grey with
+    usage top-right; the Site switcher appears with any multi-Site project and scopes
+    `demo.usage(…, site)` (+ "All sites"); `chrome.source()` tells the Page tab where the
+    canvas's header/footer really comes from — it used to name the template setting even
+    when a page type's `prblm_builder_chrome_for_page` hook decided (a landing page with
+    its own header), sending editors to the wrong file.
+
 ---
 
 ## 4. Key decisions (and why)
@@ -478,7 +503,10 @@ previews unstyled.
 | `PRBLM_BUILDER_SITE_BLOCK_COLUMNS` | `False` | Two-column forms for the site's own blocks too (0.6; built-ins always) |
 | `PRBLM_BUILDER_CANVAS_HEIGHT` | `900` | Viewport height preview frames keep at least, for `vh` sizes (0.7) |
 | `PRBLM_BUILDER_PREVIEW_TEMPLATE` | `""` | Site template previews render sections inside (`{{ prblm_section }}`) (0.7) |
-| `PRBLM_BUILDER_PREVIEW_SITES` | `{}` | Per-Site overrides (css, js, body_class, header/footer_template, template) (0.7) |
+| `PRBLM_BUILDER_PREVIEW_SITES` | `{}` | Per-Site overrides (css, js, body_class, body/html_attrs, header/footer_template, template); keys: host:port, host, site name, wildcard (0.7; matching 0.8) |
+| `PRBLM_BUILDER_PREVIEW_BODY_ATTRS` | `{}` | Extra `<body>` attributes in the plain preview shell + Builder pages (0.8) |
+| `PRBLM_BUILDER_PREVIEW_HTML_ATTRS` | `{}` | Extra `<html>` attributes (0.8) |
+| `PRBLM_BUILDER_REDUCE_MOTION` | `True` | Animations / transitions instant under `.prblm-canvas` (0.8) |
 
 Block-level options (not settings): `Meta.builder = False` (hide), `Meta.builder_settings =
 [...]` (⚙ panel, 0.5), Wagtail's `preview_value` / `description` (0.5). Model attribute:
@@ -549,14 +577,18 @@ tests/                        test project (repo only, not shipped)
   testapp/                  StandardPage (+ opted-out, broken, empty and link blocks),
                             FooterSettings (a non-page StreamField)
   test_options.py           settings + Block-library rule tests
-  test_v05.py … test_v07.py   per-release behaviour (v07: demo chain, sites, template, ⚙)
+  test_v05.py … test_v08.py   per-release behaviour (v07: demo chain, sites, template, ⚙;
+                            v08: marker, attributes, site matching, release workflow)
   examples/, test_examples.py the code from docs/EXAMPLES.md
 runtests.py                   test runner (also `runtests.py makemigrations`)
 .github/workflows/test.yml    CI: Python 3.12–3.14 + wheel build check
+.github/workflows/release.yml on a v* tag: test, check version, attach wheel + sdist to the release
 README.md                     user docs: install, settings reference, troubleshooting
 CHANGELOG.md                  per-release changes
 LICENSE                       MIT
 docs/plans/               each release's plan + progress log
+docs/EXAMPLES.md          copy-paste models / blocks (code mirrored in tests/examples/)
+docs/PREVIEWS.md          user guide: make previews match your site (0.8)
 
 prblm_builder/blocks/         optional built-in blocks app (0.3)
   __init__.py        builder_blocks()
@@ -590,7 +622,9 @@ block's default content into one HTML file and screenshotting it with headless C
 5. **Optional default-content editor** — an admin UI to override each block's demo/default
    content (synthesis stays the fallback). Scoped again for 0.7 ("Use as demo content" on a
    real section) and deferred by choice.
-6. **Publish to PyPI** so other projects `pip install prblm-builder`.
+6. **Publish to PyPI** so other projects `pip install prblm-builder`. (0.8: the release
+   workflow attaches the wheel to each GitHub release, which covers servers without
+   GitHub access; PyPI would make the package public — the owner's call.)
 7. ~~**Install into another Wagtail project**~~ — done after 0.1.0; led to the 0.2 changes.
    Still to verify there: whether the Layout tab shows a page's unpublished draft
    sections (it reads the live row — see §7).

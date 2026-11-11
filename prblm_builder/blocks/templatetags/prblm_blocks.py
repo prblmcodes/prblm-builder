@@ -176,3 +176,26 @@ def prblm_site_body_class(context):
     if page is None or not chrome.needs_site_assets(page, request):
         return ""
     return config(page, request)["body_class"]
+
+
+def _site_attrs(context, key):
+    from prblm_builder.previews import attrs_html
+    from prblm_builder.sites import config
+    from .. import chrome
+    page, request = context.get("page"), context.get("request")
+    if page is None or not chrome.needs_site_assets(page, request):
+        return ""
+    return mark_safe(attrs_html(config(page, request)[key]))
+
+
+@register.simple_tag(takes_context=True)
+def prblm_site_body_attrs(context):
+    """``PRBLM_BUILDER_PREVIEW_BODY_ATTRS`` (or the site's ``body_attrs``) for ``<body>``, when
+    the page needs the site's assets — e.g. Alpine's ``x-data`` for the site's own blocks."""
+    return _site_attrs(context, "body_attrs")
+
+
+@register.simple_tag(takes_context=True)
+def prblm_site_html_attrs(context):
+    """``PRBLM_BUILDER_PREVIEW_HTML_ATTRS`` (or the site's ``html_attrs``) for ``<html>``."""
+    return _site_attrs(context, "html_attrs")

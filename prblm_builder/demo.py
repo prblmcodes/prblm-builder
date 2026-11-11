@@ -774,11 +774,15 @@ def real_instance(name, block):
     return None, None
 
 
-def usage(name, block):
-    """``[page, …]`` live pages that use ``block`` (any name, same class)."""
+def usage(name, block, site=None):
+    """``[page, …]`` live pages that use ``block`` (any name, same class) — only those of
+    ``site`` (a Wagtail Site) when given."""
     from .registry import block_key
-    pages = _index()["usage"].get(block_key(name, block), {})
-    return sorted(pages.values(), key=lambda p: p.title.lower())
+    pages = list(_index()["usage"].get(block_key(name, block), {}).values())
+    if site is not None:
+        root = getattr(site.root_page, "path", "") if site.root_page_id else ""
+        pages = [p for p in pages if root and p.path.startswith(root)]
+    return sorted(pages, key=lambda p: p.title.lower())
 
 
 # --------------------------------------------------------------------------- entry point

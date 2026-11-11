@@ -613,6 +613,44 @@ SECTION_START = "<template data-prblm-start></template>"
 SECTION_END = "<template data-prblm-end></template>"
 
 
+CANVAS_CLASS = "prblm-canvas"
+# PRBLM_BUILDER_REDUCE_MOTION: animations / transitions finish at once in previews.
+MOTION_CSS = (".prblm-canvas *,.prblm-canvas *::before,.prblm-canvas *::after{"
+              "animation-duration:0s!important;animation-delay:0s!important;"
+              "animation-iteration-count:1!important;transition-duration:0s!important;"
+              "transition-delay:0s!important}.prblm-canvas{scroll-behavior:auto!important}")
+
+
+def attrs_html(attrs):
+    """`` name="value"`` pairs for a tag, escaped (``True`` → a bare attribute)."""
+    from django.utils.html import escape
+    out = []
+    for name, value in (attrs or {}).items():
+        name = str(name).strip()
+        if not name or not re.fullmatch(r"[A-Za-z_:@][\w:.@-]*", name) or value in (None, False):
+            continue
+        out.append(f" {escape(name)}" if value is True else f' {escape(name)}="{escape(value)}"')
+    return "".join(out)
+
+
+# Previews are pictures: a click on a link (or a form submit) must not load another page
+# inside the frame. Only the default action is stopped, so script buttons (Alpine @click,
+# accordions, tabs) keep working and hovering still shows the address.
+INERT_LINKS_JS = ('<script>(function(){function stop(e){var a=e.target&&e.target.closest&&'
+                  'e.target.closest("a[href],area[href]");if(a)e.preventDefault();}'
+                  'document.addEventListener("click",stop,true);'
+                  'document.addEventListener("auxclick",stop,true);'
+                  'document.addEventListener("submit",function(e){e.preventDefault();},true);'
+                  '})();</script>')
+
+
+def _canvas_head():
+    """What every preview gets: inert links, and instant animations (the ``prblm-canvas``
+    marker itself is added by the caller)."""
+    style = f"<style>{MOTION_CSS}</style>" if cfg.reduce_motion() else ""
+    return INERT_LINKS_JS + style
+
+
 def frame(block_html, request, page=None, site=None):
     """A whole HTML page showing one section (or header/footer) for a preview iframe.
 
@@ -627,19 +665,29 @@ def frame(block_html, request, page=None, site=None):
     conf = config(page, request, site)
     section = _strip_lazy(block_html)
     if conf["template"]:
-        ctx = {"page": page, "self": page, "request": request,
-               "prblm_section": mark_safe(SECTION_START + section + SECTION_END)}
+        # The site's template owns <html>/<body>: mark the document from inside the section
+        # (runs before the section and before the site's DOMContentLoaded scripts).
+        marker = (f'<script>document.documentElement.classList.add("{CANVAS_CLASS}")</script>'
+                  + _canvas_head())
+        ctx = {"page": page, "self": page, "request": request, "prblm_preview": True,
+               "prblm_canvas_class": CANVAS_CLASS,
+               "prblm_section": mark_safe(marker + SECTION_START + section + SECTION_END)}
         return _strip_lazy(render_to_string(conf["template"], ctx, request=request))
+    from django.utils.html import escape
+    html_attrs = dict(conf["html_attrs"])
+    html_class = " ".join(x for x in (CANVAS_CLASS, str(html_attrs.pop("class", "") or "")) if x)
     parts = [
-        '<!doctype html><html><head><meta charset="utf-8">',
+        f'<!doctype html><html class="{escape(html_class)}"{attrs_html(html_attrs)}><head>'
+        '<meta charset="utf-8">',
         '<meta name="viewport" content="width=device-width, initial-scale=1">',
         css_tags(conf["css"]),
+        _canvas_head(),
         # No body padding: on the builder canvas sections stack flush, like a real page.
         # Height auto: the frame keeps a tall viewport (for vh sizes), and a site rule like
         # `html, body {height: 100%}` would otherwise make every section that tall.
         "<style>html,body{margin:0;background:#fff;height:auto!important;"
         "min-height:0!important}</style>",
-        f'</head><body class="{conf["body_class"]}">',
+        f'</head><body class="{escape(conf["body_class"])}"{attrs_html(conf["body_attrs"])}>',
         section,
         js_tags(conf["js"]),
         "</body></html>",

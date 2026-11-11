@@ -15,16 +15,20 @@
     .bl-head p{margin:4px 0 0;color:var(--pb-mute);font-size:13.5px}
     .bl-group-title{margin:28px 2px 2px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--pb-mute)}
     .bl-card{background:#fff;border:1px solid var(--pb-line);border-radius:12px;margin:14px 0;overflow:hidden;scroll-margin-top:80px}
-    .bl-card-head{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--pb-line)}
+    /* The card's label strip: grey, so it never reads as part of the section below it. */
+    .bl-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:11px 14px;
+      background:#e9ecf1;border-bottom:2px solid #c9ced8}
+    .bl-card-main{flex:1 1 auto;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}
+    .bl-card-side{flex:none;max-width:45%;text-align:right}
     .bl-card-head h3{margin:0;font-size:15px;font-weight:600}
-    .bl-card-head{flex-wrap:wrap}
     .bl-card-desc{flex-basis:100%;margin:2px 0 0;font-size:13px;color:var(--pb-mute)}
     .bl-card-head code{font-size:11px;color:var(--pb-mute);background:#f3f3f6;padding:2px 7px;border-radius:5px}
     .bl-frame-wrap{position:relative;overflow:hidden;background:#fff;padding:0;min-height:40px}
     .bl-frame{position:absolute;top:0;left:0;display:block;width:100%;border:0;background:#fff;transform-origin:top left}
-    .bl-usage{flex-basis:100%;margin:2px 0 0;font-size:12.5px;color:var(--pb-mute)}
-    .bl-usage summary{cursor:pointer;color:var(--pb-accent)}
-    .bl-usage ul{margin:4px 0 2px;padding-left:18px}
+    .bl-usage{margin:2px 0 0;font-size:12.5px;color:var(--pb-mute)}
+    .bl-usage summary{cursor:pointer;color:var(--pb-accent);list-style-position:inside}
+    .bl-usage ul{margin:6px 0 2px;padding:0;list-style:none;text-align:right}
+    .bl-usage li{margin:2px 0}
     .bl-usage a{color:var(--pb-accent)}
     .bl-unused{color:#8a4b00}
     .bl-origin{font-size:11px;color:var(--pb-mute)}
@@ -77,8 +81,15 @@
     <aside class="pb-palette">
       <p class="pb-palette-title">Sections</p>
       <input type="search" id="bl-search" class="pb-search" placeholder="Search sections…" autocomplete="off">
+      {% if show_kinds %}
+      <div class="pb-kinds" role="group" aria-label="Show sections" data-kind-filter>
+        <button type="button" data-kind="all" aria-pressed="true">All</button>
+        {% for kind in kinds %}<button type="button" data-kind="{{ kind.key }}" aria-pressed="false">{{ kind.short }}</button>{% endfor %}
+      </div>
+      {% endif %}
       <nav id="bl-nav">
         {% for kind in kinds %}
+          <div data-kind-block="{{ kind.key }}">
           {% if show_kinds %}<div class="pb-fold-head nav-kind-head"><p class="nav-kind-title">{{ kind.kind }}</p>{% include "prblm_builder/_fold_button.html" with key=kind.key label=kind.kind %}</div>{% endif %}
           <div data-fold-body="{{ kind.key }}">
           {% for group in kind.groups %}
@@ -93,6 +104,7 @@
               </div>
             </div>
           {% endfor %}
+          </div>
           </div>
         {% endfor %}
       </nav>
@@ -109,6 +121,7 @@
         </div>
       </div>
       {% for kind in kinds %}
+        <div data-kind-block="{{ kind.key }}">
         {% if show_kinds %}<div class="pb-fold-head bl-kind-head"><h2 class="bl-kind-title">{{ kind.kind }}</h2>{% include "prblm_builder/_fold_button.html" with key=kind.key label=kind.kind %}</div>{% endif %}
         <div data-fold-body="{{ kind.key }}">
         {% for group in kind.groups %}
@@ -117,14 +130,17 @@
           {% for b in group.blocks %}
             <article class="bl-card" id="bl-{% if b.builtin %}builtin-{% endif %}{{ b.name }}" data-used="{% if b.used %}1{% else %}0{% endif %}"
                      data-search="{{ b.label|lower }} {{ b.name }} {{ b.description|lower }}">
-              <div class="bl-card-head"><h3>{{ b.label }}</h3><code>{{ b.name }}</code>{% if b.origin %}<span class="bl-origin">{{ b.origin }}</span>{% endif %}
-                {% if b.description %}<p class="bl-card-desc">{{ b.description }}</p>{% endif %}
+              <div class="bl-card-head">
+                <div class="bl-card-main"><h3>{{ b.label }}</h3><code>{{ b.name }}</code>{% if b.origin %}<span class="bl-origin">{{ b.origin }}</span>{% endif %}
+                  {% if b.description %}<p class="bl-card-desc">{{ b.description }}</p>{% endif %}</div>
+                <div class="bl-card-side">
                 {% if b.used %}
-                  <details class="bl-usage"><summary>Used on {{ b.used }} page{{ b.used|pluralize }}</summary>
+                  <details class="bl-usage"><summary>Used on {{ b.used }} page{{ b.used|pluralize }}{% if site_scoped %} of this site{% endif %}</summary>
                     <ul>{% for p in b.pages %}<li><a href="{{ p.url }}" target="_blank" rel="noopener">{{ p.title }}</a></li>{% endfor %}
                     {% if b.used > b.pages|length %}<li>…{{ b.used }} pages in all</li>{% endif %}</ul>
                   </details>
-                {% else %}<p class="bl-usage bl-unused">Not used on any published page yet — the preview shows example content.</p>{% endif %}
+                {% else %}<p class="bl-usage bl-unused" title="No published page{% if site_scoped %} of this site{% endif %} uses it yet — the preview shows example content.">Not used yet{% if site_scoped %} on this site{% endif %}</p>{% endif %}
+                </div>
               </div>
               <div class="bl-frame-wrap"><iframe class="bl-frame" scrolling="no" loading="lazy" title="{{ b.label }}"
                    data-src="{{ preview_url }}?block={{ b.name }}&demo=1&trim=1{% if b.builtin %}&builtin=1{% endif %}{{ site_param }}"></iframe></div>
@@ -132,6 +148,7 @@
           {% endfor %}
           </div>
         {% endfor %}
+        </div>
         </div>
       {% endfor %}
       {% if unpreviewable %}
@@ -179,17 +196,25 @@
       var db=document.querySelectorAll("#bl-devices button");
       db.forEach(function(b){ b.addEventListener("click", function(){ db.forEach(function(x){x.classList.remove("active");}); b.classList.add("active"); main.setAttribute("data-device", b.dataset.device); setTimeout(function(){ main.querySelectorAll(".bl-frame").forEach(fit); },240); }); });
       /* search + used / not used filter */
-      var s=document.getElementById("bl-search"), none=document.getElementById("bl-none"), filter="all";
+      var s=document.getElementById("bl-search"), none=document.getElementById("bl-none"), filter="all", kind="all";
+      var pills=document.querySelector("[data-kind-filter]");
       function shows(el, q){ var used = el.dataset.used === "1";
         return (!q || el.dataset.search.indexOf(q) !== -1) && (filter === "all" || (filter === "used") === used); }
       function apply(){ var q=s ? s.value.trim().toLowerCase() : "", any=false;
         document.body.classList.toggle("pb-searching", !!q || filter !== "all");
-        document.querySelectorAll(".bl-card").forEach(function(c){ var hit=shows(c, q); c.style.display=hit?"":"none"; if(hit)any=true; });
+        // A kind pill narrows the list; a search always looks through every kind.
+        document.querySelectorAll("[data-kind-block]").forEach(function(b){ b.style.display = (q || kind === "all" || b.dataset.kindBlock === kind) ? "" : "none"; });
+        if(pills) pills.classList.toggle("pb-kinds-search", !!q);
+        document.querySelectorAll(".bl-card").forEach(function(c){ var blk=c.closest("[data-kind-block]"); var hit=shows(c, q) && (!blk || blk.style.display !== "none"); c.style.display=hit?"":"none"; if(hit)any=true; });
         document.querySelectorAll(".nav-link").forEach(function(l){ l.style.display=shows(l, q)?"":"none"; });
         document.querySelectorAll(".nav-group").forEach(function(g){ g.style.display=g.querySelectorAll('.nav-link:not([style*="display: none"])').length?"":"none"; });
         none.textContent = q ? "No sections match your search." : "No sections here.";
         none.style.display=any?"none":"block"; setTimeout(function(){ main.querySelectorAll(".bl-frame").forEach(fit); },50); }
       if(s) s.addEventListener("input", apply);
+      if(pills) pills.querySelectorAll("button").forEach(function(b){ b.addEventListener("click", function(){
+        kind = b.dataset.kind;
+        pills.querySelectorAll("button").forEach(function(x){ x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
+        apply(); window.scrollTo(0, 0); }); });
       document.querySelectorAll(".bl-filter button").forEach(function(b){ b.addEventListener("click", function(){
         filter = b.dataset.filter;
         document.querySelectorAll(".bl-filter button").forEach(function(x){ x.setAttribute("aria-pressed", x === b ? "true" : "false"); });

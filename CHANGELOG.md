@@ -1,5 +1,50 @@
 # Changelog
 
+## 0.8.0 — 2026-11-11
+
+From testing 0.7 in a multi-site project (two Tailwind builds, Alpine, scroll-reveal
+animations, per-page headers).
+
+**Added**
+- **Gaps between sections on the canvas match the page**: neighbouring sections' margins
+  merge (the gap is the larger margin, not both added up), also between the header and the
+  first section — except inside a flex / grid wrapper in your preview template, where they
+  don't merge on the page either.
+- **`class="prblm-canvas"`** on every preview's `<html>` (also with a preview template, which
+  also gets `prblm_preview`), so you can show scroll-reveal / animated elements in previews
+  with one CSS rule.
+- **`PRBLM_BUILDER_REDUCE_MOTION`** (default `True`): animations and transitions finish
+  instantly in previews.
+- **`PRBLM_BUILDER_PREVIEW_BODY_ATTRS` / `_HTML_ATTRS`** (and `body_attrs` / `html_attrs` per
+  site profile): attributes such as Alpine's `x-data` or `data-theme` on the preview's
+  `<body>` / `<html>`, and on Builder pages that use your assets. Ignored with a preview
+  template.
+- **`PRBLM_BUILDER_PREVIEW_SITES` matching**: keys may also be the Site's name or a wildcard
+  (`landing.*`), so one entry covers every environment. A site that matches nothing is marked
+  in the Block library's Site switcher and logged once.
+- **Release files** (`.github/workflows/release.yml`): pushing a `v*` tag runs the tests,
+  checks the tag matches the package version, builds the wheel and source archive, and
+  attaches them to the GitHub release (a draft is created if needed).
+- **[docs/PREVIEWS.md](docs/PREVIEWS.md)**: step by step, make previews match your site. README:
+  "Installing on servers".
+
+- **Previews don't navigate**: clicking a link (or submitting a form) inside a preview —
+  canvas, thumbnails, Block library — does nothing; script buttons still work.
+- **Spacing on the canvas**: the selected section shows its margins as striped bands
+  ("Space · 112px").
+- **Kind filter** pills (All · Built-in · Your site's) in the Block library and the Layout
+  sidebar; search always covers every kind.
+- **Block library**: "Used on N pages" sits top right in a grey header strip that can't be
+  mistaken for the section; with several sites, the Site switcher (shown whenever there's
+  more than one Site) also counts usage per site, with an "All sites" choice.
+- **Page tab** explains where this page's header / footer really come from — the page
+  type's own code, the site's shared template (file name as a developer hint), a Headers /
+  Footers entry, or none — instead of always naming the template setting.
+- README: how block **groups** work (Wagtail's `group` option; "Other" without one).
+
+**Upgrade notes**
+- No migrations. See README → Upgrading → 0.7 → 0.8.
+
 ## 0.7.0 — 2026-11-11
 
 **Demo content**

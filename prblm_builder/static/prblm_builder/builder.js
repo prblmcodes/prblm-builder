@@ -130,7 +130,36 @@
       if (want !== cur) frame.style.height = want + "px";
       frame.style.transform = "scale(" + s + ")" + (m.top ? " translateY(" + (-m.top) + "px)" : "");
       host.style.height = Math.round(m.height * s) + "px";
+      host._pbM = { mt: m.mt || 0, mb: m.mb || 0, collapse: !!m.collapse, s: s };
+      if (host.classList.contains("pb-selected")) drawSpace(host);
+      queueGaps();
     } catch (e) {}
+  }
+  // Neighbouring sections' margins merge on a live page (the gap is the larger of the two),
+  // but each canvas frame counts its own: overlap each section with the one before it by
+  // the smaller margin. Not where the container keeps them apart (flex / grid).
+  var gapsQueued = false;
+  function queueGaps() {
+    if (gapsQueued) return; gapsQueued = true;
+    requestAnimationFrame(function () { gapsQueued = false; applyGaps(); });
+  }
+  function applyGaps() {
+    var hosts = [];
+    var head = document.querySelector('.pb-chrome[data-chrome="header"]');
+    var foot = document.querySelector('.pb-chrome[data-chrome="footer"]');
+    function usable(h) { return h && !h.hidden && !h.classList.contains("pb-chrome-empty") && h._pbM; }
+    if (usable(head)) hosts.push(head);
+    Array.prototype.forEach.call(sections(), function (sec) { hosts.push(sec); });
+    if (usable(foot)) hosts.push(foot);
+    var prev = null;
+    hosts.forEach(function (h) {
+      var m = h._pbM, overlap = 0;
+      if (prev && m && prev._pbM && m.collapse && prev._pbM.collapse) {
+        overlap = Math.min(prev._pbM.mb, m.mt) * m.s;
+      }
+      h.style.marginTop = overlap ? (-Math.round(overlap)) + "px" : "";
+      prev = m ? h : null;
+    });
   }
   function fit(frame) { fitFrame(frame, false); }
   function fitChrome(frame) { fitFrame(frame, true); }
@@ -294,10 +323,29 @@
       c.querySelector('[data-act="down"]').disabled = (i === secs.length - 1);
     });
     syncLayout();   // keep the parent edit form's hidden layout fields in step
+    queueGaps();    // neighbours changed: re-merge the gaps between sections
   }
 
   function select(sec) {
-    sections().forEach(function (s) { s.classList.toggle("pb-selected", s === sec); });
+    sections().forEach(function (s) { s.classList.toggle("pb-selected", s === sec); drawSpace(s); });
+  }
+  // The selected section's margins (space above / below its content), shown as striped
+  // bands with their size — explains why neighbouring sections' spacing overlaps.
+  function drawSpace(sec) {
+    Array.prototype.slice.call(sec.querySelectorAll(".pb-space")).forEach(function (b) { b.remove(); });
+    var m = sec._pbM;
+    if (!sec.classList.contains("pb-selected") || !m) return;
+    [["top", m.mt], ["bottom", m.mb]].forEach(function (side) {
+      var px = Math.round(side[1] || 0);
+      if (px < 1) return;
+      var band = document.createElement("div");
+      band.className = "pb-space pb-space-" + side[0];
+      band.style.height = Math.max(2, Math.round(px * m.s)) + "px";
+      band.innerHTML = '<span class="pb-space-label">Space \u00b7 ' + px + "px</span>";
+      band.title = (side[0] === "top" ? "Space above" : "Space below") + " this section's content (its margin). " +
+                   "Next to another section, the larger of the two spaces is used.";
+      sec.appendChild(band);
+    });
   }
 
   /* ---------- undo / redo (Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z or Ctrl+Y) ---------- */
@@ -757,14 +805,33 @@
 
   /* ---------- palette search ---------- */
   var search = document.getElementById("pb-search");
-  if (search) search.addEventListener("input", function () {
-    var q = search.value.trim().toLowerCase();
+  var pills = document.querySelector("[data-kind-filter]"), kindShown = "all";
+  function filterPalette() {
+    var q = search ? search.value.trim().toLowerCase() : "";
     document.body.classList.toggle("pb-searching", !!q);   // searching shows folded groups too
+    // A kind pill narrows the list; a search always looks through every kind.
+    document.querySelectorAll("[data-kind-block]").forEach(function (b) {
+      b.style.display = (q || kindShown === "all" || b.dataset.kindBlock === kindShown) ? "" : "none";
+    });
+    if (pills) pills.classList.toggle("pb-kinds-search", !!q);
     document.querySelectorAll(".pb-pitem").forEach(function (it) {
       it.style.display = (!q || it.dataset.search.indexOf(q) !== -1) ? "" : "none";
     });
     document.querySelectorAll(".pb-pgroup").forEach(function (g) {
       g.style.display = g.querySelectorAll('.pb-pitem:not([style*="display: none"])').length ? "" : "none";
+    });
+    // Thumbnails that just became visible load now.
+    document.querySelectorAll(".pb-thumb-frame").forEach(function (f) {
+      if (!f.src && f.dataset.src && f.offsetParent !== null && !tio) f.src = f.dataset.src;
+    });
+  }
+  if (search) search.addEventListener("input", filterPalette);
+  if (pills) pills.querySelectorAll("button").forEach(function (b) {
+    b.addEventListener("click", function () {
+      kindShown = b.dataset.kind;
+      pills.querySelectorAll("button").forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
+      filterPalette();
+      var pal = document.querySelector(".pb-palette"); if (pal) pal.scrollTop = 0;
     });
   });
 

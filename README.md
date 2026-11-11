@@ -20,6 +20,7 @@ for every feature (each one is checked by the test suite).
 
 - [Requirements](#requirements)
 - [Install](#install)
+- [Installing on servers](#installing-on-servers)
 - [Quick setup](#quick-setup)
 - [Adding it to an existing site — checklist](#adding-it-to-an-existing-site--checklist)
 - [Use](#use)
@@ -28,7 +29,7 @@ for every feature (each one is checked by the test suite).
 - [Which blocks show up](#which-blocks-show-up)
   - [Hiding a block](#hiding-a-block)
 - [Section settings (⚙)](#section-settings-)
-- [Previews that match your site](#previews-that-match-your-site)
+- [Previews that match your site](#previews-that-match-your-site) — step by step: [docs/PREVIEWS.md](https://github.com/prblmcodes/prblm-builder/blob/main/docs/PREVIEWS.md)
 - [Block previews and descriptions](#block-previews-and-descriptions)
   - [Where demo content comes from](#where-demo-content-comes-from)
 - [Examples](https://github.com/prblmcodes/prblm-builder/blob/main/docs/EXAMPLES.md)
@@ -53,30 +54,54 @@ Install from a GitHub release tag, inside your project's virtual environment:
 
 ```bash
 # public repo
-pip install "prblm-builder @ git+https://github.com/prblmcodes/prblm-builder.git@v0.7.0"
+pip install "prblm-builder @ git+https://github.com/prblmcodes/prblm-builder.git@v0.8.0"
 
 # private repo (uses your GitHub SSH key)
-pip install "prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@v0.7.0"
+pip install "prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@v0.8.0"
 ```
 
-Or put the same `prblm-builder @ git+…@v0.7.0` line in `requirements.txt`. You can also
+Or put the same `prblm-builder @ git+…@v0.8.0` line in `requirements.txt`. You can also
 download the wheel attached to a GitHub release and
-`pip install prblm_builder-0.7.0-py3-none-any.whl`.
+`pip install prblm_builder-0.8.0-py3-none-any.whl`.
 
 Check it worked: `pip show prblm-builder` shows the version.
 
-**Upgrading** to a new release: change the tag (e.g. `@v0.6.0` → `@v0.7.0`), reinstall,
+**Upgrading** to a new release: change the tag (e.g. `@v0.7.0` → `@v0.8.0`), reinstall,
 run `python manage.py migrate`, and restart the server. If pip says the version is
 *already installed* (e.g. you installed the same version from a wheel or a branch before),
 force it:
 
 ```bash
-pip install --force-reinstall --no-deps "prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@v0.7.0"
+pip install --force-reinstall --no-deps "prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@v0.8.0"
 ```
 
 The plugin's CSS/JS are version-stamped, so browsers load the new files without a hard
 refresh. See [Upgrading](#upgrading) for per-version notes and
 [CHANGELOG.md](https://github.com/prblmcodes/prblm-builder/blob/main/CHANGELOG.md) for what changed.
+
+## Installing on servers
+
+Pin a release in your project's requirements, so every server installs the same version:
+
+- **From the git tag** — needs read access to the repository on the server (a deploy key
+  for the SSH URL, or a token in the HTTPS URL):
+
+  ```text
+  prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@v0.8.0
+  ```
+
+- **From the release wheel** — every GitHub release has the wheel attached (built
+  automatically when the version tag is pushed). Download it into your project (e.g.
+  `deploy/wheels/`) and install it from there, no GitHub access needed on the server:
+
+  ```text
+  prblm-builder @ file:./deploy/wheels/prblm_builder-0.8.0-py3-none-any.whl
+  ```
+
+  or `pip install --no-index --find-links deploy/wheels prblm-builder==0.8.0`.
+
+After upgrading, always run `python manage.py migrate` (the [CHANGELOG](https://github.com/prblmcodes/prblm-builder/blob/main/CHANGELOG.md) says
+when a release has migrations or setting changes) and `collectstatic`.
 
 ## Quick setup
 
@@ -138,6 +163,7 @@ PRBLM_BUILDER_PAGE_EXTRA_BLOCKS = [                   # 5. your blocks on the Bu
 # PRBLM_BUILDER_SITE_BLOCK_COLUMNS = True             # 6. two-column forms for your blocks too
 # PRBLM_BUILDER_PREVIEW_TEMPLATE = "prblm_preview.html"  # 7. previews inside your base.html
 # PRBLM_BUILDER_PREVIEW_SITES = {…}                   # 8. several sites: CSS/header per site
+# PRBLM_BUILDER_PREVIEW_BODY_ATTRS = {"x-data": "…"}  # 9. Alpine state on <body> (no template)
 ```
 
 Then:
@@ -167,7 +193,8 @@ Good to know:
 - **Sections using `vh` heights** (`min-h-[70vh]`, `h-screen`) render as on a 900px-tall
   screen (`PRBLM_BUILDER_CANVAS_HEIGHT`). **A fixed site header** is measured on the canvas,
   and Builder pages leave room for it. **Alpine / inline scripts / `<body>` attributes** from
-  your `base.html`: use a [preview template](#your-own-preview-template).
+  your `base.html`: use a [preview template](#your-own-preview-template). Step-by-step
+  guide: [docs/PREVIEWS.md](https://github.com/prblmcodes/prblm-builder/blob/main/docs/PREVIEWS.md).
 
 ## Use
 
@@ -212,17 +239,32 @@ Good to know:
   right-click menu also has Duplicate, Settings, Move and Delete; the Duplicate button
   copies a section right below in one click.
 - **Page tab:** the Layout sidebar has **Sections | Page** tabs. On **Builder pages** the
-  Page tab chooses the header and footer. On your own page types it explains where they
-  come from — your site's template for that page type — since they're not chosen per page
-  there.
+  Page tab chooses the header and footer. On your own page types it says where the header
+  and footer on the canvas really come from, so nobody edits the wrong thing:
+  - **built into this page type** (its own code decides — e.g. a landing page with its own
+    header): change it in the page's content, not in the site's header;
+  - **your site's shared header/footer** (the same on every page of that site): the file
+    name is shown as a hint for developers;
+  - a header/footer from **Page builder → Headers / Footers**, with a link to manage them;
+  - or **none**.
+- **Kind filter:** above the section list (Layout sidebar and Block library), the pills
+  **All · Built-in · Your site's** show one kind at a time. Search always looks through all
+  of them.
+- **Spacing:** select a section on the canvas to see its margins — the space above and below
+  its content — as striped bands labelled "Space · 112px". Where two sections meet, the
+  larger of the two spaces is used, like on the live page.
+- **Previews don't navigate:** clicking a link inside a preview (canvas, thumbnails, Block
+  library) does nothing; buttons that run scripts (menus, accordions) still work.
 - **Fold groups:** in the Layout sidebar and the Block library, click the arrow next to a
   group (or *Built-in blocks* / *Your site's blocks*) to fold it. In the Block library,
   folding in the sidebar also hides those previews. Your browser remembers what's folded.
 - **Page builder menu:** the plugin adds a **Page builder** section to the admin sidebar:
   - **Block library** — every block with a live preview, grouped into *Built-in blocks*
     and *Your site's blocks*. Filter **All / Used on pages / Not used yet**; each block says
-    which published pages use it (handy for spotting blocks nobody uses). Searches names and
-    descriptions. Address: `/admin/page-builder/demo/` (use your own admin prefix if it
+    (top right) which published pages use it — handy for spotting blocks nobody uses.
+    Searches names and descriptions. With several sites, the **Site** switcher shows the
+    previews in that site's styles and counts only that site's pages ("All sites" counts
+    everywhere). Address: `/admin/page-builder/demo/` (use your own admin prefix if it
     isn't `admin/`). Also linked from the editor header.
   - **Theme**, **Headers** and **Footers** — only when the built-in blocks app is installed.
 
@@ -464,7 +506,10 @@ StreamField and renders previews unstyled. After changing a setting, restart the
 | `PRBLM_BUILDER_CANVAS_WIDTH` | `1280` | Desktop width (px) sections render at before being scaled to fit the editor. Set it to your design width (e.g. `1440`). |
 | `PRBLM_BUILDER_CANVAS_HEIGHT` | `900` | Screen height (px) previews pretend to have, so sections sized in `vh` (`min-h-[70vh]`, `h-screen`) look as on a real screen. Minimum 300. |
 | `PRBLM_BUILDER_PREVIEW_TEMPLATE` | `""` | A template of yours that previews render each section inside — it extends your `base.html`, so the canvas gets your real `<head>`, `<body>` attributes and inline scripts. See [Your own preview template](#your-own-preview-template). |
-| `PRBLM_BUILDER_PREVIEW_SITES` | `{}` | Several sites with different CSS / headers: per-site overrides of the settings above, keyed by Wagtail Site hostname. See [Several sites](#several-sites). |
+| `PRBLM_BUILDER_PREVIEW_SITES` | `{}` | Several sites with different CSS / headers: per-site overrides of the settings above, keyed by Wagtail Site hostname, site name or wildcard. See [Several sites](#several-sites). |
+| `PRBLM_BUILDER_PREVIEW_BODY_ATTRS` | `{}` | Extra `<body>` attributes for previews (and Builder pages using your assets), e.g. `{"x-data": "{ showModal: false }"}`. Ignored with a preview template. |
+| `PRBLM_BUILDER_PREVIEW_HTML_ATTRS` | `{}` | Extra `<html>` attributes, e.g. `{"data-theme": "light"}`. Ignored with a preview template. |
+| `PRBLM_BUILDER_REDUCE_MOTION` | `True` | Animations and transitions finish instantly in previews (they're still pictures). Previews always have `class="prblm-canvas"` on `<html>`. See [Animations](#animations-and-scroll-effects). |
 
 ### Which pages get the Layout tab
 
@@ -535,6 +580,25 @@ The Layout palette and the Block library list the **top-level blocks of your pag
 `body` fields** — the sections an editor can actually place. Blocks used only *inside*
 other blocks (links, buttons, cards…) or only in non-page StreamFields never appear.
 A block also needs its own `template` to be shown (it's what the preview renders).
+
+### Groups
+
+The headings in the section list (*Page openers*, *Content*…) come from each block's own
+`group` — a standard Wagtail block option that also groups Wagtail's own block menu.
+Blocks without one are listed under **Other**:
+
+```python
+class HeroSectionHome(blocks.StructBlock):
+    ...
+    class Meta:
+        template = "home/blocks/hero_section_home.html"
+        group = "Heroes"
+
+# or on an inline block / when listing it:
+("intro", blocks.RichTextBlock(group="Text", template="blocks/intro.html"))
+```
+
+The built-in blocks come with groups; give your own blocks one to group them the same way.
 
 ### Hiding a block
 
@@ -683,9 +747,9 @@ developer-only setting; editors see nothing different:
 PRBLM_BUILDER_PREVIEW_TEMPLATE = "prblm_preview.html"
 ```
 
-The template gets `page` (the page being edited, when there is one) and `request`. The
-canvas measures only the section, so padding or wrappers around it in your template don't
-add space. With a preview template, `PRBLM_BUILDER_PREVIEW_CSS` / `_JS` / `_BODY_CLASS` aren't
+The template gets `page` (the page being edited, when there is one), `request` and
+`prblm_preview` (always `True`). The canvas measures only the section, so padding or
+wrappers around it in your template don't add space. With a preview template, `PRBLM_BUILDER_PREVIEW_CSS` / `_JS` / `_BODY_CLASS` aren't
 needed for previews (Builder pages still use them for your header/footer and blocks).
 
 ### Several sites
@@ -706,8 +770,57 @@ PRBLM_BUILDER_PREVIEW_SITES = {
 }
 ```
 
+A profile can also set `body_attrs` / `html_attrs` (see below).
+
+**Matching.** A key matches a Site by, in this order: `"hostname:port"`, `"hostname"`, the
+Site's **name** (Settings → Sites), then a **wildcard** on the hostname (`"landing.*"`,
+`"*.example.com"`). Site names and wildcards work on every environment without listing
+each hostname:
+
+```python
+PRBLM_BUILDER_PREVIEW_SITES = {
+    "Main": {...},                 # the Site named "Main", on any server
+    "landing.*": {...},            # landing.localhost, landing.example.com, …
+}
+```
+
 The canvas uses the edited page's site (for a new page, its parent's). The Block library
-gets a **Site** switcher.
+gets a **Site** switcher; a site no key matches is marked "uses the default preview
+settings" there, and the server log warns once.
+
+### `<html>` and `<body>` attributes
+
+Sections that rely on state on `<body>` (Alpine's `x-data`, `data-theme`, `dir`) need it in
+previews too. A preview template keeps your real `<body>`; without one, set:
+
+```python
+PRBLM_BUILDER_PREVIEW_BODY_ATTRS = {"x-data": "{ showModal: false }"}
+PRBLM_BUILDER_PREVIEW_HTML_ATTRS = {"data-theme": "light"}
+# or "body_attrs" / "html_attrs" in a PRBLM_BUILDER_PREVIEW_SITES profile
+```
+
+A `class` in `body_attrs` joins `PRBLM_BUILDER_PREVIEW_BODY_CLASS`. They also go on published
+Builder pages that show your header / footer or contain your own blocks. With a preview
+template they're ignored.
+
+### Animations and scroll effects
+
+Previews are still pictures, and scroll-triggered effects often never fire in them (the
+frame is scaled, not scrolled). Every preview has `class="prblm-canvas"` on `<html>` (also
+with a preview template), and `PRBLM_BUILDER_REDUCE_MOTION = True` (default) makes CSS
+animations and transitions finish instantly. Elements hidden until a script adds a class
+(scroll-reveal, AOS, Alpine `x-intersect`) need one rule from you:
+
+```css
+.prblm-canvas .reveal, .prblm-canvas [data-aos] { opacity: 1 !important; transform: none !important; }
+```
+
+### Gaps between sections
+
+On a page, the bottom margin of one section and the top margin of the next merge (the gap
+is the larger of the two). The canvas does the same — also between the header and the first
+section — unless your preview template puts sections in a flex or grid container, where
+margins don't merge on the live page either.
 
 ### `vh` heights and fixed headers
 
@@ -833,7 +946,7 @@ prblm_builder/                  the installable Django app
   templates/prblm_builder/      builder.html (canvas), layout_panel.html (tab), demo.html (library)
   templatetags/prblm_builder_tags.py   {% prblm_static %} — static URL + ?v=<version>
   static/prblm_builder/         builder.js, builder.css, fold.js, vendor/sortable.min.js,
-                                frames.js (measuring preview frames), form-columns.js/.css
+                                frames.js (measuring frames, margin merging), form-columns.js/.css
                                 (two-column forms), form-columns-site.css
   tests/test_builder.py         generic tests — also runnable inside a host project
   blocks/                       optional app "prblm_builder.blocks" (built-in blocks)
@@ -858,10 +971,13 @@ tests/                          test project for this repo (not shipped)
   test_v05.py                   preview values, links, ⚙ settings, copy/paste, Page tab, drafts
   test_v06.py, test_v06_fixes.py   tab order/sync, forms, site assets, demo content matching
   test_v07.py                   demo content chain, per-site previews, preview template, ⚙ checks
+  test_v08.py                   preview marker, attributes, site matching, release workflow
   examples/, test_examples.py   the code from docs/EXAMPLES.md, checked
 runtests.py                     runs all tests against tests/
 .github/workflows/test.yml      CI: tests on Python 3.12–3.14 + wheel build check
+.github/workflows/release.yml   on a v* tag: test, build, attach wheel + sdist to the release
 docs/EXAMPLES.md                copy-paste models and blocks for every feature
+docs/PREVIEWS.md                step by step: make previews match your site
 docs/DEVELOPMENT_HISTORY.md     architecture, design decisions, bugs + lessons, roadmap
 docs/plans/                     the plan behind each release
 CHANGELOG.md                    what changed in each release
@@ -886,10 +1002,23 @@ Inside a host project you can also run the generic tests against its own models:
 `rich_text` block).
 
 Releasing: bump `version` in `pyproject.toml`, add a `CHANGELOG.md` entry, commit, then
-`git tag -a vX.Y.Z -m "…" && git push origin main vX.Y.Z`, and create the GitHub release
-from the tag (attach the wheel from `python -m build`).
+`git tag -a vX.Y.Z -m "…" && git push origin main vX.Y.Z`. The **Release files** workflow
+tests the tag, checks it matches the version, builds the wheel and source archive and
+attaches them to the GitHub release (creating a draft if there's none yet) — write the
+notes and publish it.
 
 ## Upgrading
+
+**0.7 → 0.8**
+- No migrations, no required changes — install the new version and restart.
+- Previews now have `class="prblm-canvas"` on `<html>`, and animations / transitions run
+  instantly in them (`PRBLM_BUILDER_REDUCE_MOTION = False` to keep them).
+- Gaps between sections on the canvas now merge like on a page (they used to add up), so
+  sections may sit closer together than in 0.7 — that's the live spacing.
+- `PRBLM_BUILDER_PREVIEW_SITES` keys may now be site names or wildcards; exact hostnames
+  keep working.
+- If you override `builder_page.html`, add `{% prblm_site_html_attrs %}` to `<html>` and
+  `{% prblm_site_body_attrs %}` to `<body>` to get the new attribute settings there.
 
 **0.6 → 0.7**
 - Run `python manage.py migrate` — the plugin now has one small table (`SeededSection`) to
@@ -992,6 +1121,13 @@ from the tag (attach the wheel from `python -m build`).
 | "Layout changed" appears after dragging a section and dropping it in the same place | Fixed in 0.7.0. |
 | "Couldn't save automatically — your layout isn't saved yet" | Wagtail's auto-save was refused (often another tab saved a newer version). Click **Save draft**; reload first if Wagtail says the page changed. |
 | `pip install` leaves the old version | Same version number already installed → add `--force-reinstall --no-deps`. |
+| A section is blank or half-faded on the canvas | A scroll / entrance animation that never fires in a preview: add `.prblm-canvas .your-class{opacity:1 !important;transform:none !important}` — see [Animations](#animations-and-scroll-effects). |
+| My blocks are all listed under "Other" | Give them a `group` (`class Meta: group = "Heroes"`) — see [Groups](#groups). |
+| Clicking a link in a preview does nothing | Expected — previews don't navigate. Open the page itself (or Wagtail's preview) to follow links. |
+| The Page tab names a template, but editing it doesn't change this page's header | Fixed in 0.8.0: when a page type decides its own header in code, the Page tab says so instead of naming the site template. |
+| Gaps between sections on the canvas are bigger than on the page | Fixed in 0.8.0 (margins merge like on a page). Inside a flex / grid wrapper in your preview template they don't merge — like the live page. |
+| Previews of one site use another site's (or the global) CSS | Its hostname isn't a key in `PRBLM_BUILDER_PREVIEW_SITES`: use the Site's name or a wildcard (`"landing.*"`). The Block library's Site switcher marks sites with no match. |
+| `showModal is not defined` (Alpine) in previews, without a preview template | Set `PRBLM_BUILDER_PREVIEW_BODY_ATTRS = {"x-data": "{ showModal: false }"}`. |
 | A tall section (`min-h-[70vh]`, `h-screen`) looks short or very tall on the canvas | Set `PRBLM_BUILDER_CANVAS_HEIGHT` to the screen height you design for (default 900). |
 | The first section is hidden under my fixed header on a Builder page | It's padded automatically; if your header appears late (e.g. built by JS), set `:root{--prblm-header-offset:128px}` in your CSS. |
 | Alpine errors (`showModal is not defined`) or missing `<body>` attributes in previews | Use a [preview template](#your-own-preview-template) that extends your `base.html`. |

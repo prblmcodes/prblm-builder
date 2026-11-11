@@ -387,5 +387,11 @@ PRBLM_BUILDER_PREVIEW_JS = [
 ]
 ```
 
-Details and more options: README → *Previews that match your site*.
+Without a preview template, put `<body>` / `<html>` state in settings instead:
+`PRBLM_BUILDER_PREVIEW_BODY_ATTRS = {"x-data": "{ showModal: false }"}`. Profile keys can be
+hostnames, site names (`"Main"`) or wildcards (`"landing.*"`). Animated elements: every
+preview has `class="prblm-canvas"` on `<html>`.
+
+Step by step: [docs/PREVIEWS.md](PREVIEWS.md). All options: README → *Previews that match
+your site*.
 

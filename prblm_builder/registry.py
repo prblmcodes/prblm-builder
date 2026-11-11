@@ -144,6 +144,7 @@ def grouped_blocks(stream_block):
 
 
 KIND_KEYS = {KIND_BUILTIN: "builtin", KIND_SITE: "site"}
+KIND_SHORT = {KIND_BUILTIN: "Built-in", KIND_SITE: "Your site's"}
 
 BACKGROUND_KEYS = {"light", "muted", "dark", "brand"}
 

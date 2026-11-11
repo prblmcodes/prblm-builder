@@ -77,10 +77,10 @@ field (preview_value → real site content of the same block → default → neu
 `python runtests.py` runs `prblm_builder/tests/` against the bundled test project in
 `tests/` (settings + `tests.testapp.StandardPage` with a `body` StreamField). CI
 (`.github/workflows/test.yml`) runs it on Python 3.12–3.14 and checks the wheel builds.
-Target stack: **Wagtail 8.1+ (<9), Django 6.1+, Python 3.12+** (latest stable as of v0.7.0).
+Target stack: **Wagtail 8.1+ (<9), Django 6.1+, Python 3.12+** (latest stable as of v0.8.0).
 
 ## Current state
-Latest release **v0.7.0** (plan in `docs/plans/v0.7.0.md`; earlier plans in `docs/plans/`). Copy-paste usage examples:
+Latest release **v0.8.0** (plan in `docs/plans/v0.8.0.md`; earlier plans in `docs/plans/`). Preview setup guide for users: `docs/PREVIEWS.md`. Pushing a `v*` tag attaches the wheel to the GitHub release (`.github/workflows/release.yml`). Copy-paste usage examples:
 `docs/EXAMPLES.md` — its code lives in `tests/examples/` (keep them identical). Install in another project
 with `pip install "prblm-builder @ git+ssh://git@github.com/prblmcodes/prblm-builder.git@<tag or branch>"`.
 Tests: `prblm_builder/tests/` (generic, shipped) + `tests/test_options.py` (needs the
