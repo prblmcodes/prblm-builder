@@ -32,7 +32,11 @@ can't be previewed are listed at the bottom with the reason — and check the
 | No Layout tab on a page type | Its StreamField isn't called `body` → set `PRBLM_BUILDER_FIELD_NAMES`, or check `PRBLM_BUILDER_PAGE_MODELS`. |
 | New sections don't appear in the Content tab | Save the page first (use **Save draft now** in the banner) — the Content tab only shows saved sections. |
 | "Couldn't save automatically — your layout isn't saved yet" | Wagtail's auto-save was refused (often another tab saved a newer version). Click **Save draft**; reload first if Wagtail says the page changed. |
-| "Publish it with this title?" when publishing | The page still has the placeholder title "Untitled page N" from **Save draft now** — rename it in the Content tab. |
+| "This page is still called 'Untitled page N'" when publishing | The page still has the placeholder title from **Save draft now** — click **Rename it**, or **Publish anyway**. |
+| Clicking **Publish** on an "Untitled page" does nothing | Fixed in 0.10.0 (the question used the browser's confirm box, which a browser can block silently). Upgrade. |
+| The editor always reopens on the Layout tab after saving | Fixed in 0.10.0: it reopens the tab you saved from. |
+| The Content tab shows old sections for a moment after changing the layout | Fixed in 0.10.0: it shows "Loading the new sections…" until the editor reloads. |
+| Sections added or deleted in the Content tab don't show in the Layout tab | Fixed in 0.10.0. On Wagtail 7.0 (no auto-save) save the page first — the bar on the Layout tab offers **Save draft now**. |
 | `/admin/page-builder/page/<id>/` opens the page editor | Expected since 0.9.0: the separate full-screen builder was removed — use the **Layout** tab. |
 | Paste is greyed out in the right-click menu | Copy a section first — copy & paste work within the same page. |
 | Wagtail's preview doesn't seem to show a new section | It was added where you dropped it — scroll the preview. On a long page it's often below the visible part. |

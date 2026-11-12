@@ -35,7 +35,10 @@ fit.
   the right-click menu or Ctrl/⌘+V (below the selected one) — within the same page.
 - **Undo / redo:** Ctrl/⌘+Z and Ctrl/⌘+Shift+Z.
 - **Save:** with Wagtail's own **Save draft / Publish** — the arrangement saves with the
-  page, nothing extra.
+  page, nothing extra. After saving, the editor reopens the tab you saved from (if the save
+  failed, the tab with the error).
+- **What next:** while saved sections still hold demo text, a bar above the page says so —
+  "2 sections still have demo text" — with **Fill them in**, which opens the Content tab.
 
 ### Edit what a section says
 
@@ -49,14 +52,18 @@ fit.
   text; the canvas shows the full text, exactly as it will be saved.
 - **Layout and Content stay in sync.** On a saved page, after you add, remove or move
   sections, opening the Content tab waits for Wagtail's auto-save ("Saving your layout
-  changes…") and reloads the editor on the Content tab with the new sections. **Wagtail
-  7.0 has no auto-save:** there, new sections appear in the Content tab after you save the
-  page (a banner offers **Save draft now**). Content-tab
+  changes…") and reloads the editor on the Content tab with the new sections. The other
+  way round too: after you add, delete, move or edit sections in the Content tab, opening
+  the Layout tab shows "Updating the layout…" until the auto-save is done, then the canvas
+  shows the page as it now is. **Wagtail 7.0 has no auto-save:** there, a bar says to save
+  (**Save draft now**), and both tabs are up to date after saving. Content-tab
   edits show on the canvas when you switch back. ⚙ settings update the Content tab at once,
   and the other way round.
 - **A new page** (not saved yet) works too. Sections you add appear in the Content tab
   **after the first save** — a banner offers **Save draft now**; without a title it fills in
-  "Untitled page 23" (Publish asks first while the page still has that title). With
+  "Untitled page 23". Publishing a page that still has that title asks first, in a
+  dialog in the middle of the screen: **Rename it** (opens the title field) or **Publish
+  anyway**. With
   Wagtail's auto-save off (`WAGTAIL_AUTOSAVE_INTERVAL = 0`) every page works this way. If a
   save fails (e.g. a required field is empty), your arrangement is kept.
 
@@ -86,8 +93,11 @@ appear — see [Section settings](#5-section-settings-).
 
 ### On the canvas
 
-- **Spacing:** select a section to see its margins as striped bands ("Space · 112px").
-  Where two sections meet, the larger space is used, like on the live page.
+- **Spacing:** select a section to see its spacing as striped bands, in the colours browser
+  developer tools use: its **margins** — space outside it — in orange ("Space · 112px"),
+  and its **padding** — space inside its edge, before the content — in green
+  ("Padding · 64px"). Where two sections meet, the larger margin is used, like on the live
+  page. (Only the section's outer element is shown, not the elements inside it.)
 - **Overlaps** look like the live page: a transparent header lies over the first section,
   and sections pulled over a neighbour by negative margins overlap it — see
   [Overlapping headers and sections](#overlapping-headers-and-sections).
@@ -244,6 +254,10 @@ has something:
    **published** page (the one with the most filled fields, then images, then length) (whatever it's called on that page type). Only sections someone
    actually edited, never the plugin's own untouched demo sections, and only content that
    passes the block's validation. Fields that section left empty fall through.
+   Drafts are never used — they may be unfinished or not meant to be seen yet. As soon as
+   a page is published, unpublished or deleted, previews and new sections use the new best
+   published content (or fall back to steps 3–4); nothing is re-read while nothing changes.
+   Sections already on pages never change.
 3. **The field's own `default`** (e.g. a `ChoiceBlock`'s default).
 4. **Generated content**, neutral and obviously placeholder:
    - text from the field's label or help text, sized to the field: "Section heading" for

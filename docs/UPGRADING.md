@@ -1,6 +1,6 @@
 # Upgrading
 
-1. Change the version you install (e.g. `@v0.9.0` → `@v0.9.1` in `requirements.txt`, or
+1. Change the version you install (e.g. `@v0.9.1` → `@v0.10.0` in `requirements.txt`, or
    download the new release wheel) and install it.
 2. Run `python manage.py migrate` (and `collectstatic` in production).
 3. Restart the server. The plugin's CSS/JS are version-stamped, so browsers load the new
@@ -11,6 +11,17 @@ wheel or a branch before), add `--force-reinstall --no-deps` — `--no-deps` kee
 reinstalling Wagtail and Django too.
 
 What changed in each version: [CHANGELOG.md](../CHANGELOG.md). Notes per version:
+
+**0.9 → 0.10**
+- No migrations, no setting changes — install and restart (hard-refresh the editor once).
+- After Save draft / Publish the editor reopens the tab you saved from (it used to always
+  open Layout).
+- Publishing an "Untitled page N" asks in the editor instead of the browser's confirm box.
+- Selected sections also show their padding (green), next to their margins (orange).
+- Changes made in the Content tab (added, deleted, moved or edited sections) now show in
+  the Layout tab — after Wagtail's auto-save, or on Wagtail 7.0 after you save.
+- Demo content picks up newly published content at once, and is no longer re-read every
+  minute while nothing changes.
 
 **0.9.0 → 0.9.1**
 - No migrations, no setting changes — install and restart.

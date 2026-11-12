@@ -88,6 +88,12 @@
     <div class="pb-divider" title="Drag to resize"><span></span></div>
 
     <main class="pb-stage">
+      {% if mode == "page" %}
+      <div class="pb-fill-hint" id="pb-fill-hint" role="status" hidden>
+        <span data-pb-fill-text></span>
+        <button type="button" class="pb-btn pb-btn-primary" data-pb-fill>Fill them in</button>
+      </div>
+      {% endif %}
       <div class="pb-page">
         {% if header_src or page_options %}
           <div class="pb-chrome" data-chrome="header" data-chrome-base="{{ chrome_base }}&chrome=header"{% if not header_src %} hidden{% endif %}><iframe class="pb-chrome-frame" data-src="{{ header_src }}" scrolling="no" title="Site header"></iframe></div>

@@ -55,6 +55,7 @@ tests/                          test project for this repo (not shipped)
   test_v08.py                   preview marker, attributes, site matching, release workflow
   test_v09.py                   older Wagtail, overlap, demo values, usage order, site tabs, cleanup
   test_v091.py                  demo-content records removed with their page; cleanup command
+  test_v010.py                  publish question, tab after save, Content cover, padding, fill hint
   examples/, test_examples.py   the code from docs/EXAMPLES.md, checked
 runtests.py                     runs all tests against tests/
 .github/workflows/test.yml      CI: tests on Python 3.12–3.14 (latest Wagtail) and Wagtail 7.0 + wheel check

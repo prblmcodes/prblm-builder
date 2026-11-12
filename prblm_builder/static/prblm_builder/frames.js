@@ -97,6 +97,8 @@
   //   mt / mb       the section's positive outer margins (for merging with neighbours)
   //   collapse      whether its container lets those margins merge (see above)
   //   above / below how far it reaches over the previous / next section (negative margins)
+  //   pad           the outer element's top / bottom padding and where they sit (from the
+  //                 top / bottom of the shown part)
   //   rawTop        the topmost drawn point (negative = cut off above the document)
   //   overlay       (headers) a transparent fixed/absolute header over the first section
   function measure(d, chrome) {
@@ -159,9 +161,19 @@
     var rawTop = top === Infinity ? 0 : top;
     // Nothing can show above the document's top (fitFrame pads the frame when rawTop < 0).
     top = (plain || top === Infinity) ? 0 : Math.max(0, top);
-    return { top: Math.floor(top), height: Math.ceil(bottom - top), mt: Math.max(0, mtEdge), mb: Math.max(0, mbEdge),
+    var height = Math.ceil(bottom - top);
+    // The section's own padding (its outer element's top / bottom), and where it starts /
+    // ends inside the shown part — for the canvas's "Padding" bands.
+    var pad = { top: 0, topAt: 0, bottom: 0, bottomAt: 0 };
+    if (first && last && !chrome) {
+      pad.top = parseFloat(win.getComputedStyle(first).paddingTop) || 0;
+      pad.bottom = parseFloat(win.getComputedStyle(last).paddingBottom) || 0;
+      pad.topAt = first.getBoundingClientRect().top + sy - Math.floor(top);
+      pad.bottomAt = Math.floor(top) + height - (last.getBoundingClientRect().bottom + sy);
+    }
+    return { top: Math.floor(top), height: height, mt: Math.max(0, mtEdge), mb: Math.max(0, mbEdge),
              collapse: collapse, above: Math.round(above), below: Math.round(below), rawTop: Math.floor(rawTop),
-             overlay: !!(chrome && floating && !first && overlayHeader(win, floating)) };
+             pad: pad, overlay: !!(chrome && floating && !first && overlayHeader(win, floating)) };
   }
 
   // measure() for an iframe, after making room for anything drawn above the document's

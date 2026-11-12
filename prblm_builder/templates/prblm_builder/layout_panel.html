@@ -3,6 +3,47 @@
 use the full width — but ONLY when no side panel (preview / comments / checks) is open,
 so an open preview panel shrinks the canvas to sit beside it instead of being overlaid.{% endcomment %}
 <style>[data-prblm-page-option]{display:none !important}</style>
+<style>
+/* "Publish with a placeholder title?" — a centred modal over a dark backdrop. */
+.prblm-publish-ask{width:min(480px,calc(100vw - 32px));padding:0;border:0;border-radius:12px;overflow:hidden;
+  background:#fff;color:#1f2330;box-shadow:0 24px 64px rgba(0,0,0,.45)}
+.prblm-publish-ask::backdrop{background:rgba(15,18,30,.62)}
+.prblm-publish-ask__bar{height:6px;background:#f2a900}
+.prblm-publish-ask__body{padding:22px 24px 20px}
+.prblm-publish-ask h2{display:flex;align-items:center;gap:10px;margin:0 0 8px;font-size:19px;line-height:1.3}
+.prblm-publish-ask h2 svg{flex:none;width:26px;height:26px;color:#c98600}
+.prblm-publish-ask p{margin:0 0 20px;font-size:15px;line-height:1.5;color:#3d4150}
+.prblm-publish-ask__actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end}
+.prblm-tab-cover{position:absolute;inset:0;z-index:30;background:var(--w-color-surface-page,#fff)}
+.prblm-tab-cover p{position:sticky;top:35vh;margin:80px 0 0;text-align:center;font-size:16px;color:var(--w-color-text-meta,#5a5a66)}
+</style>
+<script>
+(function () {
+  // Reopen the tab you saved from (Layout comes first, so a reload would otherwise always
+  // land on it). Set as the URL hash before Wagtail's tabs start, so nothing flashes; a
+  // failed save then still switches to the tab holding the error (below).
+  var KEY = "prblm-builder:tab";
+  try {
+    var saved = JSON.parse(window.sessionStorage.getItem(KEY) || "null");
+    window.sessionStorage.removeItem(KEY);
+    if (saved && saved.tab && Date.now() - saved.t < 30000 && !location.hash) {
+      history.replaceState(history.state, "", location.pathname + location.search + "#" + saved.tab);
+    }
+  } catch (e) {}
+  if (window.__prblmTabMemory) return;
+  window.__prblmTabMemory = true;
+  document.addEventListener("submit", function (e) {
+    var form = e.target;
+    if (!form || !form.querySelector || !form.querySelector(".prblm-layout-panel")) return;
+    var tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"][aria-controls^="tab-"]'));
+    var cur = tabs.filter(function (t) { return t.getAttribute("aria-selected") === "true"; })[0];
+    if (!cur || cur === tabs[0]) return;               // the first tab opens anyway
+    try {
+      window.sessionStorage.setItem(KEY, JSON.stringify({ tab: cur.getAttribute("aria-controls"), t: Date.now() }));
+    } catch (e2) {}
+  }, true);
+})();
+</script>
 {% if admin_tweaks %}<style>.editor-view:not(.side-panel-open) .w-form-width:has(.prblm-layout-panel){max-width:none}</style>{% endif %}
 
 {% if demo_url and admin_tweaks %}
@@ -91,15 +132,57 @@ opened again (the builder updates these same inputs when it is).{% endcomment %}
       "click <strong>Save draft</strong> to keep it.";
   });
   // Publishing a page still called "Untitled page 12" (the placeholder "Save draft now"
-  // fills in): ask first.
-  var placeholder = /^Untitled page \d+$/;
+  // fills in): ask first — in the page, not with the browser's confirm(), which a browser
+  // answers "Cancel" without showing once "don't allow more dialogs" was ticked.
+  var placeholder = /^Untitled page \d+$/, publishAnyway = false, ask = null;
+  function closeAsk() {
+    if (!ask) return;
+    var d = ask; ask = null;
+    if (d.open && d.close) d.close();
+    d.remove();
+  }
+  function askBeforePublish(btn, title) {
+    closeAsk();
+    // A modal <dialog>: centred, a backdrop that blocks the page, focus kept inside, Esc closes.
+    ask = document.createElement("dialog");
+    ask.className = "prblm-publish-ask";
+    ask.setAttribute("aria-labelledby", "prblm-publish-ask-title");
+    ask.innerHTML = '<div class="prblm-publish-ask__bar"></div><div class="prblm-publish-ask__body">' +
+      '<h2 id="prblm-publish-ask-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9.5 17h-19z"/><path d="M12 10v4M12 17.5v.5"/></svg>' +
+      'This page has no real title yet</h2>' +
+      '<p>It\u2019s still called \u201c<strong></strong>\u201d. Visitors and search engines will see this ' +
+      'title. Give it a real one before publishing?</p>' +
+      '<div class="prblm-publish-ask__actions">' +
+      '<button type="button" class="button button-secondary" data-pb-publish>Publish anyway</button>' +
+      '<button type="button" class="button" data-pb-rename>Rename it</button></div></div>';
+    ask.querySelector("strong").textContent = title.value.trim();
+    document.body.appendChild(ask);
+    ask.addEventListener("close", function () { if (ask) { ask.remove(); ask = null; } });
+    ask.addEventListener("click", function (e) { if (e.target === ask) closeAsk(); });   // backdrop
+    ask.querySelector("[data-pb-rename]").addEventListener("click", function () {
+      closeAsk();
+      var panel = title.closest('[role="tabpanel"]');
+      var tab = panel && panel.id && document.getElementById(panel.id.replace(/^tab-/, "tab-label-"));
+      if (tab && panel.hidden) tab.click();
+      setTimeout(function () { title.focus(); title.select(); }, 60);
+    });
+    ask.querySelector("[data-pb-publish]").addEventListener("click", function () {
+      closeAsk();
+      publishAnyway = true;
+      btn.click();
+    });
+    if (ask.showModal) ask.showModal(); else ask.setAttribute("open", "");
+    ask.querySelector("[data-pb-rename]").focus();
+  }
   document.addEventListener("click", function (e) {
     var btn = e.target.closest && e.target.closest('button[name="action-publish"]');
     if (!btn) return;
+    if (publishAnyway) { publishAnyway = false; return; }
     var t = (btn.form || document).querySelector('[name="title"]');
-    if (t && placeholder.test(t.value.trim()) &&
-        !window.confirm("This page is still called \u201c" + t.value.trim() + "\u201d. Publish it with this title?")) {
+    if (t && placeholder.test(t.value.trim())) {
       e.preventDefault(); e.stopImmediatePropagation();
+      askBeforePublish(btn, t);
     }
   }, true);
   function slugify(s) {
@@ -137,7 +220,7 @@ opened again (the builder updates these same inputs when it is).{% endcomment %}
        moved, opening the Content tab waits for the auto-save, then reloads the editor on
        the Content tab so the new sections are there to edit. After Content-tab edits,
        opening the Layout tab refreshes the canvas from the auto-saved draft.
-     - New pages and sites with auto-save off: nothing automatic (save as usual). */
+     - New pages and sites without auto-save (e.g. Wagtail 7.0): a bar says to save. */
   var panel = document.querySelector(".prblm-layout-panel");
   if (!panel || panel.dataset.pbSyncBound) return;
   panel.dataset.pbSyncBound = "1";
@@ -167,13 +250,8 @@ opened again (the builder updates these same inputs when it is).{% endcomment %}
   var controllers = (form.getAttribute("data-controller") || "").split(/\s+/);
   var autosave = controllers.indexOf("w-autosave") !== -1;
   function isExisting() { return /\/edit\/?$/.test(new URL(form.action, location.href).pathname); }
-  var structureAt = 0, contentAt = 0, savedAt = 0, failed = false;
+  var structureAt = 0, savedAt = 0, failed = false;
   document.addEventListener("prblm-builder:structure", function () { structureAt = Date.now(); });
-  if (contentPanel) {
-    ["input", "change"].forEach(function (type) {
-      contentPanel.addEventListener(type, function () { if (!window.__prblmSyncing) contentAt = Date.now(); }, true);
-    });
-  }
   document.addEventListener("w-autosave:success", function () { savedAt = Date.now(); failed = false; });
   document.addEventListener("w-autosave:error", function () { failed = true; });
 
@@ -205,18 +283,35 @@ opened again (the builder updates these same inputs when it is).{% endcomment %}
     new MutationObserver(function () { if (!el.hidden) fn(); }).observe(el, { attributes: true, attributeFilter: ["hidden"] });
   }
   var busy = false;
+  // Cover the Content tab while it's out of date, so its old sections never show (runs
+  // before the browser paints the newly shown tab).
+  function coverOver(el, text) {
+    var c = el.querySelector(":scope > .prblm-tab-cover");
+    if (!c) {
+      c = document.createElement("div");
+      c.className = "prblm-tab-cover";
+      c.setAttribute("role", "status");
+      c.innerHTML = "<p></p>";
+      if (getComputedStyle(el).position === "static") el.style.position = "relative";
+      el.appendChild(c);
+    }
+    c.querySelector("p").textContent = text;
+  }
+  function uncoverFrom(el) { var c = el && el.querySelector(":scope > .prblm-tab-cover"); if (c) c.remove(); }
+  function coverContent(text) { coverOver(contentPanel, text); }
+  function uncover() { uncoverFrom(contentPanel); }
   onShown(contentPanel, function () {
     if (busy || !structureAt || !autosave || !isExisting()) return;
     busy = true;
-    notice("Saving your layout changes…");
+    coverContent("Loading the new sections…");
     whenSaved(structureAt, 15000).then(function (ok) {
       if (!ok) {
         busy = false;
+        uncover();
         notice("Couldn't save automatically — use Save draft to see the new sections here.");
         setTimeout(function () { notice(""); }, 6000);
         return;
       }
-      notice("Loading the new sections…");
       form.setAttribute("data-w-unsaved-confirmation-value", "false");   // already saved
       var url = new URL(form.action, location.href);
       url.hash = "tab-content";
@@ -224,12 +319,69 @@ opened again (the builder updates these same inputs when it is).{% endcomment %}
       else location.replace(url.href);
     });
   });
+  // ---- Content tab -> canvas
+  // A fingerprint of the page's sections in the form (ids, order, deleted flags, values),
+  // taken whenever the canvas matches the form. Coming back to the Layout tab with a
+  // different one means sections were added, removed, moved or edited in the Content tab.
+  function formSig() {
+    var out = [];
+    if (!field) return "";
+    try {
+      new FormData(form).forEach(function (v, k) {
+        if (k.indexOf(field + "-") === 0 && typeof v === "string") out.push(k + "=" + v);
+      });
+    } catch (e) {}
+    return out.join("\n");
+  }
+  var baseline = null, baselineAt = 0, editedAt = 0;
+  function rebase() { baseline = formSig(); baselineAt = Date.now(); }
+  // The last edit in the form: the canvas waits for an auto-save that finished after it
+  // (an earlier auto-save — e.g. of a deleted block — may not include a later text edit).
+  ["input", "change"].forEach(function (type) {
+    form.addEventListener(type, function () { if (!window.__prblmSyncing) editedAt = Date.now(); }, true);
+  });
+  // After Wagtail has built the blocks' form fields.
+  if (document.readyState === "complete") setTimeout(rebase, 800);
+  else window.addEventListener("load", function () { setTimeout(rebase, 800); });
+  // Changes made from the canvas (⚙ settings, layout) don't need a rebuild.
+  document.addEventListener("prblm-builder:dirty", function () { setTimeout(rebase, 0); });
+  function bannerSay(html) {
+    var banner = panel.querySelector(".prblm-save-banner");
+    var text = banner && banner.querySelector("[data-pb-banner-text]");
+    if (!banner || !text) return;
+    text.innerHTML = html;
+    banner.hidden = false;
+  }
+  function rebuildCanvas() {
+    var frame = panel.querySelector("iframe");
+    if (!frame) return;
+    // The saved draft now holds the arrangement: drop the form's copy, so an old order
+    // can't override what was done in the Content tab on the next save.
+    ["_pb_layout", "_pb_initial"].forEach(function (n) {
+      var i = form.querySelector('input[name="' + n + '"]');
+      if (i) i.value = "";
+    });
+    structureAt = 0;
+    frame.addEventListener("load", function done() {
+      frame.removeEventListener("load", done);
+      uncoverFrom(panel);
+      rebase();
+    });
+    var src = frame.getAttribute("src").replace(/([?&])_r=\d+/, "");
+    frame.src = src + (src.indexOf("?") < 0 ? "?" : "&") + "_r=" + Date.now();
+  }
   onShown(layoutPanel, function () {
-    if (!contentAt || !autosave || !isExisting()) return;
-    var since = contentAt; contentAt = 0;
-    whenSaved(since, 15000).then(function (ok) {
-      var api = builder();
-      if (ok && api) api.refreshPreviews();
+    if (baseline === null || formSig() === baseline) return;
+    if (!autosave || !isExisting()) {
+      // No auto-save (e.g. Wagtail 7.0): the canvas shows the saved page.
+      bannerSay("<strong>You changed the page in the Content tab.</strong> Save it to see the changes here.");
+      return;
+    }
+    coverOver(panel, "Updating the layout…");
+    whenSaved(Math.max(baselineAt, editedAt), 15000).then(function (ok) {
+      if (ok) { rebuildCanvas(); return; }
+      uncoverFrom(panel);
+      bannerSay("<strong>Couldn't save automatically.</strong> Save the page to see your Content-tab changes here.");
     });
   });
 });

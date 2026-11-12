@@ -143,7 +143,10 @@ Built-in blocks keep their own explanatory `default`. For every other block, **p
    block (`registry.block_key`: the class path; Wagtail's generic classes fall back to the
    name) on **live** pages, skipping sections the plugin seeded and nobody changed, and
    only if it passes `clean()`. Also returns its page (context for blocks reading page
-   fields). The index (`_index`, cached 60s, `PRBLM_BUILDER_INDEX_SCAN_LIMIT` pages/model)
+   fields). The index (`_index`, `PRBLM_BUILDER_INDEX_SCAN_LIMIT` pages/model; 0.7–0.9 cached it
+   60s, since 0.10 `_cached(key, fn, depends=…)` rebuilds only when a stamp changes — live
+   page count + newest `last_published_at`, SeededSection / image / document count + max
+   id, each checked at most every `STAMP_EVERY` = 2s per process)
    also gives `usage(name, block)` for the Block library. Empty fields fall through.
 3. **The field's default** (a `ListBlock`'s made-up default of empty items doesn't count).
 4. **Generated** (`generate`): neutral text from help text (when it's a short name for the
@@ -423,6 +426,28 @@ of the code only calls these (never `django.conf.settings` directly). See §6.
     them. Lesson from the same round: renaming `measure` → `measureFrame` in `builder.js`
     missed the thumbnail code, whose `try/catch` hid the ReferenceError — a test now checks
     the name.
+
+17. **0.10 (plan in `docs/plans/v0.10.0.md`).** Publishing an "Untitled page N" "did
+    nothing": the check used `window.confirm()`, which browsers answer "Cancel" silently once
+    "don't allow more dialogs" is ticked — now an in-page question (Rename it / Publish
+    anyway). Layout being the first tab meant every save reopened Layout: the current tab
+    is stored at submit (sessionStorage) and set as the URL hash by an inline script in the
+    Layout panel *before* Wagtail's tabs start (no flash). The Content tab is covered
+    ("Loading the new sections…") from the moment it's shown until the reload, instead of
+    showing stale sections. Canvas: padding bands (`measure().pad`, green) next to the
+    margin bands; a "N sections still have demo text — Fill them in" bar. Decided to keep
+    demo content to published pages only (drafts can be unfinished / private). The
+    60-second cache of real content (rebuilt by the next request after a minute, per
+    process, even when nothing changed) became change-based: a cheap stamp query (≤ every
+    2s) and a rebuild only after a publish / unpublish / delete — new content shows at
+    once, quiet sites never rescan. A stored per-page index (updated on publish) was
+    considered for very large sites and left for later. Content → Layout sync only reloaded
+    existing frames (sections added / deleted in the Content tab never appeared) and did
+    nothing without auto-save: now a fingerprint of the stream's form fields detects any
+    Content-tab change; with auto-save the canvas waits for an auto-save that finished after
+    the last edit (an earlier one — e.g. of a deleted block — can miss a later text edit),
+    clears the form's `_pb_layout` (so an old order can't override the Content tab) and
+    reloads; without auto-save a bar asks to save.
 
 ---
 

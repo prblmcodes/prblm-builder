@@ -156,7 +156,7 @@
       setClear(frame, host, overlay || reach, m, s, chrome);
       host.classList.toggle("pb-chrome-overlay", !!overlay);
       host.classList.toggle("pb-pokes-down", OVERLAP && !chrome && !!m.below);
-      host._pbM = { mt: m.mt || 0, mb: m.mb || 0, collapse: !!m.collapse, s: s,
+      host._pbM = { mt: m.mt || 0, mb: m.mb || 0, collapse: !!m.collapse, s: s, pad: m.pad,
                     above: OVERLAP ? m.above || 0 : 0, below: OVERLAP ? m.below || 0 : 0, overlay: !!overlay };
       if (host.classList.contains("pb-selected")) drawSpace(host);
       queueGaps();
@@ -352,28 +352,57 @@
     });
     syncLayout();   // keep the parent edit form's hidden layout fields in step
     queueGaps();    // neighbours changed: re-merge the gaps between sections
+    updateFillHint();
   }
+  // Saved sections still holding their demo text: a hint above the page that opens the
+  // Content tab, so editors know what to do next. (Unsaved ones can't be filled in yet —
+  // the save banner covers those.)
+  var fillHint = document.getElementById("pb-fill-hint");
+  function updateFillHint() {
+    if (!fillHint) return;
+    var n = Array.prototype.filter.call(sections(), function (c) {
+      return c.dataset.unedited && !c.dataset.unsaved;
+    }).length;
+    fillHint.hidden = !n;
+    if (n) fillHint.querySelector("[data-pb-fill-text]").textContent =
+      n + (n === 1 ? " section still has" : " sections still have") + " demo text.";
+  }
+  if (fillHint) fillHint.querySelector("[data-pb-fill]").addEventListener("click", function () {
+    try {
+      var tab = window.parent.document.getElementById("tab-label-content");
+      if (tab) { tab.click(); window.parent.scrollTo(0, 0); }
+    } catch (e) {}
+  });
 
   function select(sec) {
     sections().forEach(function (s) { s.classList.toggle("pb-selected", s === sec); drawSpace(s); });
   }
-  // The selected section's margins (space above / below its content), shown as striped
-  // bands with their size — explains why neighbouring sections' spacing overlaps.
+  // The selected section's spacing, like browser dev tools: its margins (space outside it,
+  // orange) and its outer element's padding (space inside it, green), as striped bands
+  // with their size — explains why content sits far from a section's edge, and why
+  // neighbouring sections' spacing overlaps.
+  function band(sec, kind, side, top, px, s, title) {
+    var b = document.createElement("div");
+    b.className = "pb-space pb-space-" + kind + " pb-space-" + side;
+    b.style.height = Math.max(2, Math.round(px * s)) + "px";
+    b.style[side] = Math.round(top * s) + "px";
+    b.innerHTML = '<span class="pb-space-label">' + (kind === "pad" ? "Padding" : "Space") + " \u00b7 " +
+                  Math.round(px) + "px</span>";
+    b.title = title;
+    sec.appendChild(b);
+  }
   function drawSpace(sec) {
     Array.prototype.slice.call(sec.querySelectorAll(".pb-space")).forEach(function (b) { b.remove(); });
     var m = sec._pbM;
     if (!sec.classList.contains("pb-selected") || !m) return;
-    [["top", m.mt], ["bottom", m.mb]].forEach(function (side) {
-      var px = Math.round(side[1] || 0);
-      if (px < 1) return;
-      var band = document.createElement("div");
-      band.className = "pb-space pb-space-" + side[0];
-      band.style.height = Math.max(2, Math.round(px * m.s)) + "px";
-      band.innerHTML = '<span class="pb-space-label">Space \u00b7 ' + px + "px</span>";
-      band.title = (side[0] === "top" ? "Space above" : "Space below") + " this section's content (its margin). " +
-                   "Next to another section, the larger of the two spaces is used.";
-      sec.appendChild(band);
-    });
+    var hint = "Next to another section, the larger of the two spaces is used.";
+    if (m.mt >= 1) band(sec, "margin", "top", 0, m.mt, m.s, "Space above this section (its margin). " + hint);
+    if (m.mb >= 1) band(sec, "margin", "bottom", 0, m.mb, m.s, "Space below this section (its margin). " + hint);
+    var p = m.pad;
+    if (p && p.top >= 1) band(sec, "pad", "top", Math.max(0, p.topAt), p.top, m.s,
+                              "Space inside the top of this section (its padding).");
+    if (p && p.bottom >= 1) band(sec, "pad", "bottom", Math.max(0, p.bottomAt), p.bottom, m.s,
+                                 "Space inside the bottom of this section (its padding).");
   }
 
   /* ---------- undo / redo (Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z or Ctrl+Y) ---------- */

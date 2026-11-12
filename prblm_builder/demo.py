@@ -189,24 +189,82 @@ def _rich_text(block, name, ctx):
 
 # --------------------------------------------------------------------------- pages, links
 _CACHE = {}
+_STAMPS = {}
+# How often (seconds) a server process asks the database whether site content changed —
+# so a page loading 30 thumbnails at once asks once, not 30 times.
+STAMP_EVERY = 2.0
 
 
-def _cached(key, fn, max_age=60):
-    """``fn()``, cached for ``max_age`` seconds (site content changes while editors work)."""
+def _content_stamp():
+    """Changes when a page is published, unpublished or deleted (demo content only uses
+    published pages; saving a draft doesn't matter)."""
+    from django.db.models import Count, Max
+    from wagtail.models import Page
+    agg = Page.objects.filter(live=True).aggregate(n=Count("id"), last=Max("last_published_at"))
+    return (agg["n"], str(agg["last"]))
+
+
+def _seeded_stamp():
+    from django.db.models import Count, Max
+
+    from .models import SeededSection
+    agg = SeededSection.objects.aggregate(n=Count("id"), last=Max("id"))
+    return (agg["n"], agg["last"])
+
+
+def _images_stamp():
+    from django.db.models import Count, Max
+    from wagtail.images import get_image_model
+    agg = get_image_model().objects.aggregate(n=Count("id"), last=Max("id"))
+    return (agg["n"], agg["last"])
+
+
+def _documents_stamp():
+    from django.db.models import Count, Max
+    from wagtail.documents import get_document_model
+    agg = get_document_model().objects.aggregate(n=Count("id"), last=Max("id"))
+    return (agg["n"], agg["last"])
+
+
+_STAMP_FNS = {"content": _content_stamp, "seeded": _seeded_stamp,
+              "images": _images_stamp, "documents": _documents_stamp}
+
+
+def _stamp(kind):
+    """A cheap value that changes whenever ``kind`` of site data changes (one small query,
+    at most every ``STAMP_EVERY`` seconds per process)."""
     now = time.time()
+    hit = _STAMPS.get(kind)
+    if hit is None or now - hit[0] >= STAMP_EVERY:
+        try:
+            value = _STAMP_FNS[kind]()
+        except Exception:
+            value = ("unknown", now)          # can't tell → rebuild
+        hit = _STAMPS[kind] = (now, value)
+    return hit[1]
+
+
+def _cached(key, fn, depends=("content",)):
+    """``fn()``, kept until the site data it ``depends`` on changes — no timer: nothing is
+    rebuilt while nothing is published, unpublished, deleted or uploaded."""
+    version = tuple(_stamp(k) for k in depends)
     hit = _CACHE.get(key)
-    if hit is None or now - hit[0] > max_age:
+    if hit is None or hit[0] != version:
         try:
             value = fn()
         except Exception:
             value = None
-        hit = _CACHE[key] = (now, value)
+        hit = _CACHE[key] = (version, value)
+        if key == "index":                     # validity checks of the old index's values
+            for k in [k for k in _CACHE if isinstance(k, tuple) and k[0] == "valid"]:
+                del _CACHE[k]
     return hit[1]
 
 
 def reset_caches():
     """Forget cached site content (tests; after big imports)."""
     _CACHE.clear()
+    _STAMPS.clear()
 
 
 def _site_url(video=False):
@@ -313,7 +371,7 @@ def _image_catalog():
             out.append({"id": img.id, "w": img.width or 0, "h": img.height or 0,
                         "vector": vector, "alpha": alpha})
         return out
-    return _cached("images", build) or []
+    return _cached("images", build, depends=("images",)) or []
 
 
 def _fits(c, role):
@@ -396,7 +454,7 @@ def placeholder_image(role="photo"):
         img.file_size = img.file.size
         img.save()
         return img
-    return _cached(("placeholder", role), make, max_age=3600)
+    return _cached(("placeholder", role), make, depends=("images",))
 
 
 # --------------------------------------------------------------------------- documents
@@ -419,7 +477,7 @@ def _document_for(block, required=False):
                       ContentFile(b"Example document - replace it with your own file.\n"), save=False)
         doc.save()
         return doc
-    return _cached("document", find)
+    return _cached("document", find, depends=("documents",))
 
 
 # --------------------------------------------------------------------------- generation
@@ -720,7 +778,7 @@ def seeded_hashes():
     def load():
         from .models import SeededSection
         return dict(SeededSection.objects.values_list("section_id", "value_hash"))
-    return _cached("seeded", load) or {}
+    return _cached("seeded", load, depends=("seeded",)) or {}
 
 
 def seeded_hash(section_id):
@@ -825,7 +883,7 @@ def _index():
             cands[key].sort(key=lambda t: t[0], reverse=True)
             cands[key] = [(v, p) for _s, v, p in cands[key][:8]]
         return {"candidates": cands, "usage": usage}
-    return _cached("index", build) or {"candidates": {}, "usage": {}}
+    return _cached("index", build, depends=("content", "seeded")) or {"candidates": {}, "usage": {}}
 
 
 def real_instance(name, block):
@@ -836,7 +894,8 @@ def real_instance(name, block):
         return None, None
     key = block_key(name, block)
     for value, page in _index()["candidates"].get(key, []):
-        ok = _cached(("valid", key, id(value)), lambda v=value: problem(block, v) is None)
+        ok = _cached(("valid", key, id(value)), lambda v=value: problem(block, v) is None,
+                     depends=("content", "seeded"))
         if ok:
             return value, page
     return None, None

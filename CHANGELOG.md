@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.10.0 — 2026-11-12
+
+From testing 0.9.1.
+
+**Added**
+- **Padding on the canvas**: a selected section shows its padding (space inside its edge)
+  as green stripes, "Padding · 64px", next to its margins in orange — the colours browser
+  developer tools use. Only the section's outer element.
+- **"Fill them in"**: while saved sections still hold demo text, a bar above the page says
+  how many, with a button that opens the Content tab.
+
+**Changed**
+- After **Save draft / Publish** the editor reopens the tab you saved from (it always opened
+  the Layout tab); a failed save still opens the tab with the error.
+- Publishing a page still called "Untitled page N" asks in a centred dialog over a darkened
+  page — **Rename it** / **Publish anyway** — instead of the browser's confirm box.
+
+- **Demo content follows publishing**: previews, thumbnails and new sections pick up newly
+  published content at once (they could take up to a minute), and the plugin no longer
+  re-reads every published page each minute while editors work — only after a page is
+  published, unpublished or deleted (and new images / documents when uploaded).
+
+**Fixed**
+- **Content tab → Layout tab**: sections added, deleted or moved in the Content tab didn't
+  show on the canvas (only edited text did, and on Wagtail 7.0 nothing did). Now the canvas
+  is rebuilt from the auto-saved draft ("Updating the layout…" meanwhile); without
+  auto-save (Wagtail 7.0) a bar says to save, with **Save draft now**.
+- Clicking **Publish** on an "Untitled page" could do nothing: a browser that was told to
+  stop showing dialogs answered the confirm box with "Cancel" without showing it.
+- The Content tab no longer shows the old sections for a moment after a layout change: it
+  shows "Loading the new sections…" until the editor reloads onto it.
+
+**Docs**
+- Demo content uses published pages only; what happens when that page is deleted.
+
 ## 0.9.1 — 2026-11-12
 
 From testing 0.9.0 on a Wagtail 7.0 site.
